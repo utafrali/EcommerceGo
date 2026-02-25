@@ -3,7 +3,8 @@
 # =============================================================================
 
 .PHONY: help setup build test lint proto-gen docker-up docker-down docker-infra \
-        migrate migrate-down seed clean fmt vet
+        docker-infra-down docker-build docker-logs docker-backend docker-ps \
+        migrate migrate-down seed clean fmt vet build-all test-all
 
 # Default target
 help: ## Show this help
@@ -26,7 +27,7 @@ setup: ## Initial project setup (install tools, generate proto)
 # -----------------------------------------------------------------------------
 SERVICES := product cart order checkout payment user inventory campaign notification search media gateway
 
-build: ## Build all Go services
+build: ## Build all Go services (output to bin/)
 	@for svc in $(SERVICES); do \
 		echo "==> Building $$svc..."; \
 		cd services/$$svc && go build -o ../../bin/$$svc ./cmd/server && cd ../..; \
@@ -36,6 +37,13 @@ build: ## Build all Go services
 build-%: ## Build a specific service (e.g., make build-product)
 	@echo "==> Building $*..."
 	cd services/$* && go build -o ../../bin/$* ./cmd/server
+
+build-all: ## Build all Go services (compile check, no output binary)
+	@for svc in $(SERVICES); do \
+		echo "==> Building $$svc..."; \
+		(cd services/$$svc && go build ./...) || exit 1; \
+	done
+	@echo "ALL BUILDS OK"
 
 # -----------------------------------------------------------------------------
 # Test
@@ -52,6 +60,13 @@ test-%: ## Run tests for a specific service (e.g., make test-product)
 
 test-pkg: ## Run tests for shared packages
 	cd pkg && go test ./... -v -count=1
+
+test-all: ## Run tests for all Go services with race detection
+	@for svc in $(SERVICES); do \
+		echo "==> Testing $$svc..."; \
+		(cd services/$$svc && go test ./... -count=1 -race) || exit 1; \
+	done
+	@echo "ALL TESTS PASSED"
 
 test-coverage: ## Run tests with coverage
 	@for svc in $(SERVICES); do \
@@ -107,26 +122,35 @@ migrate-down-%: ## Rollback migration for a specific service
 # -----------------------------------------------------------------------------
 # Docker
 # -----------------------------------------------------------------------------
-docker-infra: ## Start only infrastructure (PostgreSQL, Redis, Kafka, ES, MinIO)
-	docker compose -f docker-compose.infra.yml up -d
-
-docker-infra-down: ## Stop infrastructure
-	docker compose -f docker-compose.infra.yml down
-
-docker-up: ## Start all services + infrastructure
-	docker compose up -d
-
-docker-down: ## Stop all services + infrastructure
-	docker compose down
-
 docker-build: ## Build all Docker images
 	docker compose build
+
+docker-up: ## Start all services
+	docker compose --profile infra --profile backend --profile frontend up -d
+
+docker-down: ## Stop all services
+	docker compose --profile infra --profile backend --profile frontend down
+
+docker-infra: ## Start only infrastructure (PostgreSQL, Redis, Kafka, ES, MinIO)
+	docker compose --profile infra up -d
+
+docker-infra-down: ## Stop infrastructure
+	docker compose --profile infra down
+
+docker-backend: ## Start infrastructure + backend services
+	docker compose --profile infra --profile backend up -d
+
+docker-frontend: ## Start infrastructure + backend + frontend services
+	docker compose --profile infra --profile backend --profile frontend up -d
 
 docker-logs: ## Tail logs for all services
 	docker compose logs -f
 
 docker-logs-%: ## Tail logs for a specific service (e.g., make docker-logs-product)
 	docker compose logs -f $*
+
+docker-ps: ## Show running services
+	docker compose ps
 
 # -----------------------------------------------------------------------------
 # Seed Data

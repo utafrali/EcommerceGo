@@ -1,8 +1,9 @@
 # =============================================================================
 # docker-compose.infra.yml
-# Infrastructure-only stack — PostgreSQL, Redis, Kafka (KRaft), Elasticsearch,
+# Infrastructure-only stack -- PostgreSQL, Redis, Kafka (KRaft), Elasticsearch,
 # MinIO, and MailHog.  Run with:
 #   docker compose -f docker-compose.infra.yml up -d
+#   docker compose --profile infra up -d
 # =============================================================================
 
 networks:
@@ -24,18 +25,20 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: ecommerce-postgres
+    profiles: ["infra"]
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-ecommerce}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce_secret}
-      # The default database — individual service DBs are created by init script
+      # The default database -- individual service DBs are created by init script
       POSTGRES_DB: postgres
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      # Init script runs once on first start when the data volume is empty
+      # Init scripts run once on first start when the data volume is empty
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init-db.sql:ro
+      - ./docker/init-databases.sh:/docker-entrypoint-initdb.d/02-init-databases.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ecommerce} -d postgres"]
       interval: 10s
@@ -51,6 +54,7 @@ services:
   redis:
     image: redis:7.2-alpine
     container_name: ecommerce-redis
+    profiles: ["infra"]
     restart: unless-stopped
     command: >
       redis-server
@@ -71,11 +75,12 @@ services:
       - ecommerce-net
 
   # ---------------------------------------------------------------------------
-  # Apache Kafka 3.7 — KRaft mode (no ZooKeeper)
+  # Apache Kafka 3.7 -- KRaft mode (no ZooKeeper)
   # ---------------------------------------------------------------------------
   kafka:
     image: apache/kafka:3.7.0
     container_name: ecommerce-kafka
+    profiles: ["infra"]
     restart: unless-stopped
     ports:
       - "9092:9092"
@@ -86,9 +91,8 @@ services:
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
 
       # Listeners
-      # PLAINTEXT  → inter-broker + internal container access (9092)
-      # CONTROLLER → KRaft internal raft (9093, not exposed)
-      # EXTERNAL   → host machine access (also 9092 mapped from host)
+      # PLAINTEXT  -> inter-broker + internal container access (9092)
+      # CONTROLLER -> KRaft internal raft (9093, not exposed)
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
@@ -104,7 +108,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 
-      # Cluster ID — deterministic value for dev (generate a new one for prod)
+      # Cluster ID -- deterministic value for dev (generate a new one for prod)
       CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
     volumes:
       - kafka-data:/var/lib/kafka/data
@@ -125,11 +129,12 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
     container_name: ecommerce-elasticsearch
+    profiles: ["infra"]
     restart: unless-stopped
     environment:
       # Single-node dev cluster
       discovery.type: single-node
-      # Disable security (TLS + auth) — enable in production!
+      # Disable security (TLS + auth) -- enable in production!
       xpack.security.enabled: "false"
       xpack.security.http.ssl.enabled: "false"
       ES_JAVA_OPTS: "-Xms512m -Xmx512m"
@@ -157,11 +162,12 @@ services:
       - ecommerce-net
 
   # ---------------------------------------------------------------------------
-  # MinIO — S3-compatible object storage
+  # MinIO -- S3-compatible object storage
   # ---------------------------------------------------------------------------
   minio:
     image: minio/minio:latest
     container_name: ecommerce-minio
+    profiles: ["infra"]
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -185,6 +191,7 @@ services:
   minio-init:
     image: minio/mc:latest
     container_name: ecommerce-minio-init
+    profiles: ["infra"]
     depends_on:
       minio:
         condition: service_healthy
@@ -199,11 +206,12 @@ services:
       - ecommerce-net
 
   # ---------------------------------------------------------------------------
-  # MailHog — SMTP catch-all for development email testing
+  # MailHog -- SMTP catch-all for development email testing
   # ---------------------------------------------------------------------------
   mailhog:
     image: mailhog/mailhog:latest
     container_name: ecommerce-mailhog
+    profiles: ["infra"]
     restart: unless-stopped
     ports:
       - "${SMTP_PORT:-1025}:1025"  # SMTP

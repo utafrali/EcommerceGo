@@ -1,32 +1,37 @@
 # =============================================================================
 # Stage 1: Build
 # =============================================================================
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 # Build argument — passed via docker compose build-arg or --build-arg
 ARG SERVICE_NAME
+ARG SERVICE_PATH=${SERVICE_NAME}
 ENV SERVICE_NAME=${SERVICE_NAME}
+ENV SERVICE_PATH=${SERVICE_PATH}
 
 # Install certificates for HTTPS calls during build (e.g. go mod download)
 RUN apk add --no-cache ca-certificates git
 
 WORKDIR /workspace
 
+# Copy go.work so the Go workspace resolver can find peer modules
+COPY go.work ./
+
 # Copy shared pkg module first so it can be resolved from the workspace
 COPY pkg/go.mod pkg/go.sum ./pkg/
-COPY services/${SERVICE_NAME}/go.mod services/${SERVICE_NAME}/go.sum ./services/${SERVICE_NAME}/
+COPY services/${SERVICE_PATH}/go.mod services/${SERVICE_PATH}/go.sum ./services/${SERVICE_PATH}/
 
 # Download dependencies before copying source (improves layer caching)
-WORKDIR /workspace/services/${SERVICE_NAME}
+WORKDIR /workspace/services/${SERVICE_PATH}
 RUN go mod download
 
 # Copy full source tree
 WORKDIR /workspace
 COPY pkg/ ./pkg/
-COPY services/${SERVICE_NAME}/ ./services/${SERVICE_NAME}/
+COPY services/${SERVICE_PATH}/ ./services/${SERVICE_PATH}/
 
 # Build the binary — static, no CGO so the distroless image works
-WORKDIR /workspace/services/${SERVICE_NAME}
+WORKDIR /workspace/services/${SERVICE_PATH}
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build \
       -ldflags="-w -s" \
