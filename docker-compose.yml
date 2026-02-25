@@ -1,0 +1,383 @@
+# =============================================================================
+# docker-compose.yml
+# Full stack — all Go microservices, BFF, Next.js web frontend, plus the
+# shared infrastructure defined in docker-compose.infra.yml.
+#
+# Usage:
+#   docker compose up -d          # start everything
+#   docker compose up -d product  # start one service + its deps
+#   docker compose logs -f product
+# =============================================================================
+
+include:
+  - docker-compose.infra.yml
+
+# ---------------------------------------------------------------------------
+# Shared defaults for every Go microservice
+# (Merge via YAML anchors to avoid repetition)
+# ---------------------------------------------------------------------------
+x-go-service-defaults: &go-service-defaults
+  build:
+    context: .
+    dockerfile: docker/go-service.Dockerfile
+    # SERVICE_NAME is overridden per-service below
+    args:
+      SERVICE_NAME: placeholder
+  env_file:
+    - .env
+  restart: unless-stopped
+  networks:
+    - ecommerce-net
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    kafka:
+      condition: service_healthy
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Product Service  — HTTP :8001, gRPC :9001
+  # ---------------------------------------------------------------------------
+  product:
+    <<: *go-service-defaults
+    container_name: ecommerce-product
+    build:
+      context: .
+      dockerfile: docker/go-service.Dockerfile
+      args:
+        SERVICE_NAME: product
+    environment:
+      PRODUCT_HTTP_PORT: ${PRODUCT_HTTP_PORT:-8001}
+      PRODUCT_GRPC_PORT: ${PRODUCT_GRPC_PORT:-9001}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:9092
+    ports:
+      - "${PRODUCT_HTTP_PORT:-8001}:${PRODUCT_HTTP_PORT:-8001}"
+      - "${PRODUCT_GRPC_PORT:-9001}:${PRODUCT_GRPC_PORT:-9001}"
+
+  # ---------------------------------------------------------------------------
+  # Cart Service  — HTTP :8002, gRPC :9002
+  # ---------------------------------------------------------------------------
+  cart:
+    <<: *go-service-defaults
+    container_name: ecommerce-cart
+    build:
+      context: .
+      dockerfile: docker/go-service.Dockerfile
+      args:
+        SERVICE_NAME: cart
+    environment:
+      CART_HTTP_PORT: ${CART_HTTP_PORT:-8002}
+      CART_GRPC_PORT: ${CART_GRPC_PORT:-9002}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:9092
+    ports:
+      - "${CART_HTTP_PORT:-8002}:${CART_HTTP_PORT:-8002}"
+      - "${CART_GRPC_PORT:-9002}:${CART_GRPC_PORT:-9002}"
+
+  # ---------------------------------------------------------------------------
+  # Order Service  — HTTP :8003, gRPC :9003
+  # ---------------------------------------------------------------------------
+  order:
+    <<: *go-service-defaults
+    container_name: ecommerce-order
+    build:
+      context: .
+      dockerfile: docker/go-service.Dockerfile
+      args:
+        SERVICE_NAME: order
+    environment:
+      ORDER_HTTP_PORT: ${ORDER_HTTP_PORT:-8003}
+      ORDER_GRPC_PORT: ${ORDER_GRPC_PORT:-9003}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:9092
+    ports:
+      - "${ORDER_HTTP_PORT:-8003}:${ORDER_HTTP_PORT:-8003}"
+      - "${ORDER_GRPC_PORT:-9003}:${ORDER_GRPC_PORT:-9003}"
+
+  # ---------------------------------------------------------------------------
+  # Checkout Service  — HTTP :8004 (no dedicated gRPC port in plan)
+  # ---------------------------------------------------------------------------
+  checkout:
+    <<: *go-service-defaults
+    container_name: ecommerce-checkout
+    build:
+      context: .
+      dockerfile: docker/go-service.Dockerfile
+      args:
+        SERVICE_NAME: checkout
+    environment:
+      CHECKOUT_HTTP_PORT: ${CHECKOUT_HTTP_PORT:-8004}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:9092
+    ports:
+      - "${CHECKOUT_HTTP_PORT:-8004}:${CHECKOUT_HTTP_PORT:-8004}"
+
+  # ---------------------------------------------------------------------------
+  # Payment Service  — HTTP :8005, gRPC :9005
+  # ---------------------------------------------------------------------------
+  payment:
+    <<: *go-service-defaults
+    container_name: ecommerce-payment
+    build:
+      context: .
+      dockerfile: docker/go-service.Dockerfile
+      args:
+        SERVICE_NAME: payment
+    environment:
+      PAYMENT_HTTP_PORT: ${PAYMENT_HTTP_PORT:-8005}
+      PAYMENT_GRPC_PORT: ${PAYMENT_GRPC_PORT:-9005}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:9092
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_xxx}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_xxx}
+      PAYMENT_GATEWAY: ${PAYMENT_GATEWAY:-mock}
+    ports:
+      - "${PAYMENT_HTTP_PORT:-8005}:${PAYMENT_HTTP_PORT:-8005}"
+      - "${PAYMENT_GRPC_PORT:-9005}:${PAYMENT_GRPC_PORT:-9005}"
+
+  # ---------------------------------------------------------------------------
+  # User Service  — HTTP :8006, gRPC :9006
+  # ---------------------------------------------------------------------------
+  user:
+    <<: *go-service-defaults
+    container_name: ecommerce-user
+    build:
+      context: .
+      dockerfile: docker/go-service.Dockerfile
+      args:
+        SERVICE_NAME: user
+    environment:
+      USER_HTTP_PORT: ${USER_HTTP_PORT:-8006}
+      USER_GRPC_PORT: ${USER_GRPC_PORT:-9006}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-a-secure-secret-in-production}
+      JWT_ACCESS_TOKEN_EXPIRY: ${JWT_ACCESS_TOKEN_EXPIRY:-15m}
+      JWT_REFRESH_TOKEN_EXPIRY: ${JWT_REFRESH_TOKEN_EXPIRY:-168h}
+    ports:
+      - "${USER_HTTP_PORT:-8006}:${USER_HTTP_PORT:-8006}"
+      - "${USER_GRPC_PORT:-9006}:${USER_GRPC_PORT:-9006}"
+
+  # ---------------------------------------------------------------------------
+  # Inventory Service  — HTTP :8007, gRPC :9007
+  # ---------------------------------------------------------------------------
+  inventory:
+    <<: *go-service-defaults
+    container_name: ecommerce-inventory
+    build:
+      context: .
+      dockerfile: docker/go-service.Dockerfile
+      args:
+        SERVICE_NAME: inventory
+    environment:
+      INVENTORY_HTTP_PORT: ${INVENTORY_HTTP_PORT:-8007}
+      INVENTORY_GRPC_PORT: ${INVENTORY_GRPC_PORT:-9007}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:9092
+    ports:
+      - "${INVENTORY_HTTP_PORT:-8007}:${INVENTORY_HTTP_PORT:-8007}"
+      - "${INVENTORY_GRPC_PORT:-9007}:${INVENTORY_GRPC_PORT:-9007}"
+
+  # ---------------------------------------------------------------------------
+  # Campaign Service  — HTTP :8008, gRPC :9008
+  # ---------------------------------------------------------------------------
+  campaign:
+    <<: *go-service-defaults
+    container_name: ecommerce-campaign
+    build:
+      context: .
+      dockerfile: docker/go-service.Dockerfile
+      args:
+        SERVICE_NAME: campaign
+    environment:
+      CAMPAIGN_HTTP_PORT: ${CAMPAIGN_HTTP_PORT:-8008}
+      CAMPAIGN_GRPC_PORT: ${CAMPAIGN_GRPC_PORT:-9008}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:9092
+    ports:
+      - "${CAMPAIGN_HTTP_PORT:-8008}:${CAMPAIGN_HTTP_PORT:-8008}"
+      - "${CAMPAIGN_GRPC_PORT:-9008}:${CAMPAIGN_GRPC_PORT:-9008}"
+
+  # ---------------------------------------------------------------------------
+  # Notification Service  — HTTP :8009
+  # ---------------------------------------------------------------------------
+  notification:
+    <<: *go-service-defaults
+    container_name: ecommerce-notification
+    build:
+      context: .
+      dockerfile: docker/go-service.Dockerfile
+      args:
+        SERVICE_NAME: notification
+    environment:
+      NOTIFICATION_HTTP_PORT: ${NOTIFICATION_HTTP_PORT:-8009}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      KAFKA_BROKERS: kafka:9092
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      SMTP_FROM: ${SMTP_FROM:-noreply@ecommercego.dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      mailhog:
+        condition: service_healthy
+    ports:
+      - "${NOTIFICATION_HTTP_PORT:-8009}:${NOTIFICATION_HTTP_PORT:-8009}"
+
+  # ---------------------------------------------------------------------------
+  # Search Service  — HTTP :8010
+  # ---------------------------------------------------------------------------
+  search:
+    <<: *go-service-defaults
+    container_name: ecommerce-search
+    build:
+      context: .
+      dockerfile: docker/go-service.Dockerfile
+      args:
+        SERVICE_NAME: search
+    environment:
+      SEARCH_HTTP_PORT: ${SEARCH_HTTP_PORT:-8010}
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    ports:
+      - "${SEARCH_HTTP_PORT:-8010}:${SEARCH_HTTP_PORT:-8010}"
+
+  # ---------------------------------------------------------------------------
+  # Media Service  — HTTP :8011
+  # ---------------------------------------------------------------------------
+  media:
+    <<: *go-service-defaults
+    container_name: ecommerce-media
+    build:
+      context: .
+      dockerfile: docker/go-service.Dockerfile
+      args:
+        SERVICE_NAME: media
+    environment:
+      MEDIA_HTTP_PORT: ${MEDIA_HTTP_PORT:-8011}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-ecommerce-media}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "${MEDIA_HTTP_PORT:-8011}:${MEDIA_HTTP_PORT:-8011}"
+
+  # ---------------------------------------------------------------------------
+  # API Gateway  — HTTP :8080
+  # ---------------------------------------------------------------------------
+  gateway:
+    <<: *go-service-defaults
+    container_name: ecommerce-gateway
+    build:
+      context: .
+      dockerfile: docker/go-service.Dockerfile
+      args:
+        SERVICE_NAME: gateway
+    environment:
+      GATEWAY_HTTP_PORT: ${GATEWAY_HTTP_PORT:-8080}
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-a-secure-secret-in-production}
+      PRODUCT_GRPC_ADDR: product:${PRODUCT_GRPC_PORT:-9001}
+      CART_GRPC_ADDR: cart:${CART_GRPC_PORT:-9002}
+      ORDER_GRPC_ADDR: order:${ORDER_GRPC_PORT:-9003}
+      USER_GRPC_ADDR: user:${USER_GRPC_PORT:-9006}
+      INVENTORY_GRPC_ADDR: inventory:${INVENTORY_GRPC_PORT:-9007}
+      PAYMENT_GRPC_ADDR: payment:${PAYMENT_GRPC_PORT:-9005}
+    depends_on:
+      - product
+      - cart
+      - order
+      - user
+      - payment
+      - inventory
+    ports:
+      - "${GATEWAY_HTTP_PORT:-8080}:${GATEWAY_HTTP_PORT:-8080}"
+
+  # ---------------------------------------------------------------------------
+  # BFF (Backend For Frontend) — Node/TypeScript  :3001
+  # ---------------------------------------------------------------------------
+  bff:
+    build:
+      context: .
+      dockerfile: docker/bff.Dockerfile
+    container_name: ecommerce-bff
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      BFF_PORT: ${BFF_PORT:-3001}
+      GATEWAY_URL: http://gateway:${GATEWAY_HTTP_PORT:-8080}
+    depends_on:
+      - gateway
+    ports:
+      - "${BFF_PORT:-3001}:${BFF_PORT:-3001}"
+    networks:
+      - ecommerce-net
+
+  # ---------------------------------------------------------------------------
+  # Web (Next.js storefront)  — :3000
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    container_name: ecommerce-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: ${WEB_PORT:-3000}
+      # Next.js public env vars (available in browser bundles)
+      NEXT_PUBLIC_API_URL: http://localhost:${GATEWAY_HTTP_PORT:-8080}
+      NEXT_PUBLIC_BFF_URL: http://localhost:${BFF_PORT:-3001}
+    depends_on:
+      - bff
+    ports:
+      - "${WEB_PORT:-3000}:${WEB_PORT:-3000}"
+    networks:
+      - ecommerce-net

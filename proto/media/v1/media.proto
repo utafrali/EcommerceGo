@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package media.v1;
+
+option go_package = "github.com/utafrali/EcommerceGo/gen/go/media/v1;mediav1";
+
+import "google/protobuf/timestamp.proto";
+
+service MediaService {
+  rpc GetMedia(GetMediaRequest) returns (GetMediaResponse);
+  rpc GetPresignedUploadURL(GetPresignedUploadURLRequest) returns (GetPresignedUploadURLResponse);
+}
+
+message Media {
+  string id = 1;
+  string filename = 2;
+  string original_name = 3;
+  string content_type = 4;
+  int64 size_bytes = 5;
+  string url = 6;
+  map<string, string> variants = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message GetMediaRequest {
+  string id = 1;
+}
+
+message GetMediaResponse {
+  Media media = 1;
+}
+
+message GetPresignedUploadURLRequest {
+  string filename = 1;
+  string content_type = 2;
+}
+
+message GetPresignedUploadURLResponse {
+  string upload_url = 1;
+  string media_id = 2;
+}

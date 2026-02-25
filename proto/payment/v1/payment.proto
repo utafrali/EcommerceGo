@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package payment.v1;
+
+option go_package = "github.com/utafrali/EcommerceGo/gen/go/payment/v1;paymentv1";
+
+import "common/v1/money.proto";
+import "google/protobuf/timestamp.proto";
+
+service PaymentService {
+  rpc InitiatePayment(InitiatePaymentRequest) returns (InitiatePaymentResponse);
+  rpc GetPaymentStatus(GetPaymentStatusRequest) returns (GetPaymentStatusResponse);
+  rpc RefundPayment(RefundPaymentRequest) returns (RefundPaymentResponse);
+}
+
+message Payment {
+  string id = 1;
+  string order_id = 2;
+  common.v1.Money amount = 3;
+  string status = 4;
+  string provider = 5;
+  string provider_payment_id = 6;
+  string error_message = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message InitiatePaymentRequest {
+  string order_id = 1;
+  common.v1.Money amount = 2;
+  string provider = 3;
+  map<string, string> metadata = 4;
+}
+
+message InitiatePaymentResponse {
+  Payment payment = 1;
+  string client_secret = 2;
+}
+
+message GetPaymentStatusRequest {
+  string id = 1;
+}
+
+message GetPaymentStatusResponse {
+  Payment payment = 1;
+}
+
+message RefundPaymentRequest {
+  string id = 1;
+  common.v1.Money amount = 2;
+  string reason = 3;
+}
+
+message RefundPaymentResponse {
+  string refund_id = 1;
+  string status = 2;
+}

@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package cart.v1;
+
+option go_package = "github.com/utafrali/EcommerceGo/gen/go/cart/v1;cartv1";
+
+import "common/v1/money.proto";
+import "google/protobuf/timestamp.proto";
+
+service CartService {
+  rpc GetCart(GetCartRequest) returns (GetCartResponse);
+  rpc AddItem(AddItemRequest) returns (GetCartResponse);
+  rpc UpdateItem(UpdateItemRequest) returns (GetCartResponse);
+  rpc RemoveItem(RemoveItemRequest) returns (GetCartResponse);
+  rpc ClearCart(ClearCartRequest) returns (ClearCartResponse);
+}
+
+message Cart {
+  string id = 1;
+  string user_id = 2;
+  repeated CartItem items = 3;
+  common.v1.Money subtotal = 4;
+  common.v1.Money discount = 5;
+  common.v1.Money total = 6;
+  optional string coupon_code = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message CartItem {
+  string id = 1;
+  string product_id = 2;
+  string variant_id = 3;
+  string name = 4;
+  string sku = 5;
+  common.v1.Money unit_price = 6;
+  int32 quantity = 7;
+  common.v1.Money total = 8;
+  string image_url = 9;
+}
+
+message GetCartRequest {
+  string user_id = 1;
+}
+
+message GetCartResponse {
+  Cart cart = 1;
+}
+
+message AddItemRequest {
+  string user_id = 1;
+  string product_id = 2;
+  string variant_id = 3;
+  int32 quantity = 4;
+}
+
+message UpdateItemRequest {
+  string user_id = 1;
+  string item_id = 2;
+  int32 quantity = 3;
+}
+
+message RemoveItemRequest {
+  string user_id = 1;
+  string item_id = 2;
+}
+
+message ClearCartRequest {
+  string user_id = 1;
+}
+
+message ClearCartResponse {}

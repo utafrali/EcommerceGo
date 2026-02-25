@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package notification.v1;
+
+option go_package = "github.com/utafrali/EcommerceGo/gen/go/notification/v1;notificationv1";
+
+import "google/protobuf/timestamp.proto";
+
+service NotificationService {
+  rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
+  rpc GetNotification(GetNotificationRequest) returns (GetNotificationResponse);
+}
+
+message Notification {
+  string id = 1;
+  string user_id = 2;
+  string channel = 3;
+  string template_id = 4;
+  string recipient = 5;
+  string subject = 6;
+  string status = 7;
+  map<string, string> data = 8;
+  int32 attempts = 9;
+  google.protobuf.Timestamp sent_at = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+message SendNotificationRequest {
+  string user_id = 1;
+  string channel = 2;
+  string template_id = 3;
+  string recipient = 4;
+  map<string, string> data = 5;
+}
+
+message SendNotificationResponse {
+  string notification_id = 1;
+  string status = 2;
+}
+
+message GetNotificationRequest {
+  string id = 1;
+}
+
+message GetNotificationResponse {
+  Notification notification = 1;
+}

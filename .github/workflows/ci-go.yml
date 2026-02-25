@@ -1,0 +1,108 @@
+name: Go CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/**'
+      - 'pkg/**'
+      - 'proto/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/**'
+      - 'pkg/**'
+      - 'proto/**'
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          args: ./pkg/... ./services/...
+
+  test-pkg:
+    name: Test Shared Packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Test pkg
+        working-directory: pkg
+        run: go test ./... -v -count=1 -race -coverprofile=coverage.out
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-coverage
+          path: pkg/coverage.out
+
+  test-services:
+    name: Test Services
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - product
+          # Add more services as they are implemented:
+          # - cart
+          # - order
+          # - checkout
+          # - payment
+          # - user
+          # - inventory
+          # - campaign
+          # - notification
+          # - search
+          # - media
+          # - gateway
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Test ${{ matrix.service }}
+        working-directory: services/${{ matrix.service }}
+        run: go test ./... -v -count=1 -race -coverprofile=coverage.out
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.service }}-coverage
+          path: services/${{ matrix.service }}/coverage.out
+
+  build:
+    name: Build Services
+    runs-on: ubuntu-latest
+    needs: [lint, test-pkg, test-services]
+    strategy:
+      matrix:
+        service:
+          - product
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build ${{ matrix.service }}
+        working-directory: services/${{ matrix.service }}
+        run: |
+          CGO_ENABLED=0 GOOS=linux go build -o ../../bin/${{ matrix.service }} ./cmd/server

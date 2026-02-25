@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package search.v1;
+
+option go_package = "github.com/utafrali/EcommerceGo/gen/go/search/v1;searchv1";
+
+import "common/v1/money.proto";
+
+service SearchService {
+  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc Suggest(SuggestRequest) returns (SuggestResponse);
+}
+
+message SearchRequest {
+  string query = 1;
+  optional string category_id = 2;
+  optional string brand_id = 3;
+  optional int64 min_price = 4;
+  optional int64 max_price = 5;
+  string sort_by = 6;
+  string sort_order = 7;
+  int32 page = 8;
+  int32 per_page = 9;
+}
+
+message SearchResponse {
+  repeated SearchHit hits = 1;
+  int32 total_count = 2;
+  repeated Facet facets = 3;
+}
+
+message SearchHit {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  string description = 4;
+  common.v1.Money price = 5;
+  string image_url = 6;
+  string category_name = 7;
+  string brand_name = 8;
+  float score = 9;
+}
+
+message Facet {
+  string field = 1;
+  repeated FacetValue values = 2;
+}
+
+message FacetValue {
+  string value = 1;
+  int32 count = 2;
+}
+
+message SuggestRequest {
+  string query = 1;
+  int32 limit = 2;
+}
+
+message SuggestResponse {
+  repeated string suggestions = 1;
+}

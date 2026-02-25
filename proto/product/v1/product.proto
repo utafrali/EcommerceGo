@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package product.v1;
+
+option go_package = "github.com/utafrali/EcommerceGo/gen/go/product/v1;productv1";
+
+import "common/v1/money.proto";
+import "common/v1/pagination.proto";
+import "google/protobuf/timestamp.proto";
+
+// ProductService provides gRPC access to product data.
+service ProductService {
+  rpc GetProduct(GetProductRequest) returns (GetProductResponse);
+  rpc GetProductBySlug(GetProductBySlugRequest) returns (GetProductResponse);
+  rpc GetProducts(GetProductsRequest) returns (GetProductsResponse);
+  rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
+}
+
+// Product represents a product entity.
+message Product {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  string description = 4;
+  optional string brand_id = 5;
+  optional string category_id = 6;
+  string status = 7;
+  common.v1.Money price = 8;
+  map<string, string> metadata = 9;
+  repeated ProductVariant variants = 10;
+  repeated ProductImage images = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message ProductVariant {
+  string id = 1;
+  string product_id = 2;
+  string sku = 3;
+  string name = 4;
+  optional common.v1.Money price = 5;
+  map<string, string> attributes = 6;
+  optional int32 weight_grams = 7;
+  bool is_active = 8;
+}
+
+message ProductImage {
+  string id = 1;
+  string product_id = 2;
+  string media_id = 3;
+  int32 sort_order = 4;
+  string alt_text = 5;
+  bool is_primary = 6;
+}
+
+message Category {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  optional string parent_id = 4;
+  int32 sort_order = 5;
+  bool is_active = 6;
+  repeated Category children = 7;
+}
+
+// Request/Response messages
+
+message GetProductRequest {
+  string id = 1;
+}
+
+message GetProductBySlugRequest {
+  string slug = 1;
+}
+
+message GetProductResponse {
+  Product product = 1;
+}
+
+message GetProductsRequest {
+  repeated string ids = 1;
+}
+
+message GetProductsResponse {
+  repeated Product products = 1;
+}
+
+message ListProductsRequest {
+  optional string category_id = 1;
+  optional string brand_id = 2;
+  optional string status = 3;
+  optional string search = 4;
+  optional int64 min_price = 5;
+  optional int64 max_price = 6;
+  common.v1.PaginationRequest pagination = 7;
+}
+
+message ListProductsResponse {
+  repeated Product products = 1;
+  common.v1.PaginationResponse pagination = 2;
+}

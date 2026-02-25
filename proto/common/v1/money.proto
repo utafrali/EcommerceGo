@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package common.v1;
+
+option go_package = "github.com/utafrali/EcommerceGo/gen/go/common/v1;commonv1";
+
+// Money represents a monetary value in the smallest currency unit (e.g., cents).
+message Money {
+  int64 amount = 1;    // Amount in smallest unit (cents for USD)
+  string currency = 2; // ISO 4217 currency code (e.g., "USD", "EUR", "TRY")
+}

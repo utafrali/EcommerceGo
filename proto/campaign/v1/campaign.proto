@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package campaign.v1;
+
+option go_package = "github.com/utafrali/EcommerceGo/gen/go/campaign/v1;campaignv1";
+
+import "common/v1/money.proto";
+import "google/protobuf/timestamp.proto";
+
+service CampaignService {
+  rpc CalculateDiscount(CalculateDiscountRequest) returns (CalculateDiscountResponse);
+  rpc ValidateCoupon(ValidateCouponRequest) returns (ValidateCouponResponse);
+}
+
+message Campaign {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string type = 4;
+  int64 discount_value = 5;
+  optional int64 min_order_value = 6;
+  optional int64 max_discount = 7;
+  google.protobuf.Timestamp starts_at = 8;
+  google.protobuf.Timestamp ends_at = 9;
+  bool is_active = 10;
+  string target_type = 11;
+  repeated string target_ids = 12;
+}
+
+message CalculateDiscountRequest {
+  repeated CartItemForDiscount items = 1;
+  optional string coupon_code = 2;
+  optional string user_id = 3;
+}
+
+message CartItemForDiscount {
+  string product_id = 1;
+  string variant_id = 2;
+  string category_id = 3;
+  common.v1.Money unit_price = 4;
+  int32 quantity = 5;
+}
+
+message CalculateDiscountResponse {
+  common.v1.Money total_discount = 1;
+  repeated DiscountLine lines = 2;
+  optional string applied_campaign = 3;
+}
+
+message DiscountLine {
+  string product_id = 1;
+  string variant_id = 2;
+  common.v1.Money discount = 3;
+  string campaign_name = 4;
+}
+
+message ValidateCouponRequest {
+  string code = 1;
+  optional string user_id = 2;
+}
+
+message ValidateCouponResponse {
+  bool valid = 1;
+  string message = 2;
+  optional Campaign campaign = 3;
+}
