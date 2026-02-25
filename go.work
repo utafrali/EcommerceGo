@@ -3,8 +3,10 @@ go 1.23
 use (
 	./pkg
 	./services/cart
+	./services/checkout
 	./services/inventory
 	./services/order
+	./services/payment
 	./services/product
 	./services/user
 )
