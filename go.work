@@ -2,11 +2,15 @@ go 1.23
 
 use (
 	./pkg
+	./services/campaign
 	./services/cart
 	./services/checkout
 	./services/inventory
+	./services/media
+	./services/notification
 	./services/order
 	./services/payment
 	./services/product
+	./services/search
 	./services/user
 )
