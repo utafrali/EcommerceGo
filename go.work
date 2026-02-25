@@ -5,6 +5,7 @@ use (
 	./services/campaign
 	./services/cart
 	./services/checkout
+	./services/gateway
 	./services/inventory
 	./services/media
 	./services/notification
