@@ -21,9 +21,9 @@ const (
 
 // Response is the JSON response returned by the health endpoint.
 type Response struct {
-	Status    Status                   `json:"status"`
-	Timestamp time.Time               `json:"timestamp"`
-	Checks    map[string]CheckResult   `json:"checks,omitempty"`
+	Status    Status                 `json:"status"`
+	Timestamp time.Time              `json:"timestamp"`
+	Checks    map[string]CheckResult `json:"checks,omitempty"`
 }
 
 // CheckResult is the result of a single health check.
@@ -57,7 +57,7 @@ func (h *Handler) LivenessHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(Response{
+		_ = json.NewEncoder(w).Encode(Response{
 			Status:    StatusUp,
 			Timestamp: time.Now().UTC(),
 		})
@@ -101,6 +101,6 @@ func (h *Handler) ReadinessHandler() http.HandlerFunc {
 		} else {
 			w.WriteHeader(http.StatusOK)
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}
 }

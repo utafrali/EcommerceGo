@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -13,11 +14,17 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		slog.Error("fatal error", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	// Load configuration from environment variables.
 	cfg, err := config.Load()
 	if err != nil {
-		slog.Error("failed to load config", slog.String("error", err.Error()))
-		os.Exit(1)
+		return fmt.Errorf("load config: %w", err)
 	}
 
 	// Initialize structured logger.
@@ -31,19 +38,18 @@ func main() {
 	// Create the application with all dependencies wired.
 	application, err := app.NewApp(cfg, log)
 	if err != nil {
-		log.Error("failed to initialize application", slog.String("error", err.Error()))
-		os.Exit(1)
+		return fmt.Errorf("initialize application: %w", err)
 	}
 
-	// Create a context that is cancelled on SIGINT or SIGTERM.
+	// Create a context that is canceled on SIGINT or SIGTERM.
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	// Run the application. This blocks until shutdown.
 	if err := application.Run(ctx); err != nil {
-		log.Error("application error", slog.String("error", err.Error()))
-		os.Exit(1)
+		return fmt.Errorf("run application: %w", err)
 	}
 
 	log.Info("product service stopped")
+	return nil
 }

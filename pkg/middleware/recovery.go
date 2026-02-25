@@ -22,10 +22,12 @@ func Recovery(l *slog.Logger) func(http.Handler) http.Handler {
 
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusInternalServerError)
-					json.NewEncoder(w).Encode(map[string]string{
+					if err := json.NewEncoder(w).Encode(map[string]string{
 						"code":    "INTERNAL_ERROR",
 						"message": "an internal error occurred",
-					})
+					}); err != nil {
+						l.Error("failed to encode response", slog.String("error", err.Error()))
+					}
 				}
 			}()
 

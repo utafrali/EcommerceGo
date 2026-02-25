@@ -86,7 +86,7 @@ func (r *ProductRepository) List(ctx context.Context, filter repository.ProductF
 	var (
 		conditions []string
 		args       []any
-		argIndex   int = 1
+		argIndex   = 1
 	)
 
 	if filter.CategoryID != nil {

@@ -171,7 +171,7 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	input := service.CreateProductInput{
+	input := &service.CreateProductInput{
 		Name:        req.Name,
 		Description: req.Description,
 		BrandID:     req.BrandID,
@@ -213,7 +213,7 @@ func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	input := service.UpdateProductInput{
+	input := &service.UpdateProductInput{
 		Name:        req.Name,
 		Description: req.Description,
 		BrandID:     req.BrandID,
@@ -266,15 +266,16 @@ func (h *ProductHandler) writeError(w http.ResponseWriter, r *http.Request, err 
 	code := "INTERNAL_ERROR"
 	message := "an internal error occurred"
 
-	if errors.Is(err, apperrors.ErrNotFound) {
+	switch {
+	case errors.Is(err, apperrors.ErrNotFound):
 		code = "NOT_FOUND"
 		message = "resource not found"
 		status = http.StatusNotFound
-	} else if errors.Is(err, apperrors.ErrAlreadyExists) {
+	case errors.Is(err, apperrors.ErrAlreadyExists):
 		code = "ALREADY_EXISTS"
 		message = "resource already exists"
 		status = http.StatusConflict
-	} else if errors.Is(err, apperrors.ErrInvalidInput) {
+	case errors.Is(err, apperrors.ErrInvalidInput):
 		code = "INVALID_INPUT"
 		message = err.Error()
 		status = http.StatusBadRequest
@@ -314,8 +315,6 @@ func (h *ProductHandler) writeValidationError(w http.ResponseWriter, err error) 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		// If encoding fails, there is nothing meaningful to do since headers are already sent.
-		_ = err
-	}
+	// Headers are already sent; nothing meaningful can be done if encoding fails.
+	_ = json.NewEncoder(w).Encode(v)
 }

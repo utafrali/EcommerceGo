@@ -40,7 +40,7 @@ func DefaultPostgresConfig() PostgresConfig {
 }
 
 // DSN returns the PostgreSQL connection string.
-func (c PostgresConfig) DSN() string {
+func (c *PostgresConfig) DSN() string {
 	return fmt.Sprintf(
 		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		c.User, c.Password, c.Host, c.Port, c.DBName, c.SSLMode,
@@ -48,7 +48,7 @@ func (c PostgresConfig) DSN() string {
 }
 
 // NewPostgresPool creates a new connection pool for PostgreSQL.
-func NewPostgresPool(ctx context.Context, cfg PostgresConfig) (*pgxpool.Pool, error) {
+func NewPostgresPool(ctx context.Context, cfg *PostgresConfig) (*pgxpool.Pool, error) {
 	poolConfig, err := pgxpool.ParseConfig(cfg.DSN())
 	if err != nil {
 		return nil, fmt.Errorf("parse postgres config: %w", err)

@@ -67,7 +67,7 @@ func RequireRole(roles ...string) func(http.Handler) http.Handler {
 			if _, ok := roleSet[role]; !ok {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
-				json.NewEncoder(w).Encode(map[string]string{
+				_ = json.NewEncoder(w).Encode(map[string]string{
 					"code":    "FORBIDDEN",
 					"message": "insufficient permissions",
 				})
@@ -97,7 +97,7 @@ func RoleFromContext(ctx context.Context) string {
 func writeAuthError(w http.ResponseWriter, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"code":    "UNAUTHORIZED",
 		"message": message,
 	})

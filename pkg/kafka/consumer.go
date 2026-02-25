@@ -44,7 +44,7 @@ func NewConsumer(cfg ConsumerConfig, handler Handler, logger *slog.Logger) *Cons
 	}
 }
 
-// Start begins consuming messages. It blocks until the context is cancelled.
+// Start begins consuming messages. It blocks until the context is canceled.
 func (c *Consumer) Start(ctx context.Context) error {
 	c.logger.Info("consumer started",
 		slog.String("topic", c.reader.Config().Topic),

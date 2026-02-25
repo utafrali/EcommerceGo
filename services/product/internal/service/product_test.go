@@ -145,7 +145,7 @@ func TestCreateProduct_Success(t *testing.T) {
 		Metadata:    map[string]any{"color": "red"},
 	}
 
-	product, err := svc.CreateProduct(ctx, input)
+	product, err := svc.CreateProduct(ctx, &input)
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, product.ID)
@@ -173,7 +173,7 @@ func TestCreateProduct_EmptyName(t *testing.T) {
 		Currency:  "USD",
 	}
 
-	product, err := svc.CreateProduct(ctx, input)
+	product, err := svc.CreateProduct(ctx, &input)
 
 	assert.Nil(t, product)
 	assert.Error(t, err)
@@ -191,7 +191,7 @@ func TestCreateProduct_NegativePrice(t *testing.T) {
 		Currency:  "USD",
 	}
 
-	product, err := svc.CreateProduct(ctx, input)
+	product, err := svc.CreateProduct(ctx, &input)
 
 	assert.Nil(t, product)
 	assert.Error(t, err)
@@ -209,7 +209,7 @@ func TestCreateProduct_InvalidCurrency(t *testing.T) {
 		Currency:  "US",
 	}
 
-	product, err := svc.CreateProduct(ctx, input)
+	product, err := svc.CreateProduct(ctx, &input)
 
 	assert.Nil(t, product)
 	assert.Error(t, err)
@@ -230,7 +230,7 @@ func TestCreateProduct_RepositoryError(t *testing.T) {
 		Currency:  "USD",
 	}
 
-	product, err := svc.CreateProduct(ctx, input)
+	product, err := svc.CreateProduct(ctx, &input)
 
 	assert.Nil(t, product)
 	assert.Error(t, err)
@@ -399,7 +399,7 @@ func TestUpdateProduct_Success(t *testing.T) {
 		Status:    strPtr(domain.ProductStatusPublished),
 	}
 
-	product, err := svc.UpdateProduct(ctx, "abc-123", input)
+	product, err := svc.UpdateProduct(ctx, "abc-123", &input)
 
 	require.NoError(t, err)
 	assert.Equal(t, "New Name", product.Name)
@@ -421,7 +421,7 @@ func TestUpdateProduct_NotFound(t *testing.T) {
 		Name: strPtr("New Name"),
 	}
 
-	product, err := svc.UpdateProduct(ctx, "nonexistent", input)
+	product, err := svc.UpdateProduct(ctx, "nonexistent", &input)
 
 	assert.Nil(t, product)
 	assert.Error(t, err)
@@ -448,7 +448,7 @@ func TestUpdateProduct_InvalidStatus(t *testing.T) {
 		Status: strPtr("invalid_status"),
 	}
 
-	product, err := svc.UpdateProduct(ctx, "abc-123", input)
+	product, err := svc.UpdateProduct(ctx, "abc-123", &input)
 
 	assert.Nil(t, product)
 	assert.Error(t, err)
@@ -475,7 +475,7 @@ func TestUpdateProduct_EmptyName(t *testing.T) {
 		Name: &emptyName,
 	}
 
-	product, err := svc.UpdateProduct(ctx, "abc-123", input)
+	product, err := svc.UpdateProduct(ctx, "abc-123", &input)
 
 	assert.Nil(t, product)
 	assert.Error(t, err)
@@ -502,7 +502,7 @@ func TestUpdateProduct_NegativePrice(t *testing.T) {
 		BasePrice: int64Ptr(-500),
 	}
 
-	product, err := svc.UpdateProduct(ctx, "abc-123", input)
+	product, err := svc.UpdateProduct(ctx, "abc-123", &input)
 
 	assert.Nil(t, product)
 	assert.Error(t, err)
@@ -560,7 +560,7 @@ func TestCreateProduct_NilMetadata(t *testing.T) {
 		Metadata:  nil,
 	}
 
-	product, err := svc.CreateProduct(ctx, input)
+	product, err := svc.CreateProduct(ctx, &input)
 
 	require.NoError(t, err)
 	assert.NotNil(t, product.Metadata)
@@ -582,7 +582,7 @@ func TestCreateProduct_CurrencyUppercased(t *testing.T) {
 		Currency:  "usd",
 	}
 
-	product, err := svc.CreateProduct(ctx, input)
+	product, err := svc.CreateProduct(ctx, &input)
 
 	require.NoError(t, err)
 	assert.Equal(t, "USD", product.Currency)

@@ -28,7 +28,7 @@ type ValidationError struct {
 }
 
 func (e *ValidationError) Error() string {
-	var msgs []string
+	msgs := make([]string, 0, len(e.Errors))
 	for _, err := range e.Errors {
 		msgs = append(msgs, fmt.Sprintf("field '%s' %s", err.Field(), msgForTag(err)))
 	}

@@ -47,7 +47,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		MaxConnIdleTime: 30 * time.Minute,
 	}
 
-	pool, err := database.NewPostgresPool(ctx, pgCfg)
+	pool, err := database.NewPostgresPool(ctx, &pgCfg)
 	if err != nil {
 		return nil, fmt.Errorf("connect to postgres: %w", err)
 	}
@@ -93,7 +93,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	}, nil
 }
 
-// Run starts the HTTP server and blocks until the context is cancelled.
+// Run starts the HTTP server and blocks until the context is canceled.
 func (a *App) Run(ctx context.Context) error {
 	errCh := make(chan error, 1)
 

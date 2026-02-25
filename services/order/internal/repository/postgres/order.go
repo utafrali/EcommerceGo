@@ -1,0 +1,345 @@
+package postgres
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/services/order/internal/domain"
+	"github.com/utafrali/EcommerceGo/services/order/internal/repository"
+)
+
+// OrderRepository implements repository.OrderRepository using PostgreSQL.
+type OrderRepository struct {
+	pool *pgxpool.Pool
+}
+
+// NewOrderRepository creates a new PostgreSQL-backed order repository.
+func NewOrderRepository(pool *pgxpool.Pool) *OrderRepository {
+	return &OrderRepository{pool: pool}
+}
+
+// Create inserts a new order and its items atomically within a transaction.
+func (r *OrderRepository) Create(ctx context.Context, o *domain.Order) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	shippingJSON, err := json.Marshal(o.ShippingAddress)
+	if err != nil {
+		return fmt.Errorf("marshal shipping address: %w", err)
+	}
+
+	billingJSON, err := json.Marshal(o.BillingAddress)
+	if err != nil {
+		return fmt.Errorf("marshal billing address: %w", err)
+	}
+
+	orderQuery := `
+		INSERT INTO orders (id, user_id, status, subtotal_amount, discount_amount, shipping_amount, total_amount, currency, shipping_address, billing_address, notes, canceled_reason, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
+
+	_, err = tx.Exec(ctx, orderQuery,
+		o.ID,
+		o.UserID,
+		o.Status,
+		o.SubtotalAmount,
+		o.DiscountAmount,
+		o.ShippingAmount,
+		o.TotalAmount,
+		o.Currency,
+		shippingJSON,
+		billingJSON,
+		o.Notes,
+		o.CanceledReason,
+		o.CreatedAt,
+		o.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("insert order: %w", err)
+	}
+
+	// Insert order items.
+	itemQuery := `
+		INSERT INTO order_items (id, order_id, product_id, variant_id, name, sku, price, quantity)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+
+	for _, item := range o.Items {
+		_, err = tx.Exec(ctx, itemQuery,
+			item.ID,
+			item.OrderID,
+			item.ProductID,
+			item.VariantID,
+			item.Name,
+			item.SKU,
+			item.Price,
+			item.Quantity,
+		)
+		if err != nil {
+			return fmt.Errorf("insert order item: %w", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// GetByID retrieves an order by its ID, eagerly loading its items.
+func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order, error) {
+	orderQuery := `
+		SELECT id, user_id, status, subtotal_amount, discount_amount, shipping_amount, total_amount, currency, shipping_address, billing_address, notes, canceled_reason, created_at, updated_at
+		FROM orders
+		WHERE id = $1`
+
+	var (
+		o            domain.Order
+		shippingJSON []byte
+		billingJSON  []byte
+	)
+
+	err := r.pool.QueryRow(ctx, orderQuery, id).Scan(
+		&o.ID,
+		&o.UserID,
+		&o.Status,
+		&o.SubtotalAmount,
+		&o.DiscountAmount,
+		&o.ShippingAmount,
+		&o.TotalAmount,
+		&o.Currency,
+		&shippingJSON,
+		&billingJSON,
+		&o.Notes,
+		&o.CanceledReason,
+		&o.CreatedAt,
+		&o.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperrors.ErrNotFound
+		}
+		return nil, fmt.Errorf("scan order: %w", err)
+	}
+
+	if shippingJSON != nil {
+		var addr domain.Address
+		if err := json.Unmarshal(shippingJSON, &addr); err != nil {
+			return nil, fmt.Errorf("unmarshal shipping address: %w", err)
+		}
+		o.ShippingAddress = &addr
+	}
+
+	if billingJSON != nil {
+		var addr domain.Address
+		if err := json.Unmarshal(billingJSON, &addr); err != nil {
+			return nil, fmt.Errorf("unmarshal billing address: %w", err)
+		}
+		o.BillingAddress = &addr
+	}
+
+	// Load order items.
+	items, err := r.loadOrderItems(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("load order items: %w", err)
+	}
+	o.Items = items
+
+	return &o, nil
+}
+
+// List returns orders matching the given filter with the total count.
+func (r *OrderRepository) List(ctx context.Context, filter repository.OrderFilter) ([]domain.Order, int, error) {
+	var (
+		conditions []string
+		args       []any
+		argIndex   int = 1
+	)
+
+	if filter.UserID != nil {
+		conditions = append(conditions, fmt.Sprintf("user_id = $%d", argIndex))
+		args = append(args, *filter.UserID)
+		argIndex++
+	}
+
+	if filter.Status != nil {
+		conditions = append(conditions, fmt.Sprintf("status = $%d", argIndex))
+		args = append(args, *filter.Status)
+		argIndex++
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Use count(*) OVER() for total count in a single query.
+	query := fmt.Sprintf(`
+		SELECT id, user_id, status, subtotal_amount, discount_amount, shipping_amount, total_amount, currency, shipping_address, billing_address, notes, canceled_reason, created_at, updated_at,
+			   count(*) OVER() AS total_count
+		FROM orders
+		%s
+		ORDER BY created_at DESC
+		LIMIT $%d OFFSET $%d`,
+		whereClause, argIndex, argIndex+1,
+	)
+
+	limit := filter.PerPage
+	if limit <= 0 {
+		limit = 20
+	}
+	offset := 0
+	if filter.Page > 1 {
+		offset = (filter.Page - 1) * limit
+	}
+
+	args = append(args, limit, offset)
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list orders: %w", err)
+	}
+	defer rows.Close()
+
+	var (
+		orders     []domain.Order
+		totalCount int
+	)
+
+	for rows.Next() {
+		var (
+			o            domain.Order
+			shippingJSON []byte
+			billingJSON  []byte
+		)
+
+		if err := rows.Scan(
+			&o.ID,
+			&o.UserID,
+			&o.Status,
+			&o.SubtotalAmount,
+			&o.DiscountAmount,
+			&o.ShippingAmount,
+			&o.TotalAmount,
+			&o.Currency,
+			&shippingJSON,
+			&billingJSON,
+			&o.Notes,
+			&o.CanceledReason,
+			&o.CreatedAt,
+			&o.UpdatedAt,
+			&totalCount,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan order row: %w", err)
+		}
+
+		if shippingJSON != nil {
+			var addr domain.Address
+			if err := json.Unmarshal(shippingJSON, &addr); err != nil {
+				return nil, 0, fmt.Errorf("unmarshal shipping address: %w", err)
+			}
+			o.ShippingAddress = &addr
+		}
+
+		if billingJSON != nil {
+			var addr domain.Address
+			if err := json.Unmarshal(billingJSON, &addr); err != nil {
+				return nil, 0, fmt.Errorf("unmarshal billing address: %w", err)
+			}
+			o.BillingAddress = &addr
+		}
+
+		orders = append(orders, o)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate order rows: %w", err)
+	}
+
+	// Eagerly load items for each order.
+	for i := range orders {
+		items, err := r.loadOrderItems(ctx, orders[i].ID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("load items for order %s: %w", orders[i].ID, err)
+		}
+		orders[i].Items = items
+	}
+
+	if orders == nil {
+		orders = []domain.Order{}
+	}
+
+	return orders, totalCount, nil
+}
+
+// UpdateStatus changes the status of an order and optionally sets a cancel reason.
+func (r *OrderRepository) UpdateStatus(ctx context.Context, id string, status string, reason string) error {
+	query := `
+		UPDATE orders
+		SET status = $1, canceled_reason = $2, updated_at = $3
+		WHERE id = $4`
+
+	ct, err := r.pool.Exec(ctx, query, status, reason, time.Now().UTC(), id)
+	if err != nil {
+		return fmt.Errorf("update order status: %w", err)
+	}
+
+	if ct.RowsAffected() == 0 {
+		return apperrors.NotFound("order", id)
+	}
+
+	return nil
+}
+
+// loadOrderItems retrieves all items belonging to a given order.
+func (r *OrderRepository) loadOrderItems(ctx context.Context, orderID string) ([]domain.OrderItem, error) {
+	query := `
+		SELECT id, order_id, product_id, variant_id, name, sku, price, quantity
+		FROM order_items
+		WHERE order_id = $1
+		ORDER BY id`
+
+	rows, err := r.pool.Query(ctx, query, orderID)
+	if err != nil {
+		return nil, fmt.Errorf("query order items: %w", err)
+	}
+	defer rows.Close()
+
+	var items []domain.OrderItem
+	for rows.Next() {
+		var item domain.OrderItem
+		if err := rows.Scan(
+			&item.ID,
+			&item.OrderID,
+			&item.ProductID,
+			&item.VariantID,
+			&item.Name,
+			&item.SKU,
+			&item.Price,
+			&item.Quantity,
+		); err != nil {
+			return nil, fmt.Errorf("scan order item: %w", err)
+		}
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate order item rows: %w", err)
+	}
+
+	if items == nil {
+		items = []domain.OrderItem{}
+	}
+
+	return items, nil
+}

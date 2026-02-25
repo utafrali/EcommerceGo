@@ -18,18 +18,29 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module:
+          - path: pkg
+            name: pkg
+          - path: services/product
+            name: product
+          - path: services/user
+            name: user
+          - path: services/inventory
+            name: inventory
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
 
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v4
+      - name: golangci-lint (${{ matrix.module.name }})
+        uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          args: ./pkg/... ./services/...
+          working-directory: ${{ matrix.module.path }}
 
   test-pkg:
     name: Test Shared Packages
@@ -39,7 +50,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
 
       - name: Test pkg
         working-directory: pkg
@@ -58,13 +69,13 @@ jobs:
       matrix:
         service:
           - product
+          - user
+          - inventory
           # Add more services as they are implemented:
           # - cart
           # - order
           # - checkout
           # - payment
-          # - user
-          # - inventory
           # - campaign
           # - notification
           # - search
@@ -75,7 +86,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
 
       - name: Test ${{ matrix.service }}
         working-directory: services/${{ matrix.service }}
@@ -95,12 +106,14 @@ jobs:
       matrix:
         service:
           - product
+          - user
+          - inventory
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.23'
 
       - name: Build ${{ matrix.service }}
         working-directory: services/${{ matrix.service }}

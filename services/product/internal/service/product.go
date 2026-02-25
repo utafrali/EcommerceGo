@@ -59,7 +59,7 @@ type UpdateProductInput struct {
 }
 
 // CreateProduct creates a new product with the given input.
-func (s *ProductService) CreateProduct(ctx context.Context, input CreateProductInput) (*domain.Product, error) {
+func (s *ProductService) CreateProduct(ctx context.Context, input *CreateProductInput) (*domain.Product, error) {
 	if input.Name == "" {
 		return nil, apperrors.InvalidInput("product name is required")
 	}
@@ -149,7 +149,7 @@ func (s *ProductService) ListProducts(ctx context.Context, filter repository.Pro
 }
 
 // UpdateProduct applies partial updates to an existing product.
-func (s *ProductService) UpdateProduct(ctx context.Context, id string, input UpdateProductInput) (*domain.Product, error) {
+func (s *ProductService) UpdateProduct(ctx context.Context, id string, input *UpdateProductInput) (*domain.Product, error) {
 	product, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get product for update: %w", err)

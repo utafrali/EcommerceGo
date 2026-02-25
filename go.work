@@ -2,5 +2,9 @@ go 1.23
 
 use (
 	./pkg
+	./services/cart
+	./services/inventory
+	./services/order
 	./services/product
+	./services/user
 )

@@ -1,36 +1,45 @@
+version: "2"
+
 run:
   timeout: 5m
   modules-download-mode: readonly
 
 linters:
+  default: none
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
     - bodyclose
     - gocritic
-    - gofmt
-    - goimports
     - misspell
     - prealloc
     - unconvert
     - unparam
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+    misspell:
+      locale: US
 
-linters-settings:
-  govet:
-    shadow: true
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-      - performance
-  misspell:
-    locale: US
-  goimports:
-    local-prefixes: github.com/utafrali/EcommerceGo
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/utafrali/EcommerceGo
 
 issues:
   exclude-rules:
