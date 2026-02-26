@@ -11,6 +11,7 @@ import (
 
 	"github.com/utafrali/EcommerceGo/pkg/database"
 	"github.com/utafrali/EcommerceGo/pkg/health"
+	"github.com/utafrali/EcommerceGo/services/inventory/migrations"
 	pkgkafka "github.com/utafrali/EcommerceGo/pkg/kafka"
 	"github.com/utafrali/EcommerceGo/services/inventory/internal/config"
 	"github.com/utafrali/EcommerceGo/services/inventory/internal/event"
@@ -59,6 +60,13 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		slog.Int("port", cfg.PostgresPort),
 		slog.String("database", cfg.PostgresDB),
 	)
+
+	// Run database migrations.
+	if err := database.RunMigrations(ctx, pool, migrations.FS, logger); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("run migrations: %w", err)
+	}
+	logger.Info("database migrations completed")
 
 	// Initialize Kafka producer.
 	kafkaCfg := pkgkafka.DefaultProducerConfig(cfg.KafkaBrokers)

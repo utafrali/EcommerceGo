@@ -17,8 +17,8 @@ type Config struct {
 
 	// Backend service URLs
 	ProductServiceURL      string `env:"PRODUCT_SERVICE_URL" envDefault:"http://localhost:8001"`
-	CartServiceURL         string `env:"CART_SERVICE_URL" envDefault:"http://localhost:8003"`
-	OrderServiceURL        string `env:"ORDER_SERVICE_URL" envDefault:"http://localhost:8004"`
+	CartServiceURL         string `env:"CART_SERVICE_URL" envDefault:"http://localhost:8002"`
+	OrderServiceURL        string `env:"ORDER_SERVICE_URL" envDefault:"http://localhost:8003"`
 	CheckoutServiceURL     string `env:"CHECKOUT_SERVICE_URL" envDefault:"http://localhost:8004"`
 	PaymentServiceURL      string `env:"PAYMENT_SERVICE_URL" envDefault:"http://localhost:8005"`
 	UserServiceURL         string `env:"USER_SERVICE_URL" envDefault:"http://localhost:8006"`

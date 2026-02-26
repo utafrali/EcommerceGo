@@ -9,15 +9,16 @@ ARG SERVICE_PATH=${SERVICE_NAME}
 ENV SERVICE_NAME=${SERVICE_NAME}
 ENV SERVICE_PATH=${SERVICE_PATH}
 
+# Disable Go workspace mode — each service builds independently using its own
+# go.mod replace directive to resolve the shared pkg module.
+ENV GOWORK=off
+
 # Install certificates for HTTPS calls during build (e.g. go mod download)
 RUN apk add --no-cache ca-certificates git
 
 WORKDIR /workspace
 
-# Copy go.work so the Go workspace resolver can find peer modules
-COPY go.work ./
-
-# Copy shared pkg module first so it can be resolved from the workspace
+# Copy shared pkg module first so it can be resolved via replace directive
 COPY pkg/go.mod pkg/go.sum ./pkg/
 COPY services/${SERVICE_PATH}/go.mod services/${SERVICE_PATH}/go.sum ./services/${SERVICE_PATH}/
 
@@ -56,9 +57,9 @@ COPY --from=builder --chown=nonroot:nonroot /out/${SERVICE_NAME} /app/service
 # env vars at runtime — these are just documentation / docker metadata)
 EXPOSE 8080 9090
 
-# Lightweight healthcheck — relies on the /health endpoint every service
-# exposes via pkg/health. Adjust the port if your service uses a non-default.
-HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
-    CMD ["/app/service", "-healthcheck"]
+# Healthcheck disabled at Dockerfile level — distroless has no shell/curl.
+# Use docker-compose healthcheck with `wget` from a sidecar, or rely on
+# orchestrator-level probes (Kubernetes liveness/readiness).
+# HEALTHCHECK NONE
 
 ENTRYPOINT ["/app/service"]
