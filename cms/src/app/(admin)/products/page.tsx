@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { productsApi } from '@/lib/api';
 import { formatPrice, capitalize } from '@/lib/utils';
@@ -35,6 +35,7 @@ export default function ProductsListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const isFirstRender = useRef(true);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -60,8 +61,13 @@ export default function ProductsListPage() {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Debounced search
+  // Debounced search — reset to page 1 only when the user actually changes
+  // the search text, not on the initial mount (which would race with pagination).
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     const timeout = setTimeout(() => {
       setSearch(searchInput);
       setPage(1);
