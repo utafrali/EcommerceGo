@@ -9,15 +9,102 @@ A production-grade, microservices-based e-commerce platform built with Go, TypeS
 - **12 Go microservices** with database-per-service pattern
 - **Event-driven communication** via Apache Kafka (KRaft)
 - **gRPC** for synchronous inter-service calls
-- **Next.js** storefront with React Server Components
+- **Next.js 15** storefront with React Server Components
 - **TypeScript BFF** (Backend for Frontend) with Fastify
 - **CMS Admin Panel** for product/order/campaign management
+- **300+ Go tests** with race detection, **96 Playwright E2E tests** for CMS
+
+### System Architecture
+
+```mermaid
+graph TB
+    subgraph Clients
+        WEB["Next.js Storefront<br/>:3000"]
+        CMS["CMS Admin Panel<br/>:3002"]
+    end
+
+    subgraph "Frontend Layer"
+        BFF["BFF — Fastify<br/>:3001"]
+    end
+
+    subgraph "API Layer"
+        GW["API Gateway<br/>:8080<br/>JWT · Rate Limit · CORS"]
+    end
+
+    WEB --> BFF
+    CMS --> GW
+    BFF --> GW
+
+    subgraph "Core Commerce"
+        PRODUCT["Product<br/>:8001"]
+        CART["Cart<br/>:8002"]
+        ORDER["Order<br/>:8003"]
+        CHECKOUT["Checkout<br/>:8004"]
+        PAYMENT["Payment<br/>:8005"]
+        USER["User/Auth<br/>:8006"]
+    end
+
+    subgraph "Supporting Services"
+        INVENTORY["Inventory<br/>:8007"]
+        CAMPAIGN["Campaign<br/>:8008"]
+        NOTIFICATION["Notification<br/>:8009"]
+        SEARCH["Search<br/>:8010"]
+        MEDIA["Media<br/>:8011"]
+    end
+
+    GW --> PRODUCT & CART & ORDER & CHECKOUT & PAYMENT & USER
+    GW --> INVENTORY & CAMPAIGN & SEARCH & MEDIA
+
+    subgraph "Infrastructure"
+        PG[("PostgreSQL 16<br/>DB per service")]
+        REDIS[("Redis 7<br/>Cache · Sessions")]
+        KAFKA["Kafka KRaft<br/>Event Bus"]
+    end
+
+    PRODUCT & ORDER & USER & PAYMENT & INVENTORY & CAMPAIGN & MEDIA --> PG
+    CART --> REDIS
+    GW --> REDIS
+
+    PRODUCT & ORDER & PAYMENT & INVENTORY & USER --> KAFKA
+    KAFKA --> NOTIFICATION & SEARCH
+
+    CHECKOUT -.->|gRPC saga| CART & INVENTORY & PAYMENT & ORDER & CAMPAIGN
+```
+
+### Checkout Saga Flow
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant CO as Checkout :8004
+    participant CA as Cart :8002
+    participant I as Inventory :8007
+    participant CM as Campaign :8008
+    participant P as Payment :8005
+    participant O as Order :8003
+
+    C->>CO: POST /checkout
+    CO->>CA: Validate cart (gRPC)
+    CA-->>CO: Cart contents
+    CO->>I: Reserve stock (gRPC)
+    I-->>CO: Reservation confirmed
+    CO->>CM: Apply discount (gRPC)
+    CM-->>CO: Discount calculated
+    CO->>P: Initiate payment (gRPC)
+    P-->>CO: Payment confirmed
+    CO->>O: Create order (gRPC)
+    O-->>CO: Order created
+    CO->>CA: Clear cart (gRPC)
+    CO-->>C: Order confirmation
+
+    Note over CO,O: On failure at any step:<br/>Release inventory → Cancel payment → Restore cart
+```
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Backend Services | Go 1.22+ (chi router, gRPC) |
+| Backend Services | Go 1.23+ (chi router, gRPC) |
 | BFF | TypeScript (Fastify) |
 | Frontend | Next.js 15 (React 19, Tailwind CSS) |
 | Database | PostgreSQL 16 (per service) |
@@ -55,7 +142,7 @@ A production-grade, microservices-based e-commerce platform built with Go, TypeS
 
 ### Prerequisites
 
-- Go 1.22+
+- Go 1.23+
 - Node.js 20+
 - Docker & Docker Compose
 - [buf CLI](https://buf.build/docs/installation) (for protobuf)

@@ -11,7 +11,7 @@ You write production-grade Go. You do not take shortcuts. Every function handles
 ## Go Standards
 
 ### Version and Module
-- Go 1.22+ (use `range` over integers, `min`/`max` builtins where applicable)
+- Go 1.23+ (use `range` over integers, `min`/`max` builtins where applicable)
 - Module path: `github.com/utafrali/EcommerceGo`
 - Each service has its own `go.mod` at `services/<name>/go.mod`
 - Shared packages live in `pkg/` at the root, imported by all services
@@ -272,7 +272,7 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 type Config struct {
     Environment  string   `env:"ENVIRONMENT" envDefault:"development"`
     LogLevel     string   `env:"LOG_LEVEL" envDefault:"info"`
-    HTTPPort     int      `env:"CART_HTTP_PORT" envDefault:"8003"`
+    HTTPPort     int      `env:"CART_HTTP_PORT" envDefault:"8002"`
     RedisAddr    string   `env:"REDIS_ADDR" envDefault:"localhost:6379"`
     KafkaBrokers []string `env:"KAFKA_BROKERS" envDefault:"localhost:9092" envSeparator:","`
 }

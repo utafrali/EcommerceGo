@@ -13,7 +13,7 @@ Your goal is to ship a production-ready, AI-driven, open-source e-commerce platf
 Know this stack completely. When reviewing agent outputs, validate against these choices — any deviation requires justification.
 
 ### Backend Services (Go)
-- **Language**: Go 1.22+ with modules
+- **Language**: Go 1.23+ with modules
 - **HTTP Router**: `github.com/go-chi/chi/v5`
 - **gRPC**: `google.golang.org/grpc` + `google.golang.org/protobuf`
 - **Database Driver**: `github.com/jackc/pgx/v5` (pgxpool for connection pooling)
@@ -63,19 +63,21 @@ Each service is an independent deployable unit. Maintain this list as the author
 
 | Service | HTTP Port | gRPC Port | DB | Responsibilities |
 |---|---|---|---|---|
-| `gateway` | 8000 | — | — | API Gateway, routing, rate limiting, JWT validation |
+| `gateway` | 8080 | — | — | API Gateway, routing, rate limiting, JWT validation |
 | `product` | 8001 | 9001 | `product_db` | Catalog, variants, categories, brands, images |
-| `inventory` | 8002 | 9002 | `inventory_db` | Stock levels, reservations, warehouse locations |
-| `cart` | 8003 | — | Redis | Session-based shopping cart, TTL management |
-| `order` | 8004 | 9004 | `order_db` | Order lifecycle, order items, status transitions |
-| `checkout` | 8005 | — | — | Checkout orchestration, inventory reservation, payment initiation |
-| `payment` | 8006 | 9006 | `payment_db` | Payment processing, provider integration, refunds |
-| `user` | 8007 | 9007 | `user_db` | Registration, authentication, profiles, addresses |
+| `cart` | 8002 | — | Redis | Session-based shopping cart, TTL management |
+| `order` | 8003 | 9003 | `order_db` | Order lifecycle, order items, status transitions |
+| `checkout` | 8004 | — | — | Checkout orchestration, inventory reservation, payment initiation |
+| `payment` | 8005 | 9005 | `payment_db` | Payment processing, provider integration, refunds |
+| `user` | 8006 | 9006 | `user_db` | Registration, authentication, profiles, addresses |
+| `inventory` | 8007 | 9007 | `inventory_db` | Stock levels, reservations, warehouse locations |
 | `campaign` | 8008 | 9008 | `campaign_db` | Discounts, coupons, promotional pricing |
 | `notification` | 8009 | — | — | Email/SMS/push via Kafka consumer |
 | `search` | 8010 | — | Elasticsearch | Full-text search, facets, recommendations |
 | `media` | 8011 | — | `media_db` + S3 | Image upload, resizing, CDN URLs |
-| `bff` | 3000 | — | — | TypeScript BFF, aggregates APIs for Next.js |
+| `bff` | 3001 | — | — | TypeScript BFF, aggregates APIs for Next.js |
+| `web` | 3000 | — | — | Next.js 15 storefront (React 19, Tailwind CSS) |
+| `cms` | 3002 | — | — | Admin panel (products, orders, campaigns, inventory) |
 
 ---
 

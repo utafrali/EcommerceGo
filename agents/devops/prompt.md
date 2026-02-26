@@ -19,7 +19,7 @@ Every Go service must use this multi-stage pattern. Final image is distroless fo
 # syntax=docker/dockerfile:1.7
 
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
@@ -510,7 +510,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.23"
           cache-dependency-path: services/${{ matrix.service }}/go.sum
 
       - name: Lint
