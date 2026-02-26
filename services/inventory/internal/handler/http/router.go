@@ -34,6 +34,9 @@ func NewRouter(
 	r.Route("/api/v1/inventory", func(r chi.Router) {
 		r.Use(ContentTypeJSON)
 
+		// Stock initialization (create new stock record)
+		r.Post("/", inventoryHandler.InitializeStock)
+
 		// Stock operations
 		r.Get("/{productId}/variants/{variantId}", inventoryHandler.GetStock)
 		r.Put("/{productId}/variants/{variantId}", inventoryHandler.AdjustStock)

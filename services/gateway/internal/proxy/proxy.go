@@ -48,6 +48,32 @@ func NewServiceProxy(cfg *config.Config, logger *slog.Logger) *ServiceProxy {
 		}
 
 		proxy := httputil.NewSingleHostReverseProxy(target)
+
+		// Wrap the default Director to ensure gateway-injected headers
+		// (X-User-ID, X-User-Email, X-User-Role, Authorization) are
+		// explicitly forwarded to backend services, and standard proxy
+		// headers (X-Forwarded-For, X-Forwarded-Host, X-Forwarded-Proto)
+		// are set for request tracing.
+		defaultDirector := proxy.Director
+		proxy.Director = func(req *http.Request) {
+			// Run the default director (sets target host/scheme/path).
+			defaultDirector(req)
+
+			// Preserve the original Host header for backends that need it.
+			if req.Header.Get("X-Forwarded-Host") == "" {
+				req.Header.Set("X-Forwarded-Host", req.Host)
+			}
+
+			// Set X-Forwarded-Proto based on the incoming request scheme.
+			if req.Header.Get("X-Forwarded-Proto") == "" {
+				proto := "http"
+				if req.TLS != nil {
+					proto = "https"
+				}
+				req.Header.Set("X-Forwarded-Proto", proto)
+			}
+		}
+
 		proxy.ErrorHandler = sp.errorHandler(name)
 		sp.routes[name] = proxy
 

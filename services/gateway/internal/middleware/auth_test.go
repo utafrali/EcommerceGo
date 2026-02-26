@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -28,6 +29,21 @@ func generateToken(t *testing.T, secret string, claims jwt.MapClaims) string {
 	tokenString, err := token.SignedString([]byte(secret))
 	require.NoError(t, err)
 	return tokenString
+}
+
+// headerCaptureHandler captures all trusted headers from the request into the response.
+// It writes a JSON object with the header values so tests can verify forwarded context.
+func headerCaptureHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		headers := map[string]string{
+			"X-User-ID":    r.Header.Get("X-User-ID"),
+			"X-User-Email": r.Header.Get("X-User-Email"),
+			"X-User-Role":  r.Header.Get("X-User-Role"),
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(headers)
+	}
 }
 
 // echoHandler is a test handler that writes the X-User-ID header value to the response.
@@ -71,6 +87,97 @@ func TestJWTAuth_ValidToken_SubClaim(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rr.Code)
 	assert.Equal(t, "user-456", rr.Body.String())
+}
+
+func TestJWTAuth_ValidToken_ForwardsEmailAndRole(t *testing.T) {
+	tokenString := generateToken(t, testSecret, jwt.MapClaims{
+		"user_id": "user-789",
+		"email":   "alice@example.com",
+		"role":    "admin",
+		"exp":     jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+	})
+
+	handler := JWTAuth(testSecret, newTestLogger())(headerCaptureHandler())
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cart", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var headers map[string]string
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &headers))
+	assert.Equal(t, "user-789", headers["X-User-ID"])
+	assert.Equal(t, "alice@example.com", headers["X-User-Email"])
+	assert.Equal(t, "admin", headers["X-User-Role"])
+}
+
+func TestJWTAuth_ValidToken_NumericUserID(t *testing.T) {
+	tokenString := generateToken(t, testSecret, jwt.MapClaims{
+		"user_id": float64(42),
+		"exp":     jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+	})
+
+	handler := JWTAuth(testSecret, newTestLogger())(echoHandler())
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cart", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.Equal(t, "42", rr.Body.String())
+}
+
+func TestJWTAuth_StripsSpoofedHeaders(t *testing.T) {
+	// A request to a protected route WITH a valid token should use the
+	// token's user_id, not a spoofed X-User-ID header.
+	tokenString := generateToken(t, testSecret, jwt.MapClaims{
+		"user_id": "real-user",
+		"email":   "real@example.com",
+		"role":    "user",
+		"exp":     jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+	})
+
+	handler := JWTAuth(testSecret, newTestLogger())(headerCaptureHandler())
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cart", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	// Attempt to spoof all trusted headers.
+	req.Header.Set("X-User-ID", "spoofed-user")
+	req.Header.Set("X-User-Email", "spoofed@evil.com")
+	req.Header.Set("X-User-Role", "admin")
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var headers map[string]string
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &headers))
+	assert.Equal(t, "real-user", headers["X-User-ID"])
+	assert.Equal(t, "real@example.com", headers["X-User-Email"])
+	assert.Equal(t, "user", headers["X-User-Role"])
+}
+
+func TestJWTAuth_StripsSpoofedHeaders_PublicRoute(t *testing.T) {
+	// Even on public routes, spoofed trusted headers must be stripped.
+	handler := JWTAuth(testSecret, newTestLogger())(headerCaptureHandler())
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/products", nil)
+	req.Header.Set("X-User-ID", "spoofed-user")
+	req.Header.Set("X-User-Email", "spoofed@evil.com")
+	req.Header.Set("X-User-Role", "admin")
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var headers map[string]string
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &headers))
+	assert.Empty(t, headers["X-User-ID"])
+	assert.Empty(t, headers["X-User-Email"])
+	assert.Empty(t, headers["X-User-Role"])
 }
 
 func TestJWTAuth_InvalidToken_Returns401(t *testing.T) {
@@ -181,6 +288,16 @@ func TestJWTAuth_PublicRoute_PostAuth_NoAuthRequired(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 }
 
+func TestJWTAuth_PublicRoute_GetCampaigns_NoAuthRequired(t *testing.T) {
+	handler := JWTAuth(testSecret, newTestLogger())(echoHandler())
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/campaigns", nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+}
+
 func TestJWTAuth_PublicRoute_HealthCheck_NoAuthRequired(t *testing.T) {
 	handler := JWTAuth(testSecret, newTestLogger())(echoHandler())
 	req := httptest.NewRequest(http.MethodGet, "/health/live", nil)
@@ -211,6 +328,31 @@ func TestJWTAuth_OptionsRequest_AlwaysAllowed(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rr.Code)
 }
 
+func TestClaimString(t *testing.T) {
+	tests := []struct {
+		name  string
+		value any
+		want  string
+	}{
+		{name: "string", value: "user-123", want: "user-123"},
+		{name: "float64_int", value: float64(42), want: "42"},
+		{name: "float64_large", value: float64(1000000), want: "1000000"},
+		{name: "nil", value: nil, want: ""},
+		{name: "missing", value: nil, want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			claims := jwt.MapClaims{}
+			if tt.value != nil {
+				claims["key"] = tt.value
+			}
+			got := claimString(claims, "key")
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestIsPublicRoute(t *testing.T) {
 	tests := []struct {
 		method string
@@ -224,6 +366,9 @@ func TestIsPublicRoute(t *testing.T) {
 		{http.MethodGet, "/api/v1/search?q=test", true},
 		{http.MethodPost, "/api/v1/auth/login", true},
 		{http.MethodPost, "/api/v1/auth/register", true},
+		{http.MethodGet, "/api/v1/campaigns", true},
+		{http.MethodGet, "/api/v1/campaigns/summer-sale", true},
+		{http.MethodPost, "/api/v1/campaigns", false},
 		{http.MethodGet, "/health/live", true},
 		{http.MethodGet, "/health/ready", true},
 		{http.MethodPost, "/api/v1/cart", false},

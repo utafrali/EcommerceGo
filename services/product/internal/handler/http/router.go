@@ -35,7 +35,7 @@ func NewRouter(
 		r.Use(ContentTypeJSON)
 
 		r.Get("/", productHandler.ListProducts)
-		r.Get("/{slug}", productHandler.GetProductBySlug)
+		r.Get("/{idOrSlug}", productHandler.GetProduct)
 		r.Post("/", productHandler.CreateProduct)
 		r.Put("/{id}", productHandler.UpdateProduct)
 		r.Delete("/{id}", productHandler.DeleteProduct)

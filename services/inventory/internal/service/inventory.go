@@ -45,6 +45,54 @@ func NewInventoryService(
 	}
 }
 
+// InitializeStock creates a new stock record or updates it if one already exists for the
+// given product/variant/warehouse combination. This is the entry point for seeding initial
+// inventory via the HTTP API.
+func (s *InventoryService) InitializeStock(ctx context.Context, stock *domain.Stock) (*domain.Stock, error) {
+	if stock.ProductID == "" {
+		return nil, apperrors.InvalidInput("product_id is required")
+	}
+	if stock.VariantID == "" {
+		return nil, apperrors.InvalidInput("variant_id is required")
+	}
+	if stock.Quantity < 0 {
+		return nil, apperrors.InvalidInput("quantity must be non-negative")
+	}
+
+	// Default warehouse when not specified.
+	if stock.WarehouseID == "" {
+		stock.WarehouseID = domain.DefaultWarehouseID
+	}
+
+	// Assign a new ID and timestamp.
+	stock.ID = uuid.New().String()
+	stock.Reserved = 0
+	stock.UpdatedAt = time.Now().UTC()
+
+	result, err := s.stockRepo.CreateStock(ctx, stock)
+	if err != nil {
+		return nil, fmt.Errorf("initialize stock: %w", err)
+	}
+
+	// Publish inventory.updated event.
+	if err := s.producer.PublishInventoryUpdated(ctx, result); err != nil {
+		s.logger.ErrorContext(ctx, "failed to publish inventory.updated event after initialization",
+			slog.String("product_id", result.ProductID),
+			slog.String("variant_id", result.VariantID),
+			slog.String("error", err.Error()),
+		)
+	}
+
+	s.logger.InfoContext(ctx, "stock initialized",
+		slog.String("product_id", result.ProductID),
+		slog.String("variant_id", result.VariantID),
+		slog.String("warehouse_id", result.WarehouseID),
+		slog.Int("quantity", result.Quantity),
+	)
+
+	return result, nil
+}
+
 // GetStock retrieves the stock level for a specific product variant.
 func (s *InventoryService) GetStock(ctx context.Context, productID, variantID string) (*domain.Stock, error) {
 	stock, err := s.stockRepo.GetByProductVariant(ctx, productID, variantID)

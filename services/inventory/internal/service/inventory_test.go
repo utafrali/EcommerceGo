@@ -31,6 +31,14 @@ func (m *mockStockRepository) GetByProductVariant(ctx context.Context, productID
 	return args.Get(0).(*domain.Stock), args.Error(1)
 }
 
+func (m *mockStockRepository) CreateStock(ctx context.Context, stock *domain.Stock) (*domain.Stock, error) {
+	args := m.Called(ctx, stock)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Stock), args.Error(1)
+}
+
 func (m *mockStockRepository) Upsert(ctx context.Context, stock *domain.Stock) error {
 	args := m.Called(ctx, stock)
 	return args.Error(0)
@@ -570,6 +578,138 @@ func TestAdjustStock_LowStockThreshold(t *testing.T) {
 	// Stock is at threshold, so low_stock event should be published (async, not verifiable here).
 
 	stockRepo.AssertExpectations(t)
+}
+
+// --- InitializeStock Tests ---
+
+func TestInitializeStock_Success(t *testing.T) {
+	stockRepo := new(mockStockRepository)
+	reservationRepo := new(mockReservationRepository)
+	svc := newTestService(stockRepo, reservationRepo)
+	ctx := context.Background()
+
+	input := &domain.Stock{
+		ProductID:         "prod-1",
+		VariantID:         "var-1",
+		WarehouseID:       domain.DefaultWarehouseID,
+		Quantity:          100,
+		LowStockThreshold: 10,
+	}
+
+	expected := &domain.Stock{
+		ID:                "stock-1",
+		ProductID:         "prod-1",
+		VariantID:         "var-1",
+		WarehouseID:       domain.DefaultWarehouseID,
+		Quantity:          100,
+		Reserved:          0,
+		LowStockThreshold: 10,
+		UpdatedAt:         time.Now().UTC(),
+	}
+
+	stockRepo.On("CreateStock", ctx, mock.AnythingOfType("*domain.Stock")).Return(expected, nil)
+
+	result, err := svc.InitializeStock(ctx, input)
+
+	require.NoError(t, err)
+	assert.Equal(t, expected.ProductID, result.ProductID)
+	assert.Equal(t, expected.VariantID, result.VariantID)
+	assert.Equal(t, 100, result.Quantity)
+	assert.Equal(t, 0, result.Reserved)
+
+	stockRepo.AssertExpectations(t)
+}
+
+func TestInitializeStock_DefaultWarehouse(t *testing.T) {
+	stockRepo := new(mockStockRepository)
+	reservationRepo := new(mockReservationRepository)
+	svc := newTestService(stockRepo, reservationRepo)
+	ctx := context.Background()
+
+	input := &domain.Stock{
+		ProductID:         "prod-1",
+		VariantID:         "var-1",
+		WarehouseID:       "", // empty, should default
+		Quantity:          50,
+		LowStockThreshold: 5,
+	}
+
+	expected := &domain.Stock{
+		ID:                "stock-1",
+		ProductID:         "prod-1",
+		VariantID:         "var-1",
+		WarehouseID:       domain.DefaultWarehouseID,
+		Quantity:          50,
+		Reserved:          0,
+		LowStockThreshold: 5,
+		UpdatedAt:         time.Now().UTC(),
+	}
+
+	stockRepo.On("CreateStock", ctx, mock.AnythingOfType("*domain.Stock")).Return(expected, nil)
+
+	result, err := svc.InitializeStock(ctx, input)
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.DefaultWarehouseID, result.WarehouseID)
+
+	stockRepo.AssertExpectations(t)
+}
+
+func TestInitializeStock_MissingProductID(t *testing.T) {
+	stockRepo := new(mockStockRepository)
+	reservationRepo := new(mockReservationRepository)
+	svc := newTestService(stockRepo, reservationRepo)
+	ctx := context.Background()
+
+	input := &domain.Stock{
+		ProductID: "",
+		VariantID: "var-1",
+		Quantity:  100,
+	}
+
+	result, err := svc.InitializeStock(ctx, input)
+
+	assert.Nil(t, result)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+}
+
+func TestInitializeStock_MissingVariantID(t *testing.T) {
+	stockRepo := new(mockStockRepository)
+	reservationRepo := new(mockReservationRepository)
+	svc := newTestService(stockRepo, reservationRepo)
+	ctx := context.Background()
+
+	input := &domain.Stock{
+		ProductID: "prod-1",
+		VariantID: "",
+		Quantity:  100,
+	}
+
+	result, err := svc.InitializeStock(ctx, input)
+
+	assert.Nil(t, result)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+}
+
+func TestInitializeStock_NegativeQuantity(t *testing.T) {
+	stockRepo := new(mockStockRepository)
+	reservationRepo := new(mockReservationRepository)
+	svc := newTestService(stockRepo, reservationRepo)
+	ctx := context.Background()
+
+	input := &domain.Stock{
+		ProductID: "prod-1",
+		VariantID: "var-1",
+		Quantity:  -10,
+	}
+
+	result, err := svc.InitializeStock(ctx, input)
+
+	assert.Nil(t, result)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
 }
 
 // --- Domain Tests ---

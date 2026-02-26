@@ -11,10 +11,14 @@ type StockRepository interface {
 	// GetByProductVariant retrieves stock for a specific product variant.
 	GetByProductVariant(ctx context.Context, productID, variantID string) (*domain.Stock, error)
 
+	// CreateStock inserts a new stock record or updates it if it already exists (idempotent).
+	CreateStock(ctx context.Context, stock *domain.Stock) (*domain.Stock, error)
+
 	// Upsert creates or updates stock for a product variant.
 	Upsert(ctx context.Context, stock *domain.Stock) error
 
 	// AdjustQuantity atomically adjusts the stock quantity by delta and records a movement.
+	// If the stock record does not exist, it is created with the delta as the initial quantity.
 	AdjustQuantity(ctx context.Context, productID, variantID string, delta int, reason string, refID *string) error
 
 	// ListLowStock returns stock items where available quantity is below the threshold.

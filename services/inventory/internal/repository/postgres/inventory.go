@@ -55,6 +55,45 @@ func (r *InventoryRepository) GetByProductVariant(ctx context.Context, productID
 	return &s, nil
 }
 
+// CreateStock inserts a new stock record or updates it if it already exists (idempotent).
+// It returns the resulting stock row after the upsert.
+func (r *InventoryRepository) CreateStock(ctx context.Context, stock *domain.Stock) (*domain.Stock, error) {
+	query := `
+		INSERT INTO stock (id, product_id, variant_id, warehouse_id, quantity, reserved, low_stock_threshold, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (product_id, variant_id, warehouse_id) DO UPDATE SET
+			quantity = EXCLUDED.quantity,
+			low_stock_threshold = EXCLUDED.low_stock_threshold,
+			updated_at = EXCLUDED.updated_at
+		RETURNING id, product_id, variant_id, warehouse_id, quantity, reserved, low_stock_threshold, updated_at`
+
+	var result domain.Stock
+	err := r.pool.QueryRow(ctx, query,
+		stock.ID,
+		stock.ProductID,
+		stock.VariantID,
+		stock.WarehouseID,
+		stock.Quantity,
+		stock.Reserved,
+		stock.LowStockThreshold,
+		stock.UpdatedAt,
+	).Scan(
+		&result.ID,
+		&result.ProductID,
+		&result.VariantID,
+		&result.WarehouseID,
+		&result.Quantity,
+		&result.Reserved,
+		&result.LowStockThreshold,
+		&result.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create stock: %w", err)
+	}
+
+	return &result, nil
+}
+
 // Upsert creates or updates stock for a product variant.
 func (r *InventoryRepository) Upsert(ctx context.Context, stock *domain.Stock) error {
 	query := `
@@ -84,6 +123,8 @@ func (r *InventoryRepository) Upsert(ctx context.Context, stock *domain.Stock) e
 }
 
 // AdjustQuantity atomically adjusts the stock quantity by delta and records a movement.
+// If the stock record does not exist, it is created with the delta as the initial quantity
+// (using INSERT ... ON CONFLICT ... UPDATE, i.e. UPSERT logic).
 func (r *InventoryRepository) AdjustQuantity(ctx context.Context, productID, variantID string, delta int, reason string, refID *string) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -91,19 +132,18 @@ func (r *InventoryRepository) AdjustQuantity(ctx context.Context, productID, var
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// Lock the row and update quantity.
-	updateQuery := `
-		UPDATE stock
-		SET quantity = quantity + $1, updated_at = NOW()
-		WHERE product_id = $2 AND variant_id = $3
+	// Upsert: insert if missing, otherwise adjust existing quantity.
+	upsertQuery := `
+		INSERT INTO stock (product_id, variant_id, warehouse_id, quantity, reserved, low_stock_threshold, updated_at)
+		VALUES ($2, $3, '00000000-0000-0000-0000-000000000001', GREATEST($1, 0), 0, 10, NOW())
+		ON CONFLICT (product_id, variant_id, warehouse_id) DO UPDATE SET
+			quantity = stock.quantity + $1,
+			updated_at = NOW()
 		RETURNING id`
 
 	var stockID string
-	err = tx.QueryRow(ctx, updateQuery, delta, productID, variantID).Scan(&stockID)
+	err = tx.QueryRow(ctx, upsertQuery, delta, productID, variantID).Scan(&stockID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return apperrors.NotFound("stock", productID+"/"+variantID)
-		}
 		return fmt.Errorf("adjust stock quantity: %w", err)
 	}
 

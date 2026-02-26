@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -16,8 +17,18 @@ var publicRoutes = []struct {
 }{
 	{method: http.MethodGet, prefix: "/api/v1/products"},
 	{method: http.MethodGet, prefix: "/api/v1/search"},
+	{method: http.MethodGet, prefix: "/api/v1/campaigns"},
 	{method: http.MethodPost, prefix: "/api/v1/auth"},
 	{method: http.MethodGet, prefix: "/health"},
+}
+
+// trustedHeaders are headers injected by the gateway from JWT claims.
+// They are stripped from all incoming requests to prevent spoofing,
+// then set by the middleware after successful JWT validation.
+var trustedHeaders = []string{
+	"X-User-ID",
+	"X-User-Email",
+	"X-User-Role",
 }
 
 // isPublicRoute checks whether a given method + path combination is public.
@@ -36,11 +47,20 @@ func isPublicRoute(method, path string) bool {
 
 // JWTAuth returns middleware that validates JWT tokens from the Authorization header.
 // For public routes, the request is passed through without authentication.
-// For protected routes, the token is validated and the X-User-ID header is injected
-// into the proxied request.
+// For protected routes, the token is validated and user context headers
+// (X-User-ID, X-User-Email, X-User-Role) are injected into the proxied request.
+//
+// Security: trusted headers are always stripped from incoming requests to prevent
+// clients from spoofing user context. They are only set from validated JWT claims.
 func JWTAuth(secret string, logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Always strip trusted headers from incoming requests to prevent
+			// spoofing, regardless of whether the route is public or protected.
+			for _, h := range trustedHeaders {
+				r.Header.Del(h)
+			}
+
 			// Allow public routes through without authentication.
 			if isPublicRoute(r.Method, r.URL.Path) {
 				next.ServeHTTP(w, r)
@@ -79,25 +99,61 @@ func JWTAuth(secret string, logger *slog.Logger) func(http.Handler) http.Handler
 				return
 			}
 
-			// Extract claims and inject X-User-ID header.
+			// Extract claims and inject user context headers.
 			claims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {
 				writeJSONError(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid token claims")
 				return
 			}
 
-			userID, _ := claims["user_id"].(string)
+			// Extract user ID from "user_id" claim, falling back to "sub".
+			userID := claimString(claims, "user_id")
 			if userID == "" {
-				// Fallback: try "sub" claim.
-				userID, _ = claims["sub"].(string)
+				userID = claimString(claims, "sub")
 			}
 
 			if userID != "" {
 				r.Header.Set("X-User-ID", userID)
 			}
 
+			// Forward email and role if present in the token.
+			if email := claimString(claims, "email"); email != "" {
+				r.Header.Set("X-User-Email", email)
+			}
+			if role := claimString(claims, "role"); role != "" {
+				r.Header.Set("X-User-Role", role)
+			}
+
+			logger.Debug("JWT authenticated request",
+				slog.String("user_id", userID),
+				slog.String("path", r.URL.Path),
+				slog.String("method", r.Method),
+			)
+
 			next.ServeHTTP(w, r)
 		})
+	}
+}
+
+// claimString extracts a claim value as a string.
+// It handles both string and numeric (float64) claim values,
+// since JWT JSON decoding may represent numeric IDs as float64.
+func claimString(claims jwt.MapClaims, key string) string {
+	val, exists := claims[key]
+	if !exists || val == nil {
+		return ""
+	}
+	switch v := val.(type) {
+	case string:
+		return v
+	case float64:
+		// Handle numeric IDs (JSON numbers decode as float64).
+		if v == float64(int64(v)) {
+			return fmt.Sprintf("%d", int64(v))
+		}
+		return fmt.Sprintf("%g", v)
+	default:
+		return fmt.Sprintf("%v", v)
 	}
 }
 

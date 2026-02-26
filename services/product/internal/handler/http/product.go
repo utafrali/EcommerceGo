@@ -8,9 +8,11 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
+	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/product/internal/repository"
 	"github.com/utafrali/EcommerceGo/services/product/internal/service"
 )
@@ -135,6 +137,36 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		PerPage:    filter.PerPage,
 		TotalPages: totalPages,
 	})
+}
+
+// GetProduct handles GET /api/v1/products/{idOrSlug}
+// It accepts both a UUID (product ID) and a slug for lookup.
+func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
+	idOrSlug := chi.URLParam(r, "idOrSlug")
+	if idOrSlug == "" {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "product id or slug is required"},
+		})
+		return
+	}
+
+	var (
+		product *domain.Product
+		err     error
+	)
+
+	if _, parseErr := uuid.Parse(idOrSlug); parseErr == nil {
+		product, err = h.service.GetProduct(r.Context(), idOrSlug)
+	} else {
+		product, err = h.service.GetProductBySlug(r.Context(), idOrSlug)
+	}
+
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, response{Data: product})
 }
 
 // GetProductBySlug handles GET /api/v1/products/{slug}

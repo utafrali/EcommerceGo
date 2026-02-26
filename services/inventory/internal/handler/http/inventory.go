@@ -31,6 +31,15 @@ func NewInventoryHandler(svc *service.InventoryService, logger *slog.Logger) *In
 
 // --- Request DTOs ---
 
+// InitializeStockRequest is the JSON request body for creating/initializing stock.
+type InitializeStockRequest struct {
+	ProductID         string `json:"product_id" validate:"required,uuid"`
+	VariantID         string `json:"variant_id" validate:"required,uuid"`
+	WarehouseID       string `json:"warehouse_id" validate:"omitempty,uuid"`
+	Quantity          int    `json:"quantity" validate:"gte=0"`
+	LowStockThreshold int    `json:"low_stock_threshold" validate:"omitempty,gte=0"`
+}
+
 // AdjustStockRequest is the JSON request body for adjusting stock.
 type AdjustStockRequest struct {
 	Delta  int    `json:"delta" validate:"required"`
@@ -88,6 +97,43 @@ type listResponse struct {
 }
 
 // --- Handlers ---
+
+// InitializeStock handles POST /api/v1/inventory
+func (h *InventoryHandler) InitializeStock(w http.ResponseWriter, r *http.Request) {
+	var req InitializeStockRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		})
+		return
+	}
+
+	if err := validator.Validate(req); err != nil {
+		h.writeValidationError(w, err)
+		return
+	}
+
+	lowStockThreshold := req.LowStockThreshold
+	if lowStockThreshold == 0 && req.LowStockThreshold == 0 {
+		lowStockThreshold = 10 // sensible default
+	}
+
+	stock := &domain.Stock{
+		ProductID:         req.ProductID,
+		VariantID:         req.VariantID,
+		WarehouseID:       req.WarehouseID,
+		Quantity:          req.Quantity,
+		LowStockThreshold: lowStockThreshold,
+	}
+
+	result, err := h.service.InitializeStock(r.Context(), stock)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, response{Data: result})
+}
 
 // GetStock handles GET /api/v1/inventory/{productId}/variants/{variantId}
 func (h *InventoryHandler) GetStock(w http.ResponseWriter, r *http.Request) {
