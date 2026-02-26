@@ -52,6 +52,8 @@ export default function ProductsListPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load products');
       setProducts([]);
+      setTotalCount(0);
+      setTotalPages(0);
     } finally {
       setLoading(false);
     }
@@ -82,7 +84,12 @@ export default function ProductsListPage() {
     setDeletingId(id);
     try {
       await productsApi.delete(id);
-      await fetchProducts();
+      // If this was the only product on the current page, go back one page
+      if (products.length === 1 && page > 1) {
+        setPage(page - 1); // This will trigger fetchProducts via the useEffect
+      } else {
+        await fetchProducts();
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete product');
     } finally {

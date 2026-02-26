@@ -113,11 +113,12 @@ export default function ProductFormPage() {
       name,
       slug: autoSlug ? toSlug(name) : prev.slug,
     }));
-  };
-
-  const handleSlugChange = (slug: string) => {
-    setAutoSlug(false);
-    setForm((prev) => ({ ...prev, slug }));
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next.name;
+      delete next.slug;
+      return next;
+    });
   };
 
   const handleFieldChange = (field: keyof ProductFormState, value: string) => {
@@ -159,11 +160,9 @@ export default function ProductFormPage() {
       if (isNew) {
         const payload: CreateProductRequest = {
           name: form.name.trim(),
-          slug: form.slug.trim(),
           description: form.description.trim(),
           base_price: priceInCents,
           currency: form.currency,
-          status: form.status,
           ...(form.category_id && { category_id: form.category_id }),
           ...(form.brand_id && { brand_id: form.brand_id }),
         };
@@ -173,7 +172,6 @@ export default function ProductFormPage() {
       } else {
         const payload: UpdateProductRequest = {
           name: form.name.trim(),
-          slug: form.slug.trim(),
           description: form.description.trim(),
           base_price: priceInCents,
           currency: form.currency,
@@ -286,33 +284,21 @@ export default function ProductFormPage() {
           {/* Slug */}
           <div>
             <label htmlFor="slug" className="block text-sm font-medium text-gray-700 mb-1">
-              Slug <span className="text-red-500">*</span>
+              Slug
             </label>
-            <div className="flex items-center gap-2">
-              <input
-                id="slug"
-                type="text"
-                value={form.slug}
-                onChange={(e) => handleSlugChange(e.target.value)}
-                placeholder="e.g. wireless-bluetooth-headphones"
-                className={`flex-1 border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2
-                         focus:ring-indigo-500 focus:border-indigo-500 ${
-                           fieldErrors.slug ? 'border-red-300' : 'border-gray-300'
-                         }`}
-              />
-              {!autoSlug && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAutoSlug(true);
-                    setForm((prev) => ({ ...prev, slug: toSlug(prev.name) }));
-                  }}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 whitespace-nowrap"
-                >
-                  Auto-generate
-                </button>
-              )}
-            </div>
+            <input
+              id="slug"
+              type="text"
+              value={form.slug}
+              readOnly
+              placeholder="e.g. wireless-bluetooth-headphones"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              {isNew
+                ? 'Auto-generated from product name'
+                : 'Slug is auto-generated and cannot be changed directly'}
+            </p>
             {fieldErrors.slug && (
               <p className="mt-1 text-xs text-red-600">{fieldErrors.slug}</p>
             )}
@@ -427,13 +413,21 @@ export default function ProductFormPage() {
               id="status"
               value={form.status}
               onChange={(e) => handleFieldChange('status', e.target.value)}
-              className="w-full sm:w-1/2 border border-gray-300 rounded-md px-3 py-2 text-sm
-                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              disabled={isNew}
+              className={`w-full sm:w-1/2 border border-gray-300 rounded-md px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500${
+                         isNew ? ' bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                       }`}
             >
               <option value="draft">Draft</option>
               <option value="published">Published</option>
               <option value="archived">Archived</option>
             </select>
+            {isNew && (
+              <p className="mt-1 text-xs text-gray-500">
+                New products are created as Draft. You can publish after creation.
+              </p>
+            )}
           </div>
         </div>
 

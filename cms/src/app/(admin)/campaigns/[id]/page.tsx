@@ -31,7 +31,7 @@ const emptyForm: CampaignFormState = {
   max_usage_count: '',
   start_date: '',
   end_date: '',
-  status: 'active',
+  status: 'draft',
 };
 
 function toIsoDateInput(dateStr: string): string {
@@ -49,15 +49,12 @@ function campaignToForm(c: Campaign): CampaignFormState {
     description: c.description || '',
     code: c.code,
     type: c.type || 'percentage',
-    discount_value:
-      c.type === 'percentage'
-        ? String(c.discount_value)
-        : String(c.discount_value / 100),
+    discount_value: String(c.discount_value / 100),
     min_order_amount: c.min_order_amount ? String(c.min_order_amount / 100) : '',
     max_usage_count: c.max_usage_count ? String(c.max_usage_count) : '',
     start_date: toIsoDateInput(c.start_date),
     end_date: toIsoDateInput(c.end_date),
-    status: c.status || 'active',
+    status: c.status || 'draft',
   };
 }
 
@@ -142,10 +139,7 @@ export default function CampaignEditPage() {
     setError(null);
 
     try {
-      const discountValue =
-        form.type === 'percentage'
-          ? Number(form.discount_value)
-          : Math.round(Number(form.discount_value) * 100);
+      const discountValue = Math.round(Number(form.discount_value) * 100);
       const minOrderAmount = form.min_order_amount
         ? Math.round(Number(form.min_order_amount) * 100)
         : 0;
@@ -445,8 +439,10 @@ export default function CampaignEditPage() {
             onChange={handleChange}
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
+            <option value="draft">Draft</option>
             <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="paused">Paused</option>
+            <option value="archived">Archived</option>
           </select>
         </div>
 

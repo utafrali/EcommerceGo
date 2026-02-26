@@ -46,10 +46,9 @@ function getToken(): string | null {
 }
 
 export function setToken(token: string): void {
+  if (typeof window === 'undefined') return; // Don't store in SSR
   memoryToken = token;
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('cms_auth_token', token);
-  }
+  localStorage.setItem('cms_auth_token', token);
 }
 
 export function clearToken(): void {
@@ -104,6 +103,14 @@ async function request<T>(
   });
 
   if (!res.ok) {
+    // Token expired or invalid — clear it and notify listeners
+    if (res.status === 401) {
+      clearToken();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth:session-expired'));
+      }
+    }
+
     const errorBody = await res
       .json()
       .catch(() => ({ error: { code: 'UNKNOWN', message: res.statusText } }));
@@ -298,8 +305,7 @@ export const inventoryApi = {
     });
   },
 
-  async lowStock(): Promise<LowStockItem[]> {
-    const response = await request<ApiResponse<LowStockItem[]>>('/inventory/low-stock');
-    return response.data || [];
+  async lowStock(): Promise<ApiListResponse<LowStockItem>> {
+    return request<ApiListResponse<LowStockItem>>('/inventory/low-stock');
   },
 };

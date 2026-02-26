@@ -98,7 +98,9 @@ export default function OrdersPage() {
             <option value="confirmed">Confirmed</option>
             <option value="shipped">Shipped</option>
             <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="processing">Processing</option>
+            <option value="canceled">Canceled</option>
+            <option value="refunded">Refunded</option>
           </select>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { productsApi, ordersApi, campaignsApi } from '@/lib/api';
+import { productsApi, ordersApi, campaignsApi, inventoryApi } from '@/lib/api';
 import { formatPrice, formatShortDate, getOrderStatusColor, capitalize } from '@/lib/utils';
 import type { Order, DashboardStats } from '@/types';
 
@@ -19,10 +19,11 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [productsRes, ordersRes, campaignsRes] = await Promise.allSettled([
+        const [productsRes, ordersRes, campaignsRes, lowStockRes] = await Promise.allSettled([
           productsApi.list({ page: 1, per_page: 1 }),
           ordersApi.list({ page: 1, per_page: 5 }),
           campaignsApi.list(),
+          inventoryApi.lowStock(),
         ]);
 
         const totalProducts =
@@ -33,6 +34,10 @@ export default function DashboardPage() {
           campaignsRes.status === 'fulfilled'
             ? campaignsRes.value.data.filter((c) => c.status === 'active').length
             : 0;
+        const lowStockCount =
+          lowStockRes.status === 'fulfilled'
+            ? (lowStockRes.value.total_count ?? lowStockRes.value.data?.length ?? 0)
+            : 0;
         const orders =
           ordersRes.status === 'fulfilled' ? ordersRes.value.data : [];
 
@@ -40,7 +45,7 @@ export default function DashboardPage() {
           total_products: totalProducts,
           total_orders: totalOrders,
           active_campaigns: activeCampaigns,
-          low_stock_items: 0, // Will be populated when inventory endpoint is available
+          low_stock_items: lowStockCount,
         });
         setRecentOrders(orders);
       } catch {
@@ -193,7 +198,7 @@ export default function DashboardPage() {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
           <Link
-            href="/products"
+            href="/products/new"
             className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm
                      font-medium rounded-md hover:bg-indigo-700 transition-colors"
           >
@@ -203,7 +208,7 @@ export default function DashboardPage() {
             Add Product
           </Link>
           <Link
-            href="/campaigns"
+            href="/campaigns/new"
             className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm
                      font-medium rounded-md hover:bg-purple-700 transition-colors"
           >

@@ -20,9 +20,19 @@ const ORDER_STATUSES = [
   'processing',
   'shipped',
   'delivered',
-  'cancelled',
+  'canceled',
   'refunded',
 ];
+
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  pending: ['confirmed', 'canceled'],
+  confirmed: ['processing', 'canceled'],
+  processing: ['shipped', 'canceled'],
+  shipped: ['delivered'],
+  delivered: ['refunded'],
+  canceled: [],
+  refunded: [],
+};
 
 // ─── Order Detail Page ──────────────────────────────────────────────────────
 
@@ -150,35 +160,53 @@ export default function OrderDetailPage() {
       {/* Status Update */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Update Status</h2>
-        <div className="flex items-center gap-3">
-          <select
-            value={newStatus}
-            onChange={(e) => setNewStatus(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            {ORDER_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {capitalize(s)}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={handleStatusUpdate}
-            disabled={updating || newStatus === order.status}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {updating ? 'Updating...' : 'Update Status'}
-          </button>
-        </div>
-        {statusMessage && (
-          <p
-            className={`mt-3 text-sm ${
-              statusMessage.startsWith('Error') ? 'text-red-600' : 'text-green-600'
-            }`}
-          >
-            {statusMessage}
-          </p>
-        )}
+        {(() => {
+          const availableStatuses = VALID_TRANSITIONS[order.status] || [];
+          const isTerminal = availableStatuses.length === 0;
+
+          if (isTerminal) {
+            return (
+              <p className="text-sm text-gray-500">
+                This order is in a terminal state. No further status transitions are available.
+              </p>
+            );
+          }
+
+          return (
+            <>
+              <div className="flex items-center gap-3">
+                <select
+                  value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value)}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value={order.status}>{capitalize(order.status)} (current)</option>
+                  {availableStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {capitalize(s)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleStatusUpdate}
+                  disabled={updating || newStatus === order.status}
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {updating ? 'Updating...' : 'Update Status'}
+                </button>
+              </div>
+              {statusMessage && (
+                <p
+                  className={`mt-3 text-sm ${
+                    statusMessage.startsWith('Error') ? 'text-red-600' : 'text-green-600'
+                  }`}
+                >
+                  {statusMessage}
+                </p>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Order Items */}

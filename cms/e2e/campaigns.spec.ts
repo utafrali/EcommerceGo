@@ -87,13 +87,22 @@ test.describe('CMS Campaigns', () => {
     await expect(activeBadge).toHaveClass(/bg-green-100/);
     await expect(activeBadge).toHaveClass(/text-green-800/);
 
-    // Inactive badge: bg-yellow-100 text-yellow-800
-    const inactiveBadge = page
-      .locator('span.rounded-full', { hasText: 'Inactive' })
+    // Paused badge: bg-yellow-100 text-yellow-800
+    const pausedBadge = page
+      .locator('span.rounded-full', { hasText: 'Paused' })
       .first();
-    if (await inactiveBadge.count() > 0) {
-      await expect(inactiveBadge).toHaveClass(/bg-yellow-100/);
-      await expect(inactiveBadge).toHaveClass(/text-yellow-800/);
+    if (await pausedBadge.count() > 0) {
+      await expect(pausedBadge).toHaveClass(/bg-yellow-100/);
+      await expect(pausedBadge).toHaveClass(/text-yellow-800/);
+    }
+
+    // Draft badge: bg-gray-100 text-gray-800
+    const draftBadge = page
+      .locator('span.rounded-full', { hasText: 'Draft' })
+      .first();
+    if (await draftBadge.count() > 0) {
+      await expect(draftBadge).toHaveClass(/bg-gray-100/);
+      await expect(draftBadge).toHaveClass(/text-gray-800/);
     }
 
     // Expired badge: bg-red-100 text-red-800
@@ -171,11 +180,13 @@ test.describe('CMS Campaigns', () => {
     await expect(page.locator('#start_date')).toBeVisible();
     await expect(page.locator('#end_date')).toBeVisible();
 
-    // Status select with active/inactive options
+    // Status select with draft/active/paused/archived options
     const statusSelect = page.locator('#status');
     await expect(statusSelect).toBeVisible();
+    await expect(statusSelect.locator('option[value="draft"]')).toHaveCount(1);
     await expect(statusSelect.locator('option[value="active"]')).toHaveCount(1);
-    await expect(statusSelect.locator('option[value="inactive"]')).toHaveCount(1);
+    await expect(statusSelect.locator('option[value="paused"]')).toHaveCount(1);
+    await expect(statusSelect.locator('option[value="archived"]')).toHaveCount(1);
 
     // Save / submit button
     await expect(
@@ -300,16 +311,16 @@ test.describe('CMS Campaigns', () => {
     await expect(dateCell.first()).toBeVisible();
   });
 
-  // ── 14. "Deactivate" button is visible for active campaigns ───────────────
-  test('Deactivate button is visible for active campaigns', async ({ page }) => {
+  // ── 14. "Pause" button is visible for active campaigns ───────────────
+  test('Pause button is visible for active campaigns', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/campaigns');
 
     await expect(page.locator('table')).toBeVisible({ timeout: 15000 });
 
-    // At least one active campaign should show a Deactivate button
-    const deactivateBtn = page.locator('button', { hasText: 'Deactivate' }).first();
-    await expect(deactivateBtn).toBeVisible();
+    // At least one active campaign should show a Pause button
+    const pauseBtn = page.locator('button', { hasText: 'Pause' }).first();
+    await expect(pauseBtn).toBeVisible();
   });
 
   // ── 15. Form validation prevents saving without required fields ────────────

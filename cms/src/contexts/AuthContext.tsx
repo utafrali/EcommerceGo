@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { User, LoginRequest } from '@/types';
-import { authApi, setToken, clearToken } from '@/lib/api';
+import { authApi, setToken, clearToken, AdminApiError } from '@/lib/api';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -56,9 +56,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(token);
         const userData = await authApi.getMe();
         setUser(userData);
-      } catch {
-        // Token is invalid or expired — clear it
-        clearToken();
+      } catch (err) {
+        // Only clear token for auth failures, not transient network errors
+        if (err instanceof AdminApiError && (err.status === 401 || err.status === 403)) {
+          clearToken();
+        }
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -78,6 +80,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.replace('/dashboard');
     }
   }, [isLoading, isAuthenticated, pathname, router]);
+
+  // Listen for 401 session-expired events dispatched by the API interceptor
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setUser(null);
+      clearToken();
+      router.replace('/login');
+    };
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('auth:session-expired', handleSessionExpired);
+  }, [router]);
+
+  // Sync logout across tabs via localStorage storage event
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'cms_auth_token' && !e.newValue) {
+        setUser(null);
+        router.replace('/login');
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [router]);
 
   const login = useCallback(async (data: LoginRequest) => {
     setError(null);

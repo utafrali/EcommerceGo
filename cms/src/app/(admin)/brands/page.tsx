@@ -11,22 +11,23 @@ export default function BrandsListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchBrands = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await brandsApi.list();
-        setBrands(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load brands');
-        setBrands([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchBrands = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await brandsApi.list();
+      setBrands(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load brands');
+      setBrands([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchBrands();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -54,8 +55,14 @@ export default function BrandsListPage() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-center justify-between">
           <p className="text-sm text-red-700">{error}</p>
+          <button
+            onClick={fetchBrands}
+            className="ml-4 px-3 py-1 text-sm font-medium text-red-700 bg-red-100 rounded hover:bg-red-200 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -73,11 +80,11 @@ export default function BrandsListPage() {
               </div>
             ))}
           </div>
-        ) : brands.length === 0 ? (
+        ) : !error && brands.length === 0 ? (
           <div className="px-6 py-12 text-center text-gray-500">
             No brands found.
           </div>
-        ) : (
+        ) : brands.length === 0 ? null : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>

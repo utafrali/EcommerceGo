@@ -175,13 +175,13 @@ test.describe('Dashboard', () => {
     const addProductLink = page.getByRole('link', { name: 'Add Product' });
     await expect(addProductLink).toBeVisible();
 
-    // The link href must point to /products (the products listing/creation page).
+    // The link href must point to /products/new (the product creation page).
     const href = await addProductLink.getAttribute('href');
-    expect(href).toBe('/products');
+    expect(href).toBe('/products/new');
 
     await addProductLink.click();
-    await page.waitForURL('**/products', { timeout: 10000 });
-    expect(page.url()).toContain('/products');
+    await page.waitForURL('**/products/new', { timeout: 10000 });
+    expect(page.url()).toContain('/products/new');
   });
 
   test('Quick Actions — "View Orders" navigates to the orders page', async ({
@@ -206,11 +206,11 @@ test.describe('Dashboard', () => {
     await expect(campaignLink).toBeVisible();
 
     const href = await campaignLink.getAttribute('href');
-    expect(href).toBe('/campaigns');
+    expect(href).toBe('/campaigns/new');
 
     await campaignLink.click();
-    await page.waitForURL('**/campaigns', { timeout: 10000 });
-    expect(page.url()).toContain('/campaigns');
+    await page.waitForURL('**/campaigns/new', { timeout: 10000 });
+    expect(page.url()).toContain('/campaigns/new');
   });
 
   // ─── Bonus: "View all" link in Recent Orders section ─────────────────────

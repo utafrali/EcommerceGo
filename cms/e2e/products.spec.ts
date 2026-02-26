@@ -192,14 +192,9 @@ test.describe('Product Create Page (/products/new)', () => {
   test('creates a new product and shows success message', async ({ page }) => {
     const uid = Date.now().toString(36);
     const productName = `E2E Product ${uid}`;
-    const productSlug = `e2e-product-${uid}`;
 
-    // Fill Name — slug is auto-generated from name
+    // Fill Name — slug is auto-generated from name (readonly field)
     await page.fill('#name', productName);
-
-    // Slug should be auto-generated; override to be deterministic
-    const slugInput = page.locator('#slug');
-    await slugInput.fill(productSlug);
 
     // Description
     await page.fill('#description', 'Test product');
@@ -207,8 +202,7 @@ test.describe('Product Create Page (/products/new)', () => {
     // Price in dollars — form accepts dollars, sends cents to API
     await page.fill('#base_price', '19.99');
 
-    // Status: select "draft" (it is the default, but set explicitly)
-    await page.selectOption('#status', 'draft');
+    // Status defaults to "draft" and is disabled on create — no need to set it
 
     // Submit the form
     const submitBtn = page.locator('button[type="submit"]');

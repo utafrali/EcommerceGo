@@ -7,7 +7,7 @@ import type { Product, LowStockItem } from '@/types';
 
 // ─── Inventory Stock Display ────────────────────────────────────────────────
 
-function StockBadge({ quantity, threshold }: { quantity: number; threshold?: number }) {
+function StockBadge({ quantity, low_stock_threshold }: { quantity: number; low_stock_threshold?: number }) {
   if (quantity <= 0) {
     return (
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -15,7 +15,7 @@ function StockBadge({ quantity, threshold }: { quantity: number; threshold?: num
       </span>
     );
   }
-  if (threshold !== undefined && quantity <= threshold) {
+  if (low_stock_threshold !== undefined && quantity <= low_stock_threshold) {
     return (
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
         Low: {quantity}
@@ -105,7 +105,7 @@ function LowStockAlert({
           <thead>
             <tr className="bg-yellow-100/50">
               <th className="px-6 py-2 text-left text-xs font-medium text-yellow-700 uppercase tracking-wider">
-                SKU
+                Warehouse
               </th>
               <th className="px-6 py-2 text-left text-xs font-medium text-yellow-700 uppercase tracking-wider">
                 Product ID
@@ -128,7 +128,7 @@ function LowStockAlert({
             {lowStockItems.map((item, idx) => (
               <tr key={`${item.product_id}-${item.variant_id}-${idx}`}>
                 <td className="px-6 py-3 text-sm text-gray-900 font-mono">
-                  {item.sku || '--'}
+                  {item.warehouse_id ? `${item.warehouse_id.slice(0, 8)}...` : '--'}
                 </td>
                 <td className="px-6 py-3 text-sm text-gray-500 font-mono">
                   {item.product_id ? `${item.product_id.slice(0, 8)}...` : '--'}
@@ -140,10 +140,10 @@ function LowStockAlert({
                   {item.quantity}
                 </td>
                 <td className="px-6 py-3 text-sm text-gray-500 text-right">
-                  {item.threshold}
+                  {item.low_stock_threshold}
                 </td>
                 <td className="px-6 py-3 text-center">
-                  <StockBadge quantity={item.quantity} threshold={item.threshold} />
+                  <StockBadge quantity={item.quantity} low_stock_threshold={item.low_stock_threshold} />
                 </td>
               </tr>
             ))}
@@ -191,7 +191,7 @@ function ProductInventoryRow({
           {hasLowStock ? (
             <StockBadge
               quantity={Math.min(...productLowStock.map((i) => i.quantity))}
-              threshold={Math.max(...productLowStock.map((i) => i.threshold))}
+              low_stock_threshold={Math.max(...productLowStock.map((i) => i.low_stock_threshold))}
             />
           ) : (
             <span className="text-xs text-gray-400">OK</span>
@@ -220,7 +220,7 @@ function ProductInventoryRow({
                 <thead>
                   <tr className="bg-gray-100">
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      SKU
+                      Warehouse
                     </th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                       Variant ID
@@ -240,7 +240,7 @@ function ProductInventoryRow({
                   {productLowStock.map((item, idx) => (
                     <tr key={`${item.product_id}-${item.variant_id}-${idx}`}>
                       <td className="px-4 py-2 text-sm text-gray-900 font-mono">
-                        {item.sku || '--'}
+                        {item.warehouse_id ? `${item.warehouse_id.slice(0, 8)}...` : '--'}
                       </td>
                       <td className="px-4 py-2 text-sm text-gray-500 font-mono">
                         {item.variant_id ? `${item.variant_id.slice(0, 8)}...` : 'Default'}
@@ -249,10 +249,10 @@ function ProductInventoryRow({
                         {item.quantity}
                       </td>
                       <td className="px-4 py-2 text-sm text-gray-500 text-right">
-                        {item.threshold}
+                        {item.low_stock_threshold}
                       </td>
                       <td className="px-4 py-2 text-center">
-                        <StockBadge quantity={item.quantity} threshold={item.threshold} />
+                        <StockBadge quantity={item.quantity} low_stock_threshold={item.low_stock_threshold} />
                       </td>
                     </tr>
                   ))}
@@ -305,8 +305,8 @@ export default function InventoryPage() {
     setLowStockLoading(true);
     setLowStockError(null);
     try {
-      const items = await inventoryApi.lowStock();
-      setLowStockItems(items);
+      const response = await inventoryApi.lowStock();
+      setLowStockItems(response.data || []);
     } catch (err) {
       setLowStockError(err instanceof Error ? err.message : 'Failed to load low stock data');
       setLowStockItems([]);

@@ -182,11 +182,14 @@ export interface InventoryStock {
 }
 
 export interface LowStockItem {
+  id: string;
   product_id: string;
   variant_id: string;
-  sku: string;
+  warehouse_id: string;
   quantity: number;
-  threshold: number;
+  reserved: number;
+  low_stock_threshold: number;
+  updated_at: string;
 }
 
 // ─── Admin Request Types ───────────────────────────────────────────────────
@@ -198,11 +201,11 @@ export interface LoginRequest {
 
 export interface CreateProductRequest {
   name: string;
-  slug: string;
+  slug?: string;
   description: string;
   brand_id?: string;
   category_id?: string;
-  status: string;
+  status?: string;
   base_price: number;
   currency?: string;
   metadata?: Record<string, unknown>;

@@ -67,17 +67,24 @@ const PRODUCTS_PAGE_1 = {
 const LOW_STOCK_WITH_ITEMS = {
   data: [
     {
+      id: 'lsi-0001',
       product_id: 'aaaaaaaa-0001-0001-0001-000000000001',
       variant_id: 'vvvv-0001',
-      sku: 'WH-BLK',
+      warehouse_id: 'wh-main-001-aaaa-bbbb',
       quantity: 3,
-      threshold: 5,
+      reserved: 0,
+      low_stock_threshold: 5,
+      updated_at: '2025-01-15T10:00:00Z',
     },
   ],
+  total_count: 1,
+  page: 1,
+  per_page: 20,
+  total_pages: 1,
 };
 
 /** Empty low-stock response — all products are adequately stocked. */
-const LOW_STOCK_EMPTY = { data: [] };
+const LOW_STOCK_EMPTY = { data: [], total_count: 0, page: 1, per_page: 20, total_pages: 0 };
 
 /** A second page of products (for pagination tests). */
 const PRODUCTS_PAGE_2 = {
@@ -309,7 +316,7 @@ test.describe('CMS Inventory Page', () => {
 
     await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: 15000 });
 
-    // "Wireless Headphones" (product 1) has quantity=3, threshold=5 → "Low: 3"
+    // "Wireless Headphones" (product 1) has quantity=3, low_stock_threshold=5 → "Low: 3"
     await expect(page.locator('text=Low: 3').first()).toBeVisible({ timeout: 10000 });
 
     // The other two products have no alerts → they show "OK"
@@ -332,8 +339,8 @@ test.describe('CMS Inventory Page', () => {
     // The alert section heading with count
     await expect(page.locator('h2', { hasText: 'Low Stock Alerts (1)' })).toBeVisible({ timeout: 10000 });
 
-    // The alert table should contain the WH-BLK SKU row
-    await expect(page.locator('text=WH-BLK').first()).toBeVisible();
+    // The alert table should contain the warehouse_id row (first 8 chars + "...")
+    await expect(page.locator('text=wh-main-').first()).toBeVisible();
   });
 
   // ── 13. Low Stock Alerts section is hidden when all products are OK ────
@@ -367,8 +374,8 @@ test.describe('CMS Inventory Page', () => {
     await expect(viewButton).toBeVisible({ timeout: 10000 });
     await viewButton.click();
 
-    // After expanding, the inline detail table should show the SKU
-    await expect(page.locator('text=WH-BLK').first()).toBeVisible({ timeout: 5000 });
+    // After expanding, the inline detail table should show the warehouse_id
+    await expect(page.locator('text=wh-main-').first()).toBeVisible({ timeout: 5000 });
 
     // The button label toggles to "Hide Details"
     await expect(page.locator('button', { hasText: 'Hide Details' })).toBeVisible();
@@ -403,7 +410,7 @@ test.describe('CMS Inventory Page', () => {
     // Products exist but inventory service returns an empty array
     await interceptInventoryApis(page, {
       productsResponse: PRODUCTS_PAGE_1,
-      lowStockResponse: { data: [] },
+      lowStockResponse: { data: [], total_count: 0, page: 1, per_page: 20, total_pages: 0 },
     });
 
     const errors: string[] = [];

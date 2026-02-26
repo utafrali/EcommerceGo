@@ -9,17 +9,21 @@ import type { Campaign } from '@/types';
 // ─── Campaign Status Helpers ────────────────────────────────────────────────
 
 function getCampaignStatus(campaign: Campaign): string {
-  return campaign.status || 'inactive';
+  return campaign.status || 'draft';
 }
 
 function getCampaignStatusColor(status: string): string {
   switch (status.toLowerCase()) {
     case 'active':
       return 'bg-green-100 text-green-800';
-    case 'inactive':
+    case 'draft':
+      return 'bg-gray-100 text-gray-800';
+    case 'paused':
       return 'bg-yellow-100 text-yellow-800';
     case 'expired':
       return 'bg-red-100 text-red-800';
+    case 'archived':
+      return 'bg-slate-100 text-slate-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }
@@ -27,7 +31,7 @@ function getCampaignStatusColor(status: string): string {
 
 function formatDiscountValue(campaign: Campaign): string {
   if (campaign.type === 'percentage') {
-    return `${campaign.discount_value}%`;
+    return `${campaign.discount_value / 100}%`;
   }
   return formatPrice(campaign.discount_value);
 }
@@ -56,14 +60,14 @@ export default function CampaignsPage() {
     fetchCampaigns();
   }, []);
 
-  const handleDeactivate = async (campaign: Campaign) => {
-    if (!confirm(`Are you sure you want to deactivate "${campaign.name}"?`)) return;
+  const handlePause = async (campaign: Campaign) => {
+    if (!confirm(`Are you sure you want to pause "${campaign.name}"?`)) return;
     setDeactivating(campaign.id);
     try {
-      await campaignsApi.update(campaign.id, { status: 'inactive' });
+      await campaignsApi.update(campaign.id, { status: 'paused' });
       await fetchCampaigns();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to deactivate campaign');
+      alert(err instanceof Error ? err.message : 'Failed to pause campaign');
     } finally {
       setDeactivating(null);
     }
@@ -217,11 +221,11 @@ export default function CampaignsPage() {
                           </Link>
                           {status === 'active' && (
                             <button
-                              onClick={() => handleDeactivate(campaign)}
+                              onClick={() => handlePause(campaign)}
                               disabled={deactivating === campaign.id}
                               className="text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
                             >
-                              {deactivating === campaign.id ? 'Deactivating...' : 'Deactivate'}
+                              {deactivating === campaign.id ? 'Pausing...' : 'Pause'}
                             </button>
                           )}
                         </div>

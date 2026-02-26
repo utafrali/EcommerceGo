@@ -19,10 +19,16 @@ export function cn(...inputs: ClassValue[]): string {
  * @param currency - ISO 4217 currency code (default: "USD")
  */
 export function formatPrice(cents: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(cents / 100);
+  if (cents == null || isNaN(cents)) return '$0.00';
+  if (!currency || typeof currency !== 'string') currency = 'USD';
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+    }).format(cents / 100);
+  } catch {
+    return `$${(cents / 100).toFixed(2)}`;
+  }
 }
 
 // ─── Date Formatting ───────────────────────────────────────────────────────
@@ -32,7 +38,10 @@ export function formatPrice(cents: number, currency = 'USD'): string {
  * Example: "January 15, 2025"
  */
 export function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  if (!dateStr) return '--';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '--';
+  return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -44,7 +53,10 @@ export function formatDate(dateStr: string): string {
  * Example: "Jan 15, 2025"
  */
 export function formatShortDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  if (!dateStr) return '--';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '--';
+  return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -56,16 +68,24 @@ export function formatShortDate(dateStr: string): string {
  * Examples: "Today", "Yesterday", "3 days ago", "2 weeks ago"
  */
 export function formatRelativeTime(dateStr: string): string {
-  const now = new Date();
+  if (!dateStr) return '--';
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '--';
+  const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+  }
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return months === 1 ? '1 month ago' : `${months} months ago`;
+  }
   return formatDate(dateStr);
 }
 
@@ -83,6 +103,7 @@ export function truncate(text: string, maxLength: number): string {
  * Capitalize the first letter of a string.
  */
 export function capitalize(text: string): string {
+  if (!text) return '';
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
@@ -92,6 +113,7 @@ export function capitalize(text: string): string {
  * Get Tailwind classes for order status badges.
  */
 export function getOrderStatusColor(status: string): string {
+  if (!status) return 'bg-gray-100 text-gray-800';
   switch (status.toLowerCase()) {
     case 'pending':
       return 'bg-yellow-100 text-yellow-800';
@@ -103,7 +125,7 @@ export function getOrderStatusColor(status: string): string {
     case 'delivered':
     case 'completed':
       return 'bg-green-100 text-green-800';
-    case 'cancelled':
+    case 'canceled':
     case 'refunded':
       return 'bg-red-100 text-red-800';
     default:

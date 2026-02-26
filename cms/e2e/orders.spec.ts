@@ -90,9 +90,11 @@ test.describe('CMS Orders — List Page', () => {
     expect(texts).toContain('All');
     expect(texts).toContain('Pending');
     expect(texts).toContain('Confirmed');
+    expect(texts).toContain('Processing');
     expect(texts).toContain('Shipped');
     expect(texts).toContain('Delivered');
-    expect(texts).toContain('Cancelled');
+    expect(texts).toContain('Canceled');
+    expect(texts).toContain('Refunded');
   });
 
   // ── 7. Status filter hides rows that do not match ──────────────────────
@@ -285,7 +287,7 @@ test.describe('CMS Orders — Detail Page', () => {
   });
 
   // ── 15. Update status dropdown has correct options ──────────────────────
-  test('Update Status section has dropdown with all required status options', async ({ page }) => {
+  test('Update Status section has dropdown with valid transition options', async ({ page }) => {
     const href = await getFirstOrderHref(page);
     await page.goto(href);
 
@@ -294,28 +296,48 @@ test.describe('CMS Orders — Detail Page', () => {
     // Section heading
     await expect(page.locator('h2', { hasText: 'Update Status' })).toBeVisible();
 
-    const statusSelect = page
+    const statusCard = page
       .locator('div.bg-white')
-      .filter({ has: page.locator('h2', { hasText: 'Update Status' }) })
-      .locator('select');
+      .filter({ has: page.locator('h2', { hasText: 'Update Status' }) });
 
-    await expect(statusSelect).toBeVisible();
+    // Valid transition map (mirrors the CMS constant)
+    const VALID_TRANSITIONS: Record<string, string[]> = {
+      pending: ['confirmed', 'canceled'],
+      confirmed: ['processing', 'canceled'],
+      processing: ['shipped', 'canceled'],
+      shipped: ['delivered'],
+      delivered: ['refunded'],
+      canceled: [],
+      refunded: [],
+    };
 
-    const optionTexts = await statusSelect.locator('option').allInnerTexts();
-    const normalised = optionTexts.map((t) => t.toLowerCase().trim());
+    // Determine current order status from the badge in the header
+    const statusBadge = page.locator('div.bg-white').first().locator('span.inline-flex');
+    const currentStatus = (await statusBadge.innerText()).trim().toLowerCase();
 
-    expect(normalised).toContain('pending');
-    expect(normalised).toContain('confirmed');
-    expect(normalised).toContain('shipped');
-    expect(normalised).toContain('delivered');
-    expect(normalised).toContain('cancelled');
+    const expectedTransitions = VALID_TRANSITIONS[currentStatus] || [];
+    const isTerminal = expectedTransitions.length === 0;
 
-    // "Update Status" button is present alongside the select
-    const updateBtn = page
-      .locator('div.bg-white')
-      .filter({ has: page.locator('h2', { hasText: 'Update Status' }) })
-      .locator('button', { hasText: 'Update Status' });
-    await expect(updateBtn).toBeVisible();
+    if (isTerminal) {
+      // Terminal states show a message instead of a dropdown
+      await expect(statusCard.locator('p', { hasText: 'terminal state' })).toBeVisible();
+    } else {
+      const statusSelect = statusCard.locator('select');
+      await expect(statusSelect).toBeVisible();
+
+      const optionTexts = await statusSelect.locator('option').allInnerTexts();
+      const normalised = optionTexts.map((t) => t.toLowerCase().replace('(current)', '').trim());
+
+      // Should contain current status and all valid transitions
+      expect(normalised).toContain(currentStatus);
+      for (const transition of expectedTransitions) {
+        expect(normalised).toContain(transition);
+      }
+
+      // "Update Status" button is present alongside the select
+      const updateBtn = statusCard.locator('button', { hasText: 'Update Status' });
+      await expect(updateBtn).toBeVisible();
+    }
   });
 
   // ── 16. Update Status button is disabled when status has not changed ─────

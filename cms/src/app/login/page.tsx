@@ -17,8 +17,8 @@ export default function LoginPage() {
 
     try {
       await login({ email, password });
-    } catch {
-      setLocalError(authError || 'Invalid credentials. Please try again.');
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : 'Invalid credentials. Please try again.');
     } finally {
       setSubmitting(false);
     }
