@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 	"time"
 
@@ -14,6 +17,9 @@ import (
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/event"
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/repository"
 )
+
+// nonAlphanumRe matches any character that is not a letter, digit, or hyphen.
+var nonAlphanumRe = regexp.MustCompile(`[^A-Z0-9-]+`)
 
 // CampaignService implements the business logic for campaign operations.
 type CampaignService struct {
@@ -112,6 +118,12 @@ func (s *CampaignService) CreateCampaign(ctx context.Context, input *CreateCampa
 		return nil, apperrors.InvalidInput("end date must be after start date")
 	}
 
+	// Auto-generate a unique code if none was provided.
+	code := strings.ToUpper(strings.TrimSpace(input.Code))
+	if code == "" {
+		code = generateCampaignCode(input.Name)
+	}
+
 	now := time.Now().UTC()
 	campaign := &domain.Campaign{
 		ID:                   uuid.New().String(),
@@ -122,7 +134,7 @@ func (s *CampaignService) CreateCampaign(ctx context.Context, input *CreateCampa
 		DiscountValue:        input.DiscountValue,
 		MinOrderAmount:       input.MinOrderAmount,
 		MaxDiscountAmount:    input.MaxDiscountAmount,
-		Code:                 strings.ToUpper(strings.TrimSpace(input.Code)),
+		Code:                 code,
 		MaxUsageCount:        input.MaxUsageCount,
 		CurrentUsageCount:    0,
 		StartDate:            input.StartDate,
@@ -462,4 +474,42 @@ func calculateDiscount(campaign *domain.Campaign, orderAmount int64) int64 {
 	default:
 		return 0
 	}
+}
+
+// generateCampaignCode creates a human-readable campaign code from the
+// campaign name by slugifying it and appending a 4-character random hex
+// suffix. Example: "Summer Sale 2026" -> "SUMMER-SALE-2026-A3F2".
+func generateCampaignCode(name string) string {
+	slug := strings.ToUpper(strings.TrimSpace(name))
+	// Replace spaces and underscores with hyphens.
+	slug = strings.ReplaceAll(slug, " ", "-")
+	slug = strings.ReplaceAll(slug, "_", "-")
+	// Remove any character that is not alphanumeric or hyphen.
+	slug = nonAlphanumRe.ReplaceAllString(slug, "")
+	// Collapse consecutive hyphens.
+	for strings.Contains(slug, "--") {
+		slug = strings.ReplaceAll(slug, "--", "-")
+	}
+	slug = strings.Trim(slug, "-")
+
+	// Truncate the slug portion to keep the total code within 50 chars
+	// (the DB column limit). We need room for "-" + 4 hex chars = 5 chars.
+	const maxSlugLen = 44
+	if len(slug) > maxSlugLen {
+		slug = slug[:maxSlugLen]
+		slug = strings.TrimRight(slug, "-")
+	}
+
+	// Generate 2 random bytes -> 4 hex characters.
+	b := make([]byte, 2)
+	if _, err := rand.Read(b); err != nil {
+		// Extremely unlikely; fall back to a UUID fragment.
+		b = []byte(uuid.New().String()[:2])
+	}
+	suffix := strings.ToUpper(hex.EncodeToString(b))
+
+	if slug == "" {
+		return suffix
+	}
+	return slug + "-" + suffix
 }
