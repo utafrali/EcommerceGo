@@ -141,6 +141,7 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 
 // GetProduct handles GET /api/v1/products/{idOrSlug}
 // It accepts both a UUID (product ID) and a slug for lookup.
+// Returns an enriched product detail including images, variants, category, and brand.
 func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	idOrSlug := chi.URLParam(r, "idOrSlug")
 	if idOrSlug == "" {
@@ -151,14 +152,14 @@ func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var (
-		product *domain.Product
-		err     error
+		detail *domain.ProductDetail
+		err    error
 	)
 
 	if _, parseErr := uuid.Parse(idOrSlug); parseErr == nil {
-		product, err = h.service.GetProduct(r.Context(), idOrSlug)
+		detail, err = h.service.GetProductDetail(r.Context(), idOrSlug)
 	} else {
-		product, err = h.service.GetProductBySlug(r.Context(), idOrSlug)
+		detail, err = h.service.GetProductDetailBySlug(r.Context(), idOrSlug)
 	}
 
 	if err != nil {
@@ -166,7 +167,7 @@ func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: product})
+	writeJSON(w, http.StatusOK, response{Data: detail})
 }
 
 // GetProductBySlug handles GET /api/v1/products/{slug}
@@ -179,13 +180,13 @@ func (h *ProductHandler) GetProductBySlug(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	product, err := h.service.GetProductBySlug(r.Context(), slug)
+	detail, err := h.service.GetProductDetailBySlug(r.Context(), slug)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: product})
+	writeJSON(w, http.StatusOK, response{Data: detail})
 }
 
 // CreateProduct handles POST /api/v1/products
@@ -349,4 +350,65 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	// Headers are already sent; nothing meaningful can be done if encoding fails.
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+// handleWriteError is a standalone error writer usable by any handler in this package.
+func handleWriteError(w http.ResponseWriter, r *http.Request, err error, logger *slog.Logger) {
+	var appErr *apperrors.AppError
+	if errors.As(err, &appErr) {
+		writeJSON(w, appErr.Status, response{
+			Error: &errorResponse{Code: appErr.Code, Message: appErr.Message},
+		})
+		return
+	}
+
+	status := apperrors.HTTPStatus(err)
+	code := "INTERNAL_ERROR"
+	message := "an internal error occurred"
+
+	switch {
+	case errors.Is(err, apperrors.ErrNotFound):
+		code = "NOT_FOUND"
+		message = "resource not found"
+		status = http.StatusNotFound
+	case errors.Is(err, apperrors.ErrAlreadyExists):
+		code = "ALREADY_EXISTS"
+		message = "resource already exists"
+		status = http.StatusConflict
+	case errors.Is(err, apperrors.ErrInvalidInput):
+		code = "INVALID_INPUT"
+		message = err.Error()
+		status = http.StatusBadRequest
+	}
+
+	if status == http.StatusInternalServerError {
+		logger.ErrorContext(r.Context(), "internal error",
+			slog.String("error", err.Error()),
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+		)
+	}
+
+	writeJSON(w, status, response{
+		Error: &errorResponse{Code: code, Message: message},
+	})
+}
+
+// handleWriteValidationError is a standalone validation error writer usable by any handler in this package.
+func handleWriteValidationError(w http.ResponseWriter, err error) {
+	var valErr *validator.ValidationError
+	if errors.As(err, &valErr) {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{
+				Code:    "VALIDATION_ERROR",
+				Message: "request validation failed",
+				Fields:  valErr.Fields(),
+			},
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusBadRequest, response{
+		Error: &errorResponse{Code: "INVALID_INPUT", Message: err.Error()},
+	})
 }

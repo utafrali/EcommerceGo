@@ -107,10 +107,138 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface AuthTokens {
+  access_token: string;
+  refresh_token: string;
+}
+
 export interface AuthResponse {
-  user: User;
-  accessToken: string;
-  refreshToken: string;
+  data: {
+    user: User;
+    tokens: AuthTokens;
+  };
+}
+
+// ─── Category ──────────────────────────────────────────────────────────────
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  parentId?: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CategoryListResponse {
+  categories: Category[];
+}
+
+// ─── Brand ─────────────────────────────────────────────────────────────────
+
+export interface Brand {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  logoUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BrandListResponse {
+  brands: Brand[];
+}
+
+// ─── Review ────────────────────────────────────────────────────────────────
+
+export interface Review {
+  id: string;
+  productId: string;
+  userId: string;
+  rating: number;
+  title: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReviewListResponse {
+  reviews: Review[];
+  total: number;
+  page: number;
+  perPage: number;
+}
+
+export interface CreateReviewRequest {
+  rating: number;
+  title: string;
+  body: string;
+}
+
+// ─── Campaign ──────────────────────────────────────────────────────────────
+
+export interface Campaign {
+  id: string;
+  name: string;
+  code: string;
+  discountType: string;
+  discountValue: number;
+  minOrderCents?: number;
+  maxDiscountCents?: number;
+  startsAt: string;
+  endsAt: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CampaignListResponse {
+  campaigns: Campaign[];
+}
+
+export interface ValidateCampaignRequest {
+  code: string;
+}
+
+export interface ValidateCampaignResponse {
+  valid: boolean;
+  campaign?: Campaign;
+  message?: string;
+}
+
+// ─── Checkout ──────────────────────────────────────────────────────────────
+
+export interface CheckoutSession {
+  id: string;
+  userId: string;
+  status: string;
+  cartSnapshot: CartItem[];
+  totalCents: number;
+  currency: string;
+  shippingAddress?: Address;
+  campaignCode?: string;
+  discountCents?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InitiateCheckoutRequest {
+  cartId: string;
+  campaignCode?: string;
+}
+
+export interface SetShippingRequest {
+  shippingAddress: Address;
+}
+
+export interface ProcessPaymentRequest {
+  paymentMethodId: string;
+}
+
+export interface CheckoutResponse {
+  session: CheckoutSession;
 }
 
 // ─── Search ─────────────────────────────────────────────────────────────────

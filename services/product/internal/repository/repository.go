@@ -37,4 +37,20 @@ type ProductRepository interface {
 
 	// Delete removes a product from the store by its identifier.
 	Delete(ctx context.Context, id string) error
+
+	// GetImages returns all images for a product ordered by sort_order.
+	GetImages(ctx context.Context, productID string) ([]domain.ProductImage, error)
+
+	// GetVariants returns all active variants for a product ordered by name.
+	GetVariants(ctx context.Context, productID string) ([]domain.ProductVariant, error)
+
+	// GetCategory retrieves a single category by its ID.
+	GetCategory(ctx context.Context, categoryID string) (*domain.Category, error)
+
+	// GetBrand retrieves a single brand by its ID.
+	GetBrand(ctx context.Context, brandID string) (*domain.Brand, error)
+
+	// GetPrimaryImages returns the primary image for each of the given product IDs.
+	// The returned map is keyed by product ID.
+	GetPrimaryImages(ctx context.Context, productIDs []string) (map[string]domain.ProductImage, error)
 }

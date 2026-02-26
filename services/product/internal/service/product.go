@@ -128,8 +128,83 @@ func (s *ProductService) GetProductBySlug(ctx context.Context, slug string) (*do
 	return product, nil
 }
 
-// ListProducts returns a filtered, paginated list of products.
-func (s *ProductService) ListProducts(ctx context.Context, filter repository.ProductFilter) ([]domain.Product, int, error) {
+// GetProductDetail retrieves a product by ID and enriches it with images,
+// variants, category, and brand information.
+func (s *ProductService) GetProductDetail(ctx context.Context, id string) (*domain.ProductDetail, error) {
+	product, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get product by id: %w", err)
+	}
+	return s.enrichProduct(ctx, product)
+}
+
+// GetProductDetailBySlug retrieves a product by slug and enriches it with
+// images, variants, category, and brand information.
+func (s *ProductService) GetProductDetailBySlug(ctx context.Context, slug string) (*domain.ProductDetail, error) {
+	product, err := s.repo.GetBySlug(ctx, slug)
+	if err != nil {
+		return nil, fmt.Errorf("get product by slug: %w", err)
+	}
+	return s.enrichProduct(ctx, product)
+}
+
+// enrichProduct loads images, variants, category, and brand for a product.
+func (s *ProductService) enrichProduct(ctx context.Context, product *domain.Product) (*domain.ProductDetail, error) {
+	detail := &domain.ProductDetail{
+		Product: *product,
+	}
+
+	images, err := s.repo.GetImages(ctx, product.ID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to load product images",
+			slog.String("product_id", product.ID),
+			slog.String("error", err.Error()),
+		)
+		images = []domain.ProductImage{}
+	}
+	detail.Images = images
+
+	variants, err := s.repo.GetVariants(ctx, product.ID)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to load product variants",
+			slog.String("product_id", product.ID),
+			slog.String("error", err.Error()),
+		)
+		variants = []domain.ProductVariant{}
+	}
+	detail.Variants = variants
+
+	if product.CategoryID != nil {
+		category, err := s.repo.GetCategory(ctx, *product.CategoryID)
+		if err != nil {
+			s.logger.ErrorContext(ctx, "failed to load product category",
+				slog.String("product_id", product.ID),
+				slog.String("category_id", *product.CategoryID),
+				slog.String("error", err.Error()),
+			)
+		} else {
+			detail.Category = category
+		}
+	}
+
+	if product.BrandID != nil {
+		brand, err := s.repo.GetBrand(ctx, *product.BrandID)
+		if err != nil {
+			s.logger.ErrorContext(ctx, "failed to load product brand",
+				slog.String("product_id", product.ID),
+				slog.String("brand_id", *product.BrandID),
+				slog.String("error", err.Error()),
+			)
+		} else {
+			detail.Brand = brand
+		}
+	}
+
+	return detail, nil
+}
+
+// ListProducts returns a filtered, paginated list of products with primary images.
+func (s *ProductService) ListProducts(ctx context.Context, filter repository.ProductFilter) ([]domain.ProductListItem, int, error) {
 	if filter.Page <= 0 {
 		filter.Page = 1
 	}
@@ -145,7 +220,29 @@ func (s *ProductService) ListProducts(ctx context.Context, filter repository.Pro
 		return nil, 0, fmt.Errorf("list products: %w", err)
 	}
 
-	return products, total, nil
+	// Batch-fetch primary images for all returned products.
+	productIDs := make([]string, len(products))
+	for i, p := range products {
+		productIDs[i] = p.ID
+	}
+
+	primaryImages, err := s.repo.GetPrimaryImages(ctx, productIDs)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to load primary images for product list",
+			slog.String("error", err.Error()),
+		)
+		primaryImages = map[string]domain.ProductImage{}
+	}
+
+	items := make([]domain.ProductListItem, len(products))
+	for i, p := range products {
+		items[i] = domain.ProductListItem{Product: p}
+		if img, ok := primaryImages[p.ID]; ok {
+			items[i].PrimaryImage = &img
+		}
+	}
+
+	return items, total, nil
 }
 
 // UpdateProduct applies partial updates to an existing product.

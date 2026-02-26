@@ -1,29 +1,643 @@
+'use client';
+
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
+import { formatPrice, calculateDiscount, cn } from '@/lib/utils';
+import { QuantitySelector, PriceDisplay, Badge, useToast } from '@/components/ui';
+import type { Product, Campaign } from '@/types';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface CartProductMap {
+  [productId: string]: Product;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const FREE_SHIPPING_THRESHOLD = 5000; // cents
+const FLAT_SHIPPING_RATE = 499; // cents
+
+// ─── Cart Page Component ──────────────────────────────────────────────────────
+
 export default function CartPage() {
+  const router = useRouter();
+  const { cart, isLoading: cartLoading, updateItem, removeItem } = useCart();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
+
+  // Product details fetched for each cart item
+  const [products, setProducts] = useState<CartProductMap>({});
+  const [productsLoading, setProductsLoading] = useState(false);
+
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [appliedCampaign, setAppliedCampaign] = useState<Campaign | null>(null);
+
+  // Item-level loading states (for quantity changes and removals)
+  const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
+
+  // ── Fetch product details for all cart items ────────────────────────────
+
+  useEffect(() => {
+    if (!cart?.items || cart.items.length === 0) {
+      setProducts({});
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchProducts() {
+      setProductsLoading(true);
+      try {
+        const results = await Promise.allSettled(
+          cart!.items.map((item) => api.getProduct(item.product_id)),
+        );
+
+        if (cancelled) return;
+
+        const productMap: CartProductMap = {};
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            productMap[cart!.items[index].product_id] = result.value.data;
+          }
+        });
+        setProducts(productMap);
+      } catch {
+        // Silently handle — individual products may fail
+      } finally {
+        if (!cancelled) {
+          setProductsLoading(false);
+        }
+      }
+    }
+
+    fetchProducts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cart]);
+
+  // ── Computed values ─────────────────────────────────────────────────────
+
+  const subtotal = useMemo(() => {
+    if (!cart?.items) return 0;
+    return cart.items.reduce((sum, item) => {
+      const product = products[item.product_id];
+      if (!product) return sum;
+      return sum + product.base_price * item.quantity;
+    }, 0);
+  }, [cart, products]);
+
+  const discountAmount = useMemo(() => {
+    if (!appliedCampaign) return 0;
+    return calculateDiscount(subtotal, appliedCampaign.type, appliedCampaign.discount_value);
+  }, [subtotal, appliedCampaign]);
+
+  const shippingCost = useMemo(() => {
+    const afterDiscount = subtotal - discountAmount;
+    if (afterDiscount >= FREE_SHIPPING_THRESHOLD) return 0;
+    return FLAT_SHIPPING_RATE;
+  }, [subtotal, discountAmount]);
+
+  const total = useMemo(() => {
+    return subtotal - discountAmount + shippingCost;
+  }, [subtotal, discountAmount, shippingCost]);
+
+  // ── Handlers ────────────────────────────────────────────────────────────
+
+  const handleQuantityChange = useCallback(
+    async (productId: string, newQuantity: number) => {
+      setUpdatingItems((prev) => new Set(prev).add(productId));
+      try {
+        await updateItem(productId, newQuantity);
+      } catch {
+        toast.error('Failed to update quantity. Please try again.');
+      } finally {
+        setUpdatingItems((prev) => {
+          const next = new Set(prev);
+          next.delete(productId);
+          return next;
+        });
+      }
+    },
+    [updateItem, toast],
+  );
+
+  const handleRemoveItem = useCallback(
+    async (productId: string) => {
+      setUpdatingItems((prev) => new Set(prev).add(productId));
+      try {
+        await removeItem(productId);
+        toast.success('Item removed from cart.');
+      } catch {
+        toast.error('Failed to remove item. Please try again.');
+      } finally {
+        setUpdatingItems((prev) => {
+          const next = new Set(prev);
+          next.delete(productId);
+          return next;
+        });
+      }
+    },
+    [removeItem, toast],
+  );
+
+  const handleApplyCoupon = useCallback(async () => {
+    const code = couponCode.trim();
+    if (!code) return;
+
+    setCouponLoading(true);
+    try {
+      const response = await api.validateCoupon(code);
+      const campaign = response.data;
+
+      // Check minimum order amount
+      if (campaign.min_order_amount > 0 && subtotal < campaign.min_order_amount) {
+        toast.error(
+          `Minimum order of ${formatPrice(campaign.min_order_amount)} required for this coupon.`,
+        );
+        setCouponLoading(false);
+        return;
+      }
+
+      setAppliedCampaign(campaign);
+      toast.success(`Coupon "${campaign.code}" applied successfully!`);
+    } catch {
+      toast.error('Invalid or expired coupon code.');
+    } finally {
+      setCouponLoading(false);
+    }
+  }, [couponCode, subtotal, toast]);
+
+  const handleRemoveCoupon = useCallback(() => {
+    setAppliedCampaign(null);
+    setCouponCode('');
+    toast.info('Coupon removed.');
+  }, [toast]);
+
+  const handleProceedToCheckout = useCallback(() => {
+    if (!isAuthenticated) {
+      router.push('/auth/login?returnUrl=/cart');
+      return;
+    }
+    router.push('/checkout');
+  }, [isAuthenticated, router]);
+
+  // ── Loading state ───────────────────────────────────────────────────────
+
+  if (authLoading || cartLoading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          Shopping Cart
+        </h1>
+        <CartSkeleton />
+      </div>
+    );
+  }
+
+  // ── Empty cart ──────────────────────────────────────────────────────────
+
+  const isEmpty = !cart?.items || cart.items.length === 0;
+
+  if (isEmpty) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+          Shopping Cart
+        </h1>
+        <EmptyCart />
+      </div>
+    );
+  }
+
+  // ── Main cart view ──────────────────────────────────────────────────────
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-bold tracking-tight text-gray-900">
         Shopping Cart
       </h1>
-      <p className="mt-4 text-gray-600">
-        Cart page &mdash; coming soon. This page will display the user's
-        cart items fetched from the BFF at <code className="text-sm bg-gray-100 px-1 py-0.5 rounded">/api/cart</code>.
-      </p>
 
-      {/* Placeholder for cart items */}
-      <div className="mt-12 space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex h-24 animate-pulse items-center gap-4 rounded-lg bg-gray-100 p-4"
-          >
-            <div className="h-16 w-16 rounded bg-gray-200" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 w-1/3 rounded bg-gray-200" />
-              <div className="h-3 w-1/4 rounded bg-gray-200" />
-            </div>
+      <div className="mt-8 lg:grid lg:grid-cols-12 lg:gap-x-12">
+        {/* Cart items list */}
+        <section aria-label="Cart items" className="lg:col-span-7">
+          <ul className="divide-y divide-gray-200 border-b border-t border-gray-200">
+            {cart.items.map((item) => {
+              const product = products[item.product_id];
+              const isUpdating = updatingItems.has(item.product_id);
+
+              return (
+                <CartItemRow
+                  key={item.product_id}
+                  productId={item.product_id}
+                  quantity={item.quantity}
+                  product={product}
+                  isLoading={productsLoading && !product}
+                  isUpdating={isUpdating}
+                  onQuantityChange={handleQuantityChange}
+                  onRemove={handleRemoveItem}
+                />
+              );
+            })}
+          </ul>
+
+          {/* Continue shopping link */}
+          <div className="mt-6">
+            <Link
+              href="/products"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+            >
+              <ArrowLeftIcon />
+              Continue Shopping
+            </Link>
           </div>
-        ))}
+        </section>
+
+        {/* Order summary sidebar */}
+        <section
+          aria-label="Order summary"
+          className="mt-10 lg:col-span-5 lg:mt-0"
+        >
+          <div className="rounded-lg bg-gray-50 px-6 py-6">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Order Summary
+            </h2>
+
+            {/* Coupon input */}
+            <div className="mt-6">
+              <label
+                htmlFor="coupon-code"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Coupon / Campaign Code
+              </label>
+              {appliedCampaign ? (
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge variant="success" size="md">
+                    {appliedCampaign.code}
+                  </Badge>
+                  <span className="text-sm text-green-700">
+                    {appliedCampaign.type === 'percentage'
+                      ? `${appliedCampaign.discount_value}% off`
+                      : `${formatPrice(appliedCampaign.discount_value)} off`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRemoveCoupon}
+                    className="ml-auto text-sm text-gray-500 hover:text-red-600 transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-2 flex gap-2">
+                  <input
+                    id="coupon-code"
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleApplyCoupon();
+                    }}
+                    placeholder="Enter code"
+                    className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    disabled={couponLoading || !couponCode.trim()}
+                    className={cn(
+                      'rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                      couponLoading || !couponCode.trim()
+                        ? 'cursor-not-allowed bg-gray-200 text-gray-400'
+                        : 'bg-gray-900 text-white hover:bg-gray-800',
+                    )}
+                  >
+                    {couponLoading ? 'Applying...' : 'Apply'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Summary lines */}
+            <dl className="mt-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <dt className="text-sm text-gray-600">Subtotal</dt>
+                <dd className="text-sm font-medium text-gray-900">
+                  {formatPrice(subtotal)}
+                </dd>
+              </div>
+
+              {discountAmount > 0 && (
+                <div className="flex items-center justify-between">
+                  <dt className="text-sm text-green-600">Discount</dt>
+                  <dd className="text-sm font-medium text-green-600">
+                    -{formatPrice(discountAmount)}
+                  </dd>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+                <dt className="text-sm text-gray-600">Shipping</dt>
+                <dd className="text-sm font-medium text-gray-900">
+                  {shippingCost === 0 ? (
+                    <span className="text-green-600">Free</span>
+                  ) : (
+                    formatPrice(shippingCost)
+                  )}
+                </dd>
+              </div>
+
+              {shippingCost > 0 && (
+                <p className="text-xs text-gray-500">
+                  Free shipping on orders over {formatPrice(FREE_SHIPPING_THRESHOLD)}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+                <dt className="text-base font-semibold text-gray-900">
+                  Total
+                </dt>
+                <dd className="text-base font-semibold text-gray-900">
+                  {formatPrice(total)}
+                </dd>
+              </div>
+            </dl>
+
+            {/* Proceed to Checkout */}
+            <button
+              type="button"
+              onClick={handleProceedToCheckout}
+              disabled={productsLoading || subtotal === 0}
+              className={cn(
+                'mt-6 w-full rounded-md px-6 py-3 text-base font-medium text-white shadow-sm transition-colors',
+                productsLoading || subtotal === 0
+                  ? 'cursor-not-allowed bg-indigo-300'
+                  : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
+              )}
+            >
+              {!isAuthenticated ? 'Sign in to Checkout' : 'Proceed to Checkout'}
+            </button>
+
+            {!isAuthenticated && (
+              <p className="mt-2 text-center text-xs text-gray-500">
+                You will be redirected to sign in before checkout.
+              </p>
+            )}
+          </div>
+        </section>
       </div>
     </div>
+  );
+}
+
+// ─── Cart Item Row ────────────────────────────────────────────────────────────
+
+interface CartItemRowProps {
+  productId: string;
+  quantity: number;
+  product: Product | undefined;
+  isLoading: boolean;
+  isUpdating: boolean;
+  onQuantityChange: (productId: string, quantity: number) => void;
+  onRemove: (productId: string) => void;
+}
+
+function CartItemRow({
+  productId,
+  quantity,
+  product,
+  isLoading,
+  isUpdating,
+  onQuantityChange,
+  onRemove,
+}: CartItemRowProps) {
+  if (isLoading || !product) {
+    return (
+      <li className="flex gap-4 py-6">
+        <div className="h-24 w-24 animate-pulse rounded-md bg-gray-200" />
+        <div className="flex flex-1 flex-col gap-2">
+          <div className="h-4 w-1/3 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-1/4 animate-pulse rounded bg-gray-200" />
+          <div className="h-3 w-1/5 animate-pulse rounded bg-gray-200" />
+        </div>
+      </li>
+    );
+  }
+
+  const imageUrl = product.images?.find((img) => img.is_primary)?.url
+    || product.images?.[0]?.url
+    || `https://picsum.photos/seed/${product.slug}/800/800`;
+
+  const lineTotal = product.base_price * quantity;
+
+  return (
+    <li
+      className={cn(
+        'flex gap-4 py-6 transition-opacity',
+        isUpdating && 'opacity-60 pointer-events-none',
+      )}
+    >
+      {/* Product image */}
+      <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+        <Image
+          src={imageUrl}
+          alt={product.name}
+          fill
+          sizes="96px"
+          className="object-cover"
+        />
+      </div>
+
+      {/* Product info */}
+      <div className="flex flex-1 flex-col">
+        <div className="flex justify-between">
+          <div>
+            <h3 className="text-sm font-medium text-gray-900">
+              <Link
+                href={`/products/${product.slug}`}
+                className="hover:text-indigo-600 transition-colors"
+              >
+                {product.name}
+              </Link>
+            </h3>
+
+            {/* Variant info / category / brand */}
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {product.category && (
+                <Badge variant="default" size="sm">
+                  {product.category.name}
+                </Badge>
+              )}
+              {product.brand && (
+                <span className="text-xs text-gray-500">
+                  {product.brand.name}
+                </span>
+              )}
+            </div>
+
+            {/* Unit price */}
+            <div className="mt-1">
+              <PriceDisplay price={product.base_price} size="sm" />
+            </div>
+          </div>
+
+          {/* Line total (desktop) */}
+          <div className="hidden sm:block text-right">
+            <span className="text-sm font-semibold text-gray-900">
+              {formatPrice(lineTotal)}
+            </span>
+          </div>
+        </div>
+
+        {/* Bottom row: quantity + remove + line total (mobile) */}
+        <div className="mt-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <QuantitySelector
+              value={quantity}
+              onChange={(newQty) => onQuantityChange(productId, newQty)}
+              min={1}
+              max={99}
+              disabled={isUpdating}
+            />
+            <button
+              type="button"
+              onClick={() => onRemove(productId)}
+              disabled={isUpdating}
+              className="text-sm font-medium text-red-600 hover:text-red-500 transition-colors disabled:cursor-not-allowed disabled:text-red-300"
+            >
+              Remove
+            </button>
+          </div>
+
+          {/* Line total (mobile) */}
+          <span className="text-sm font-semibold text-gray-900 sm:hidden">
+            {formatPrice(lineTotal)}
+          </span>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+// ─── Empty Cart ───────────────────────────────────────────────────────────────
+
+function EmptyCart() {
+  return (
+    <div className="mt-16 flex flex-col items-center text-center">
+      {/* Cart icon */}
+      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
+        <svg
+          width={48}
+          height={48}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="text-gray-400"
+        >
+          <circle cx={9} cy={21} r={1} />
+          <circle cx={20} cy={21} r={1} />
+          <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
+        </svg>
+      </div>
+      <h2 className="mt-6 text-xl font-semibold text-gray-900">
+        Your cart is empty
+      </h2>
+      <p className="mt-2 text-sm text-gray-500">
+        Looks like you haven&apos;t added anything to your cart yet.
+      </p>
+      <Link
+        href="/products"
+        className="mt-6 inline-flex items-center gap-2 rounded-md bg-indigo-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+      >
+        Continue Shopping
+        <ArrowRightIcon />
+      </Link>
+    </div>
+  );
+}
+
+// ─── Cart Skeleton ────────────────────────────────────────────────────────────
+
+function CartSkeleton() {
+  return (
+    <div className="mt-8 lg:grid lg:grid-cols-12 lg:gap-x-12">
+      <div className="lg:col-span-7">
+        <div className="divide-y divide-gray-200 border-b border-t border-gray-200">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex gap-4 py-6">
+              <div className="h-24 w-24 animate-pulse rounded-md bg-gray-200" />
+              <div className="flex flex-1 flex-col gap-2">
+                <div className="h-4 w-2/5 animate-pulse rounded bg-gray-200" />
+                <div className="h-3 w-1/4 animate-pulse rounded bg-gray-200" />
+                <div className="h-3 w-1/6 animate-pulse rounded bg-gray-200" />
+                <div className="mt-auto h-9 w-28 animate-pulse rounded bg-gray-200" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-10 lg:col-span-5 lg:mt-0">
+        <div className="rounded-lg bg-gray-50 px-6 py-6">
+          <div className="h-6 w-1/3 animate-pulse rounded bg-gray-200" />
+          <div className="mt-6 space-y-4">
+            <div className="h-10 w-full animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
+            <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Icons ────────────────────────────────────────────────────────────────────
+
+function ArrowLeftIcon() {
+  return (
+    <svg
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-shrink-0"
+    >
+      <path d="M19 12H5M12 19l-7-7 7-7" />
+    </svg>
+  );
+}
+
+function ArrowRightIcon() {
+  return (
+    <svg
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-shrink-0"
+    >
+      <path d="M5 12h14M12 5l7 7-7 7" />
+    </svg>
   );
 }

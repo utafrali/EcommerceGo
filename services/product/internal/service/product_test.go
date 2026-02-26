@@ -59,6 +59,37 @@ func (m *mockProductRepository) Delete(ctx context.Context, id string) error {
 	return args.Error(0)
 }
 
+func (m *mockProductRepository) GetImages(ctx context.Context, productID string) ([]domain.ProductImage, error) {
+	args := m.Called(ctx, productID)
+	return args.Get(0).([]domain.ProductImage), args.Error(1)
+}
+
+func (m *mockProductRepository) GetVariants(ctx context.Context, productID string) ([]domain.ProductVariant, error) {
+	args := m.Called(ctx, productID)
+	return args.Get(0).([]domain.ProductVariant), args.Error(1)
+}
+
+func (m *mockProductRepository) GetCategory(ctx context.Context, categoryID string) (*domain.Category, error) {
+	args := m.Called(ctx, categoryID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Category), args.Error(1)
+}
+
+func (m *mockProductRepository) GetBrand(ctx context.Context, brandID string) (*domain.Brand, error) {
+	args := m.Called(ctx, brandID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Brand), args.Error(1)
+}
+
+func (m *mockProductRepository) GetPrimaryImages(ctx context.Context, productIDs []string) (map[string]domain.ProductImage, error) {
+	args := m.Called(ctx, productIDs)
+	return args.Get(0).(map[string]domain.ProductImage), args.Error(1)
+}
+
 // --- Test Helpers ---
 
 func newTestLogger() *slog.Logger {
@@ -313,6 +344,7 @@ func TestListProducts_Success(t *testing.T) {
 	}
 
 	repo.On("List", ctx, filter).Return(expectedProducts, 2, nil)
+	repo.On("GetPrimaryImages", ctx, []string{"1", "2"}).Return(map[string]domain.ProductImage{}, nil)
 
 	products, total, err := svc.ListProducts(ctx, filter)
 
@@ -340,6 +372,7 @@ func TestListProducts_DefaultPagination(t *testing.T) {
 	}
 
 	repo.On("List", ctx, expectedFilter).Return([]domain.Product{}, 0, nil)
+	repo.On("GetPrimaryImages", ctx, []string{}).Return(map[string]domain.ProductImage{}, nil)
 
 	products, total, err := svc.ListProducts(ctx, filter)
 
@@ -366,6 +399,7 @@ func TestListProducts_CapPerPage(t *testing.T) {
 	}
 
 	repo.On("List", ctx, expectedFilter).Return([]domain.Product{}, 0, nil)
+	repo.On("GetPrimaryImages", ctx, []string{}).Return(map[string]domain.ProductImage{}, nil)
 
 	products, total, err := svc.ListProducts(ctx, filter)
 

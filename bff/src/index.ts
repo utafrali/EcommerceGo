@@ -8,6 +8,8 @@ import { cartRoutes } from './routes/cart.js';
 import { orderRoutes } from './routes/orders.js';
 import { authRoutes } from './routes/auth.js';
 import { searchRoutes } from './routes/search.js';
+import { campaignRoutes } from './routes/campaigns.js';
+import { checkoutRoutes } from './routes/checkout.js';
 
 async function main(): Promise<void> {
   const app = Fastify({
@@ -25,7 +27,7 @@ async function main(): Promise<void> {
   await app.register(cors, {
     origin: config.environment === 'production'
       ? ['https://ecommercego.com']
-      : ['http://localhost:3000', 'http://localhost:3002'],
+      : ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:3003'],
     credentials: true,
   });
 
@@ -48,6 +50,8 @@ async function main(): Promise<void> {
   await app.register(orderRoutes);
   await app.register(authRoutes);
   await app.register(searchRoutes);
+  await app.register(campaignRoutes);
+  await app.register(checkoutRoutes);
 
   // ── Start server ─────────────────────────────────────────────────────────
 

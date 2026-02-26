@@ -1,142 +1,270 @@
-// ─── Product ────────────────────────────────────────────────────────────────
+// ─── API Wrapper Types ─────────────────────────────────────────────────────
+
+/** Standard API response wrapping a single resource. */
+export interface ApiResponse<T> {
+  data: T;
+}
+
+/** Standard API response wrapping a paginated list. */
+export interface ApiListResponse<T> {
+  data: T[];
+  total_count: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
+/** Standard API error envelope. */
+export interface ApiError {
+  error: {
+    code: string;
+    message: string;
+    fields?: Record<string, string>;
+  };
+}
+
+// ─── Product Types ─────────────────────────────────────────────────────────
 
 export interface Product {
   id: string;
   name: string;
   slug: string;
   description: string;
-  priceCents: number;
+  brand_id: string | null;
+  category_id: string | null;
+  status: string;
+  base_price: number;
   currency: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  // Present on list responses (single primary image)
+  primary_image?: ProductImage | null;
+  // Optional enriched fields (present on single-product responses)
+  images?: ProductImage[];
+  variants?: ProductVariant[];
+  category?: Category | null;
+  brand?: Brand | null;
+}
+
+export interface ProductImage {
+  id: string;
+  product_id: string;
+  url: string;
+  alt_text: string;
+  sort_order: number;
+  is_primary: boolean;
+  created_at: string;
+}
+
+export interface ProductVariant {
+  id: string;
+  product_id: string;
   sku: string;
-  categoryId: string;
-  imageUrls: string[];
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  name: string;
+  price: number | null;
+  attributes: Record<string, string>;
+  weight_grams: number | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface ProductListResponse {
-  products: Product[];
-  total: number;
-  page: number;
-  pageSize: number;
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  sort_order: number;
+  is_active: boolean;
 }
 
-// ─── Cart ───────────────────────────────────────────────────────────────────
+export interface Brand {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string;
+}
+
+// ─── Review Types ──────────────────────────────────────────────────────────
+
+export interface Review {
+  id: string;
+  product_id: string;
+  user_id: string;
+  rating: number;
+  title: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReviewSummary {
+  average_rating: number;
+  total_count: number;
+}
+
+export interface ReviewListResponse extends ApiListResponse<Review> {
+  summary: ReviewSummary;
+}
+
+// ─── Cart Types ────────────────────────────────────────────────────────────
 
 export interface CartItem {
-  id: string;
-  productId: string;
-  productName: string;
-  priceCents: number;
+  product_id: string;
   quantity: number;
-  imageUrl: string;
 }
 
 export interface Cart {
-  id: string;
-  userId: string;
+  user_id: string;
   items: CartItem[];
-  totalCents: number;
-  currency: string;
-  updatedAt: string;
+  updated_at: string;
 }
 
-export interface AddCartItemRequest {
-  productId: string;
-  quantity: number;
-}
-
-export interface UpdateCartItemRequest {
-  quantity: number;
-}
-
-// ─── Order ──────────────────────────────────────────────────────────────────
+// ─── Order Types ───────────────────────────────────────────────────────────
 
 export interface OrderItem {
   id: string;
-  productId: string;
-  productName: string;
-  priceCents: number;
+  product_id: string;
+  product_name: string;
   quantity: number;
+  unit_price: number;
+  total_price: number;
 }
 
 export interface Order {
   id: string;
-  userId: string;
+  user_id: string;
   status: string;
   items: OrderItem[];
-  totalCents: number;
+  total_amount: number;
   currency: string;
-  shippingAddress: Address;
-  createdAt: string;
-  updatedAt: string;
+  shipping_address: Address;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface CreateOrderRequest {
-  shippingAddress: Address;
-  paymentMethodId: string;
+// ─── Campaign Types ────────────────────────────────────────────────────────
+
+export interface Campaign {
+  id: string;
+  name: string;
+  code: string;
+  type: string;
+  discount_value: number;
+  min_order_amount: number;
+  max_uses: number;
+  current_uses: number;
+  is_active: boolean;
+  starts_at: string;
+  ends_at: string;
 }
 
-export interface OrderListResponse {
-  orders: Order[];
+// ─── Checkout Types ────────────────────────────────────────────────────────
+
+export interface CheckoutSession {
+  session_id: string;
+  status: string;
+  user_id: string;
+  items: CheckoutItem[];
+  subtotal: number;
+  discount: number;
+  shipping_cost: number;
   total: number;
-  page: number;
-  pageSize: number;
+  shipping_address: Address | null;
+  campaign_code: string;
+  created_at: string;
+  updated_at: string;
 }
 
-// ─── User / Auth ────────────────────────────────────────────────────────────
+export interface CheckoutItem {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
+// ─── User / Auth Types ─────────────────────────────────────────────────────
 
 export interface User {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  createdAt: string;
-}
-
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  created_at: string;
 }
 
 export interface AuthResponse {
   user: User;
-  accessToken: string;
-  refreshToken: string;
+  access_token: string;
+  refresh_token: string;
 }
 
-// ─── Search ─────────────────────────────────────────────────────────────────
-
-export interface SearchResult {
-  products: Product[];
-  total: number;
-  query: string;
-  page: number;
-  pageSize: number;
-}
-
-// ─── Shared ─────────────────────────────────────────────────────────────────
+// ─── Shared Types ──────────────────────────────────────────────────────────
 
 export interface Address {
   line1: string;
   line2?: string;
   city: string;
   state: string;
-  postalCode: string;
+  postal_code: string;
   country: string;
 }
 
-export interface ApiError {
-  error: {
-    code: string;
-    message: string;
-  };
+// ─── Request Types ─────────────────────────────────────────────────────────
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+}
+
+export interface AddCartItemRequest {
+  product_id: string;
+  variant_id: string;
+  name: string;
+  sku: string;
+  price: number;
+  quantity: number;
+  image_url?: string;
+}
+
+export interface UpdateCartItemRequest {
+  quantity: number;
+}
+
+export interface CreateReviewRequest {
+  rating: number;
+  title: string;
+  body: string;
+}
+
+export interface InitiateCheckoutRequest {
+  campaign_code?: string;
+}
+
+export interface SetShippingRequest {
+  shipping_address: Address;
+}
+
+// ─── Query Parameter Types ─────────────────────────────────────────────────
+
+export interface ProductListParams {
+  page?: number;
+  per_page?: number;
+  category_id?: string;
+  brand_id?: string;
+  search?: string;
+  min_price?: number;
+  max_price?: number;
+  status?: string;
+  sort?: string;
 }

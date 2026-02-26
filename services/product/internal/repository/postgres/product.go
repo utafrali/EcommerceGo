@@ -302,6 +302,208 @@ func (r *ProductRepository) scanProduct(ctx context.Context, query string, args 
 	return &p, nil
 }
 
+// GetImages returns all images for a product ordered by sort_order.
+func (r *ProductRepository) GetImages(ctx context.Context, productID string) ([]domain.ProductImage, error) {
+	query := `
+		SELECT id, product_id, url, alt_text, sort_order, is_primary, created_at
+		FROM product_images
+		WHERE product_id = $1
+		ORDER BY sort_order`
+
+	rows, err := r.pool.Query(ctx, query, productID)
+	if err != nil {
+		return nil, fmt.Errorf("get product images: %w", err)
+	}
+	defer rows.Close()
+
+	var images []domain.ProductImage
+	for rows.Next() {
+		var img domain.ProductImage
+		if err := rows.Scan(
+			&img.ID,
+			&img.ProductID,
+			&img.URL,
+			&img.AltText,
+			&img.SortOrder,
+			&img.IsPrimary,
+			&img.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan product image row: %w", err)
+		}
+		images = append(images, img)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate product image rows: %w", err)
+	}
+
+	if images == nil {
+		images = []domain.ProductImage{}
+	}
+
+	return images, nil
+}
+
+// GetVariants returns all active variants for a product ordered by name.
+func (r *ProductRepository) GetVariants(ctx context.Context, productID string) ([]domain.ProductVariant, error) {
+	query := `
+		SELECT id, product_id, sku, name, price, attributes, weight_grams, is_active, created_at, updated_at
+		FROM product_variants
+		WHERE product_id = $1 AND is_active = true
+		ORDER BY name`
+
+	rows, err := r.pool.Query(ctx, query, productID)
+	if err != nil {
+		return nil, fmt.Errorf("get product variants: %w", err)
+	}
+	defer rows.Close()
+
+	var variants []domain.ProductVariant
+	for rows.Next() {
+		var (
+			v          domain.ProductVariant
+			attrsJSON  []byte
+		)
+		if err := rows.Scan(
+			&v.ID,
+			&v.ProductID,
+			&v.SKU,
+			&v.Name,
+			&v.Price,
+			&attrsJSON,
+			&v.WeightGrams,
+			&v.IsActive,
+			&v.CreatedAt,
+			&v.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan product variant row: %w", err)
+		}
+
+		if attrsJSON != nil {
+			if err := json.Unmarshal(attrsJSON, &v.Attributes); err != nil {
+				return nil, fmt.Errorf("unmarshal variant attributes: %w", err)
+			}
+		}
+
+		variants = append(variants, v)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate product variant rows: %w", err)
+	}
+
+	if variants == nil {
+		variants = []domain.ProductVariant{}
+	}
+
+	return variants, nil
+}
+
+// GetCategory retrieves a single category by its ID.
+func (r *ProductRepository) GetCategory(ctx context.Context, categoryID string) (*domain.Category, error) {
+	query := `
+		SELECT id, name, slug, parent_id, sort_order, is_active
+		FROM categories
+		WHERE id = $1`
+
+	var c domain.Category
+	err := r.pool.QueryRow(ctx, query, categoryID).Scan(
+		&c.ID,
+		&c.Name,
+		&c.Slug,
+		&c.ParentID,
+		&c.SortOrder,
+		&c.IsActive,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get category: %w", err)
+	}
+
+	return &c, nil
+}
+
+// GetBrand retrieves a single brand by its ID.
+func (r *ProductRepository) GetBrand(ctx context.Context, brandID string) (*domain.Brand, error) {
+	query := `
+		SELECT id, name, slug, logo_url, created_at, updated_at
+		FROM brands
+		WHERE id = $1`
+
+	var b domain.Brand
+	err := r.pool.QueryRow(ctx, query, brandID).Scan(
+		&b.ID,
+		&b.Name,
+		&b.Slug,
+		&b.LogoURL,
+		&b.CreatedAt,
+		&b.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get brand: %w", err)
+	}
+
+	return &b, nil
+}
+
+// GetPrimaryImages returns the primary image for each of the given product IDs.
+// The returned map is keyed by product ID.
+func (r *ProductRepository) GetPrimaryImages(ctx context.Context, productIDs []string) (map[string]domain.ProductImage, error) {
+	if len(productIDs) == 0 {
+		return map[string]domain.ProductImage{}, nil
+	}
+
+	// Build a parameterised IN clause.
+	placeholders := make([]string, len(productIDs))
+	args := make([]any, len(productIDs))
+	for i, id := range productIDs {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT DISTINCT ON (product_id) id, product_id, url, alt_text, sort_order, is_primary, created_at
+		FROM product_images
+		WHERE product_id IN (%s)
+		ORDER BY product_id, is_primary DESC, sort_order`,
+		strings.Join(placeholders, ", "),
+	)
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("get primary images: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string]domain.ProductImage)
+	for rows.Next() {
+		var img domain.ProductImage
+		if err := rows.Scan(
+			&img.ID,
+			&img.ProductID,
+			&img.URL,
+			&img.AltText,
+			&img.SortOrder,
+			&img.IsPrimary,
+			&img.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan primary image row: %w", err)
+		}
+		result[img.ProductID] = img
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate primary image rows: %w", err)
+	}
+
+	return result, nil
+}
+
 // isUniqueViolation checks if the error is a PostgreSQL unique constraint violation (SQLSTATE 23505).
 func isUniqueViolation(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "23505")

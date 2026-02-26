@@ -35,6 +35,12 @@ func NewRouter(cfg *config.Config, sp *proxy.ServiceProxy, logger *slog.Logger) 
 		r.Handle("/v1/products", sp.Handler("product"))
 		r.Handle("/v1/products/*", sp.Handler("product"))
 
+		// Categories & Brands (routed to product service)
+		r.Handle("/v1/categories", sp.Handler("product"))
+		r.Handle("/v1/categories/*", sp.Handler("product"))
+		r.Handle("/v1/brands", sp.Handler("product"))
+		r.Handle("/v1/brands/*", sp.Handler("product"))
+
 		// Cart Service
 		r.Handle("/v1/cart", sp.Handler("cart"))
 		r.Handle("/v1/cart/*", sp.Handler("cart"))
