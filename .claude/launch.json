@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "cms"],
       "port": 3002
+    },
+    {
+      "name": "web-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "next", "dev", "-p", "3003"],
+      "port": 3003
     }
   ]
 }

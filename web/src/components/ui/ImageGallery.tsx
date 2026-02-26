@@ -56,7 +56,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
               onClick={() => setSelectedIndex(index)}
               aria-label={`View image ${index + 1}`}
               className={cn(
-                'relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border-2 transition-all',
+                'relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border-2 transition-all',
                 index === selectedIndex
                   ? 'border-indigo-600 ring-1 ring-indigo-600'
                   : 'border-gray-200 hover:border-gray-400',
@@ -66,7 +66,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                 src={image.url}
                 alt={image.alt_text || `Thumbnail ${index + 1}`}
                 fill
-                sizes="64px"
+                sizes="80px"
                 className="object-cover"
               />
             </button>

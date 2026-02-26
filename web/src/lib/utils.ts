@@ -88,7 +88,7 @@ export function getProductImageUrl(
     images?: { url: string; is_primary: boolean }[];
     primary_image?: { url: string } | null;
   },
-  fallback = '/placeholder-product.png',
+  fallback = '/placeholder-product.svg',
 ): string {
   // Check primary_image first (present on list responses)
   if (product.primary_image?.url) return product.primary_image.url;

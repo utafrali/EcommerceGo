@@ -47,13 +47,18 @@ export default async function HomePage() {
     <div>
       {/* ── Hero Banner ──────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800">
+        {/* Decorative dot pattern */}
         <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10" />
-        <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,255,255,0.08)_0%,transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.06)_0%,transparent_50%)]" />
+        {/* Animated shimmer overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer" />
+        <div className="relative mx-auto max-w-7xl px-4 py-28 sm:px-6 sm:py-36 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 className="text-4xl font-bold tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] sm:text-5xl lg:text-6xl">
               Discover Quality Products
             </h1>
-            <p className="mt-6 text-lg leading-8 text-indigo-100">
+            <p className="mt-6 text-lg leading-8 text-indigo-100 drop-shadow-sm">
               Shop the best deals across electronics, clothing, home essentials, and more.
             </p>
             <div className="mt-10 flex items-center justify-center gap-4">
@@ -121,17 +126,17 @@ export default async function HomePage() {
               Shop by Category
             </h2>
 
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
               {categories.map((category) => (
                 <Link
                   key={category.id}
                   href={`/products?category_id=${category.id}`}
-                  className="group flex flex-col items-center rounded-lg border border-gray-200 bg-white px-4 py-6 text-center transition-all duration-200 hover:border-indigo-300 hover:shadow-md"
+                  className="group flex flex-col items-center rounded-xl border border-gray-200 bg-white px-5 py-8 text-center transition-all duration-300 hover:border-indigo-300 hover:shadow-lg hover:bg-gradient-to-br hover:from-white hover:to-indigo-50"
                 >
-                  <span className="mb-3 text-3xl" role="img" aria-label={category.name}>
+                  <span className="mb-4 text-5xl transition-transform duration-300 group-hover:scale-110" role="img" aria-label={category.name}>
                     {CATEGORY_ICONS[category.slug] || '🏷️'}
                   </span>
-                  <span className="text-sm font-medium text-gray-900 group-hover:text-indigo-600">
+                  <span className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600">
                     {category.name}
                   </span>
                 </Link>

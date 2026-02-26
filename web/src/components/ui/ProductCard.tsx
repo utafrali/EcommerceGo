@@ -32,7 +32,7 @@ export function ProductCard({ product }: ProductCardProps) {
     <Link
       href={`/products/${product.slug}`}
       className={cn(
-        'group block rounded-lg border border-gray-200 bg-white p-4 transition-all duration-200',
+        'group block rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200',
         'hover:shadow-lg hover:scale-[1.02]',
       )}
     >
@@ -55,7 +55,7 @@ export function ProductCard({ product }: ProductCardProps) {
       )}
 
       {/* Product name */}
-      <h3 className="mb-1 text-sm font-medium text-gray-900 line-clamp-2">
+      <h3 className="mb-1 text-base font-medium text-gray-900 line-clamp-2">
         {truncate(product.name, 60)}
       </h3>
 
@@ -71,9 +71,18 @@ export function ProductCard({ product }: ProductCardProps) {
       )}
 
       {/* Price */}
-      <p className="mb-3 text-lg font-bold text-gray-900">
-        {formatPrice(product.base_price, product.currency)}
-      </p>
+      {(() => {
+        const formatted = formatPrice(product.base_price, product.currency);
+        const match = formatted.match(/^([^\d]*)(.+)$/);
+        const symbol = match?.[1] || '$';
+        const amount = match?.[2] || formatted;
+        return (
+          <p className="mb-3 text-lg font-bold text-gray-900">
+            <span className="text-sm font-semibold">{symbol}</span>
+            {amount}
+          </p>
+        );
+      })()}
 
       {/* Add to Cart button */}
       <button
