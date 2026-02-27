@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { Product, Category, Brand } from '@/types';
 import { cn } from '@/lib/utils';
 import { SORT_OPTIONS } from '@/lib/constants';
-import { ProductCard, Pagination, SearchBar } from '@/components/ui';
+import { ProductCard, Pagination, SearchBar, EmptyState, SearchIcon } from '@/components/ui';
 import { FilterSidebar } from '@/components/ui/FilterSidebar';
 import type { FilterState } from '@/components/ui/FilterSidebar';
 import { ActiveFilterChips } from '@/components/ui/ActiveFilterChips';
@@ -410,38 +410,20 @@ export function ProductListClient({
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <svg
-                width={48}
-                height={48}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="mb-4 text-stone-300"
-              >
-                <circle cx={11} cy={11} r={8} />
-                <path d="M21 21l-4.35-4.35" />
-              </svg>
-              <h3 className="text-lg font-medium text-stone-900">
-                No products found
-              </h3>
-              <p className="mt-1 max-w-sm text-sm text-stone-500">
-                Try adjusting your search or filters to find what you are
-                looking for.
-              </p>
-              {activeFilterCount > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearAll}
-                  className="mt-4 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-light"
-                >
-                  Clear All Filters
-                </button>
-              )}
-            </div>
+            <EmptyState
+              icon={<SearchIcon className="text-stone-400" />}
+              iconBgClass="bg-stone-100"
+              heading="No products found"
+              message="Try adjusting your search or filters to find what you're looking for. Check spelling or use different keywords."
+              primaryAction={
+                activeFilterCount > 0
+                  ? {
+                      label: 'Clear All Filters',
+                      onClick: handleClearAll,
+                    }
+                  : undefined
+              }
+            />
           )}
 
           {/* ── Pagination ──────────────────────────────────────────── */}

@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import type { Review, ReviewSummary, CreateReviewRequest } from '@/types';
-import { RatingStars, Pagination } from '@/components/ui';
+import { RatingStars, Pagination, ChatBubbleIcon } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { api } from '@/lib/api';
@@ -97,9 +97,17 @@ export function ReviewSection({
       {/* Review List */}
       <div className={cn('space-y-6', isLoadingPage && 'opacity-50 pointer-events-none')}>
         {reviews.length === 0 ? (
-          <p className="py-8 text-center text-stone-500">
-            No reviews yet. Be the first to share your thoughts!
-          </p>
+          <div className="py-12 text-center">
+            <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-stone-100">
+              <ChatBubbleIcon className="text-stone-400" />
+            </div>
+            <h4 className="mb-1 text-base font-medium text-stone-700">
+              No reviews yet
+            </h4>
+            <p className="text-sm text-stone-500">
+              Be the first to share your experience with this product!
+            </p>
+          </div>
         ) : (
           reviews.map((review) => (
             <ReviewCard key={review.id} review={review} />
