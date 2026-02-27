@@ -672,7 +672,7 @@ func TestProcessCheckout_ExpiredSession(t *testing.T) {
 
 	assert.Nil(t, session)
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+	assert.ErrorIs(t, err, apperrors.ErrGone)
 
 	repo.AssertExpectations(t)
 }

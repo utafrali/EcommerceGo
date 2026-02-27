@@ -338,14 +338,24 @@ func (h *InventoryHandler) ListLowStock(w http.ResponseWriter, r *http.Request) 
 	perPage := 20
 
 	if v := r.URL.Query().Get("page"); v != "" {
-		if p, err := strconv.Atoi(v); err == nil && p > 0 {
-			page = p
+		p, err := strconv.Atoi(v)
+		if err != nil || p < 1 {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
+			})
+			return
 		}
+		page = p
 	}
 	if v := r.URL.Query().Get("per_page"); v != "" {
-		if pp, err := strconv.Atoi(v); err == nil && pp > 0 && pp <= 100 {
-			perPage = pp
+		pp, err := strconv.Atoi(v)
+		if err != nil || pp < 1 || pp > 100 {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
+			})
+			return
 		}
+		perPage = pp
 	}
 
 	stocks, total, err := h.service.ListLowStock(r.Context(), page, perPage)

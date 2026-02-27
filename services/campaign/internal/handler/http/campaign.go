@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -15,6 +16,9 @@ import (
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/repository"
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/service"
 )
+
+// campaignCodePattern validates campaign codes: 2-50 uppercase alphanumeric characters or hyphens.
+var campaignCodePattern = regexp.MustCompile(`^[A-Z0-9-]{2,50}$`)
 
 // CampaignHandler handles HTTP requests for campaign endpoints.
 type CampaignHandler struct {
@@ -163,6 +167,20 @@ func (h *CampaignHandler) CreateCampaign(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if !endDate.After(startDate) {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "end_date must be after start_date"},
+		})
+		return
+	}
+
+	if req.Code != "" && !campaignCodePattern.MatchString(req.Code) {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "code must be 2-50 uppercase alphanumeric characters or hyphens"},
+		})
+		return
+	}
+
 	input := &service.CreateCampaignInput{
 		Name:                 req.Name,
 		Description:          req.Description,
@@ -198,14 +216,24 @@ func (h *CampaignHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if v := r.URL.Query().Get("page"); v != "" {
-		if page, err := strconv.Atoi(v); err == nil && page > 0 {
-			filter.Page = page
+		page, err := strconv.Atoi(v)
+		if err != nil || page < 1 {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
+			})
+			return
 		}
+		filter.Page = page
 	}
 	if v := r.URL.Query().Get("per_page"); v != "" {
-		if perPage, err := strconv.Atoi(v); err == nil && perPage > 0 && perPage <= 100 {
-			filter.PerPage = perPage
+		perPage, err := strconv.Atoi(v)
+		if err != nil || perPage < 1 || perPage > 100 {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
+			})
+			return
 		}
+		filter.PerPage = perPage
 	}
 	if v := r.URL.Query().Get("status"); v != "" {
 		filter.Status = &v
@@ -314,6 +342,20 @@ func (h *CampaignHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		input.EndDate = &endDate
+	}
+
+	if input.StartDate != nil && input.EndDate != nil && !input.EndDate.After(*input.StartDate) {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "end_date must be after start_date"},
+		})
+		return
+	}
+
+	if req.Code != nil && *req.Code != "" && !campaignCodePattern.MatchString(*req.Code) {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "code must be 2-50 uppercase alphanumeric characters or hyphens"},
+		})
+		return
 	}
 
 	campaign, err := h.service.UpdateCampaign(r.Context(), id, input)

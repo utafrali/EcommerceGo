@@ -87,14 +87,24 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if v := r.URL.Query().Get("page"); v != "" {
-		if page, err := strconv.Atoi(v); err == nil && page > 0 {
-			filter.Page = page
+		page, err := strconv.Atoi(v)
+		if err != nil || page < 1 {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
+			})
+			return
 		}
+		filter.Page = page
 	}
 	if v := r.URL.Query().Get("per_page"); v != "" {
-		if perPage, err := strconv.Atoi(v); err == nil && perPage > 0 && perPage <= 100 {
-			filter.PerPage = perPage
+		perPage, err := strconv.Atoi(v)
+		if err != nil || perPage < 1 || perPage > 100 {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
+			})
+			return
 		}
+		filter.PerPage = perPage
 	}
 	if v := r.URL.Query().Get("category_id"); v != "" {
 		filter.CategoryID = &v
@@ -109,14 +119,24 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		filter.Search = &v
 	}
 	if v := r.URL.Query().Get("min_price"); v != "" {
-		if price, err := strconv.ParseInt(v, 10, 64); err == nil {
-			filter.MinPrice = &price
+		price, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "min_price must be a valid number"},
+			})
+			return
 		}
+		filter.MinPrice = &price
 	}
 	if v := r.URL.Query().Get("max_price"); v != "" {
-		if price, err := strconv.ParseInt(v, 10, 64); err == nil {
-			filter.MaxPrice = &price
+		price, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "max_price must be a valid number"},
+			})
+			return
 		}
+		filter.MaxPrice = &price
 	}
 
 	products, total, err := h.service.ListProducts(r.Context(), filter)

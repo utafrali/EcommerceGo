@@ -17,6 +17,7 @@ var (
 	ErrConflict       = errors.New("conflict")
 	ErrServiceUnavail = errors.New("service unavailable")
 	ErrPaymentFailed  = errors.New("payment failed")
+	ErrGone           = errors.New("gone")
 )
 
 // AppError represents a structured application error with HTTP status mapping.
@@ -109,6 +110,16 @@ func PaymentFailed(message string) *AppError {
 }
 
 
+// Gone creates a 410 error for expired or no-longer-available resources.
+func Gone(message string) *AppError {
+	return &AppError{
+		Code:    "GONE",
+		Message: message,
+		Status:  http.StatusGone,
+		Err:     ErrGone,
+	}
+}
+
 // Conflict creates a 409 error for concurrent modification conflicts.
 func Conflict(message string) *AppError {
 	return &AppError{
@@ -144,6 +155,8 @@ func HTTPStatus(err error) int {
 		return http.StatusForbidden
 	case errors.Is(err, ErrPaymentFailed):
 		return http.StatusUnprocessableEntity
+	case errors.Is(err, ErrGone):
+		return http.StatusGone
 	default:
 		return http.StatusInternalServerError
 	}

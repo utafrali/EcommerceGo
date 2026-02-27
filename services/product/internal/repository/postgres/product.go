@@ -158,10 +158,8 @@ func (r *ProductRepository) List(ctx context.Context, filter repository.ProductF
 	}
 	defer rows.Close()
 
-	var (
-		products   []domain.Product
-		totalCount int
-	)
+	var totalCount int
+	products := make([]domain.Product, 0)
 
 	for rows.Next() {
 		var (
@@ -198,10 +196,6 @@ func (r *ProductRepository) List(ctx context.Context, filter repository.ProductF
 
 	if err := rows.Err(); err != nil {
 		return nil, 0, fmt.Errorf("iterate product rows: %w", err)
-	}
-
-	if products == nil {
-		products = []domain.Product{}
 	}
 
 	return products, totalCount, nil

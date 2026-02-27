@@ -85,11 +85,16 @@ func (h *MediaHandler) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	ownerType := r.FormValue("owner_type")
 	altText := r.FormValue("alt_text")
 
+	contentType := header.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
 	input := &service.UploadMediaInput{
 		OwnerID:     ownerID,
 		OwnerType:   ownerType,
 		FileName:    header.Filename,
-		ContentType: header.Header.Get("Content-Type"),
+		ContentType: contentType,
 		Size:        header.Size,
 		Data:        file,
 		AltText:     altText,
@@ -139,14 +144,24 @@ func (h *MediaHandler) ListMediaByOwner(w http.ResponseWriter, r *http.Request) 
 	perPage := 20
 
 	if v := r.URL.Query().Get("page"); v != "" {
-		if p, err := strconv.Atoi(v); err == nil && p > 0 {
-			page = p
+		p, err := strconv.Atoi(v)
+		if err != nil || p < 1 {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
+			})
+			return
 		}
+		page = p
 	}
 	if v := r.URL.Query().Get("per_page"); v != "" {
-		if pp, err := strconv.Atoi(v); err == nil && pp > 0 && pp <= 100 {
-			perPage = pp
+		pp, err := strconv.Atoi(v)
+		if err != nil || pp < 1 || pp > 100 {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
+			})
+			return
 		}
+		perPage = pp
 	}
 
 	mediaFiles, total, err := h.service.ListMediaByOwner(r.Context(), ownerID, ownerType, page, perPage)

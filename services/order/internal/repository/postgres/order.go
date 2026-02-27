@@ -217,10 +217,8 @@ func (r *OrderRepository) List(ctx context.Context, filter repository.OrderFilte
 	}
 	defer rows.Close()
 
-	var (
-		orders     []domain.Order
-		totalCount int
-	)
+	var totalCount int
+	orders := make([]domain.Order, 0)
 
 	for rows.Next() {
 		var (
@@ -321,10 +319,6 @@ func (r *OrderRepository) List(ctx context.Context, filter repository.OrderFilte
 				orders[i].Items = []domain.OrderItem{}
 			}
 		}
-	}
-
-	if orders == nil {
-		orders = []domain.Order{}
 	}
 
 	return orders, totalCount, nil

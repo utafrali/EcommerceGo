@@ -11,6 +11,14 @@ const (
 	NotificationTypePush  = "push"
 )
 
+// Notification channel constants.
+const (
+	ChannelEmail = "email"
+	ChannelSMS   = "sms"
+	ChannelPush  = "push"
+	ChannelInApp = "in_app"
+)
+
 // Notification status constants.
 const (
 	NotificationStatusPending = "pending"
@@ -57,6 +65,21 @@ type NotificationTemplate struct {
 	Subject      string    `json:"subject,omitempty"`
 	BodyTemplate string    `json:"body_template"`
 	CreatedAt    time.Time `json:"created_at"`
+}
+
+// ValidChannels returns the set of valid notification channels.
+func ValidChannels() []string {
+	return []string{ChannelEmail, ChannelSMS, ChannelPush, ChannelInApp}
+}
+
+// IsValidChannel checks whether the given channel string is a valid notification channel.
+func IsValidChannel(channel string) bool {
+	for _, c := range ValidChannels() {
+		if c == channel {
+			return true
+		}
+	}
+	return false
 }
 
 // ValidTypes returns the set of valid notification types.

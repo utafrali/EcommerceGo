@@ -63,6 +63,9 @@ func (s *NotificationService) SendNotification(ctx context.Context, input *SendN
 	if input.Channel == "" {
 		return nil, apperrors.InvalidInput("channel is required")
 	}
+	if !domain.IsValidChannel(input.Channel) {
+		return nil, apperrors.InvalidInput("invalid channel: must be one of email, sms, push, in_app")
+	}
 	if input.Body == "" {
 		return nil, apperrors.InvalidInput("body is required")
 	}

@@ -52,17 +52,17 @@ func NewServiceProxy(cfg *config.Config, logger *slog.Logger) *ServiceProxy {
 
 		proxy := httputil.NewSingleHostReverseProxy(target)
 
-		// Use a custom transport with sensible dial/idle/response timeouts
+		// Use a custom transport with configurable dial/idle/response timeouts
 		// to prevent a single slow backend from exhausting gateway resources.
 		proxy.Transport = &http.Transport{
 			DialContext: (&net.Dialer{
-				Timeout:   5 * time.Second,
+				Timeout:   cfg.ProxyDialTimeout,
 				KeepAlive: 30 * time.Second,
 			}).DialContext,
-			ResponseHeaderTimeout: 30 * time.Second,
-			MaxIdleConns:          100,
+			ResponseHeaderTimeout: cfg.ProxyResponseTimeout,
+			MaxIdleConns:          cfg.ProxyMaxIdleConns,
 			MaxIdleConnsPerHost:   10,
-			IdleConnTimeout:       90 * time.Second,
+			IdleConnTimeout:       cfg.ProxyIdleTimeout,
 		}
 
 		// Wrap the default Director to ensure gateway-injected headers

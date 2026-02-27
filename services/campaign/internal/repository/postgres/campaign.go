@@ -162,10 +162,8 @@ func (r *CampaignRepository) List(ctx context.Context, filter repository.Campaig
 	}
 	defer rows.Close()
 
-	var (
-		campaigns  []domain.Campaign
-		totalCount int
-	)
+	var totalCount int
+	campaigns := make([]domain.Campaign, 0)
 
 	for rows.Next() {
 		var (
@@ -223,10 +221,6 @@ func (r *CampaignRepository) List(ctx context.Context, filter repository.Campaig
 
 	if err := rows.Err(); err != nil {
 		return nil, 0, fmt.Errorf("iterate campaign rows: %w", err)
-	}
-
-	if campaigns == nil {
-		campaigns = []domain.Campaign{}
 	}
 
 	return campaigns, totalCount, nil

@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -72,8 +73,11 @@ type errorResponse struct {
 
 // Search handles GET /api/v1/search
 func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
+	rawQuery := r.URL.Query().Get("q")
+	trimmedQuery := strings.TrimSpace(rawQuery)
+
 	query := &domain.SearchQuery{
-		Query:   r.URL.Query().Get("q"),
+		Query:   trimmedQuery,
 		SortBy:  r.URL.Query().Get("sort"),
 		Page:    1,
 		PerPage: 20,
@@ -260,7 +264,7 @@ func (h *SearchHandler) Reindex(w http.ResponseWriter, r *http.Request) {
 
 // Suggest handles GET /api/v1/search/suggest
 func (h *SearchHandler) Suggest(w http.ResponseWriter, r *http.Request) {
-	prefix := r.URL.Query().Get("q")
+	prefix := strings.TrimSpace(r.URL.Query().Get("q"))
 	if prefix == "" {
 		writeJSON(w, http.StatusOK, response{Data: map[string]any{"suggestions": []string{}}})
 		return

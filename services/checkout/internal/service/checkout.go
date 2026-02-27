@@ -265,7 +265,7 @@ func (s *CheckoutService) ProcessCheckout(ctx context.Context, sessionID string)
 			)
 			return nil, fmt.Errorf("update expired checkout session: %w", err)
 		}
-		return nil, apperrors.InvalidInput("checkout session has expired")
+		return nil, apperrors.Gone("checkout session has expired")
 	}
 
 	if session.ShippingAddress == nil {

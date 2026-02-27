@@ -146,14 +146,24 @@ func (h *OrderHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if v := r.URL.Query().Get("page"); v != "" {
-		if page, err := strconv.Atoi(v); err == nil && page > 0 {
-			filter.Page = page
+		page, err := strconv.Atoi(v)
+		if err != nil || page < 1 {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
+			})
+			return
 		}
+		filter.Page = page
 	}
 	if v := r.URL.Query().Get("per_page"); v != "" {
-		if perPage, err := strconv.Atoi(v); err == nil && perPage > 0 && perPage <= 100 {
-			filter.PerPage = perPage
+		perPage, err := strconv.Atoi(v)
+		if err != nil || perPage < 1 || perPage > 100 {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
+			})
+			return
 		}
+		filter.PerPage = perPage
 	}
 	if v := r.URL.Query().Get("user_id"); v != "" {
 		filter.UserID = &v

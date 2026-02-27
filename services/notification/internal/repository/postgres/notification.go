@@ -128,10 +128,8 @@ func (r *NotificationRepository) ListByUserID(ctx context.Context, userID string
 	}
 	defer rows.Close()
 
-	var (
-		notifications []domain.Notification
-		totalCount    int
-	)
+	var totalCount int
+	notifications := make([]domain.Notification, 0)
 
 	for rows.Next() {
 		var (
@@ -171,10 +169,6 @@ func (r *NotificationRepository) ListByUserID(ctx context.Context, userID string
 
 	if err := rows.Err(); err != nil {
 		return nil, 0, fmt.Errorf("iterate notification rows: %w", err)
-	}
-
-	if notifications == nil {
-		notifications = []domain.Notification{}
 	}
 
 	return notifications, totalCount, nil
@@ -252,7 +246,7 @@ func (r *NotificationRepository) scanNotifications(ctx context.Context, query st
 	}
 	defer rows.Close()
 
-	var notifications []domain.Notification
+	notifications := make([]domain.Notification, 0)
 
 	for rows.Next() {
 		var (
@@ -291,10 +285,6 @@ func (r *NotificationRepository) scanNotifications(ctx context.Context, query st
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate notification rows: %w", err)
-	}
-
-	if notifications == nil {
-		notifications = []domain.Notification{}
 	}
 
 	return notifications, nil
