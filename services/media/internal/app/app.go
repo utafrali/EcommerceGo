@@ -73,7 +73,11 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 
 	// Build the dependency graph.
 	repo := postgres.NewMediaRepository(pool)
-	store := memory.New(fmt.Sprintf("http://localhost:%d", cfg.HTTPPort))
+	baseURL := cfg.BaseURL
+	if baseURL == "" {
+		baseURL = fmt.Sprintf("http://localhost:%d", cfg.HTTPPort)
+	}
+	store := memory.New(baseURL)
 	eventProducer := event.NewProducer(producer, logger)
 	mediaService := service.NewMediaService(repo, store, eventProducer, logger)
 

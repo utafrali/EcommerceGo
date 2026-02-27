@@ -455,6 +455,25 @@ func TestSetShippingAddress_ExpiredSession(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestSetShippingAddress_ExpiredSession_UpdateFails(t *testing.T) {
+	repo := new(mockCheckoutRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	existing := activeSession()
+	existing.ExpiresAt = time.Now().UTC().Add(-1 * time.Hour) // Already expired.
+	repo.On("GetByID", ctx, "session-123").Return(existing, nil)
+	repo.On("Update", ctx, mock.AnythingOfType("*domain.CheckoutSession")).Return(fmt.Errorf("db write failed"))
+
+	session, err := svc.SetShippingAddress(ctx, "session-123", validAddress())
+
+	assert.Nil(t, session)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "update expired checkout session")
+
+	repo.AssertExpectations(t)
+}
+
 // --- SetPaymentMethod Tests ---
 
 func TestSetPaymentMethod_Success(t *testing.T) {
@@ -504,6 +523,25 @@ func TestSetPaymentMethod_TerminalSession(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestSetPaymentMethod_ExpiredSession_UpdateFails(t *testing.T) {
+	repo := new(mockCheckoutRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	existing := activeSession()
+	existing.ExpiresAt = time.Now().UTC().Add(-1 * time.Hour) // Already expired.
+	repo.On("GetByID", ctx, "session-123").Return(existing, nil)
+	repo.On("Update", ctx, mock.AnythingOfType("*domain.CheckoutSession")).Return(fmt.Errorf("db write failed"))
+
+	session, err := svc.SetPaymentMethod(ctx, "session-123", "credit_card")
+
+	assert.Nil(t, session)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "update expired checkout session")
+
+	repo.AssertExpectations(t)
+}
+
 // --- ProcessCheckout Tests ---
 
 func TestProcessCheckout_Success(t *testing.T) {
@@ -528,6 +566,32 @@ func TestProcessCheckout_Success(t *testing.T) {
 	for _, item := range session.Items {
 		assert.NotEmpty(t, item.ReservationID)
 	}
+
+	repo.AssertExpectations(t)
+}
+
+func TestProcessCheckout_SubtotalRevalidation(t *testing.T) {
+	repo := new(mockCheckoutRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	existing := activeSession()
+	existing.ShippingAddress = validAddress()
+	existing.PaymentMethod = "credit_card"
+	// Tamper with the stored subtotal to simulate a mismatch.
+	existing.SubtotalAmount = 9999
+	existing.TotalAmount = 9999
+
+	repo.On("GetByID", ctx, "session-123").Return(existing, nil)
+	repo.On("Update", ctx, mock.AnythingOfType("*domain.CheckoutSession")).Return(nil)
+
+	session, err := svc.ProcessCheckout(ctx, "session-123")
+
+	require.NoError(t, err)
+	// Subtotal should be recalculated from items: 2999 * 2 = 5998
+	assert.Equal(t, int64(5998), session.SubtotalAmount)
+	assert.Equal(t, int64(5998), session.TotalAmount)
+	assert.Equal(t, domain.StatusCompleted, session.Status)
 
 	repo.AssertExpectations(t)
 }
@@ -609,6 +673,28 @@ func TestProcessCheckout_ExpiredSession(t *testing.T) {
 	assert.Nil(t, session)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+
+	repo.AssertExpectations(t)
+}
+
+func TestProcessCheckout_ExpiredSession_UpdateFails(t *testing.T) {
+	repo := new(mockCheckoutRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	existing := activeSession()
+	existing.ShippingAddress = validAddress()
+	existing.PaymentMethod = "credit_card"
+	existing.ExpiresAt = time.Now().UTC().Add(-1 * time.Hour)
+
+	repo.On("GetByID", ctx, "session-123").Return(existing, nil)
+	repo.On("Update", ctx, mock.AnythingOfType("*domain.CheckoutSession")).Return(fmt.Errorf("db write failed"))
+
+	session, err := svc.ProcessCheckout(ctx, "session-123")
+
+	assert.Nil(t, session)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "update expired checkout session")
 
 	repo.AssertExpectations(t)
 }

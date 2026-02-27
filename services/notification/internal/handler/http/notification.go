@@ -11,6 +11,7 @@ import (
 
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
+	"github.com/utafrali/EcommerceGo/services/notification/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/notification/internal/service"
 )
 
@@ -148,6 +149,10 @@ func (h *NotificationHandler) ListNotificationsByUser(w http.ResponseWriter, r *
 	if err != nil {
 		h.writeError(w, r, err)
 		return
+	}
+
+	if notifications == nil {
+		notifications = []domain.Notification{}
 	}
 
 	totalPages := total / perPage

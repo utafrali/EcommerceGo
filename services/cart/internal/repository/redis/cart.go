@@ -64,6 +64,66 @@ func (r *CartRepository) Save(ctx context.Context, cart *domain.Cart) error {
 	return nil
 }
 
+// SaveIfVersion atomically persists the cart only if the stored version matches
+// the expected version. Uses Redis WATCH/MULTI/EXEC for optimistic locking.
+// Returns (true, nil) on success, (false, nil) on version mismatch.
+func (r *CartRepository) SaveIfVersion(ctx context.Context, cart *domain.Cart, expectedVersion int) (bool, error) {
+	key := keyPrefix + cart.UserID
+
+	// Use a Redis transaction with WATCH to implement optimistic locking.
+	// The WATCH ensures the key hasn't been modified between our read and write.
+	txf := func(tx *redis.Tx) error {
+		// Read the current value inside the transaction.
+		data, err := tx.Get(ctx, key).Bytes()
+		if err != nil && err != redis.Nil {
+			return fmt.Errorf("redis get cart in tx: %w", err)
+		}
+
+		// If the key exists, verify the version matches.
+		if err != redis.Nil {
+			var stored domain.Cart
+			if err := json.Unmarshal(data, &stored); err != nil {
+				return fmt.Errorf("unmarshal cart in tx: %w", err)
+			}
+			if stored.Version != expectedVersion {
+				// Version mismatch: someone else modified the cart.
+				return apperrors.ErrConflict
+			}
+		} else if expectedVersion != 0 {
+			// Key does not exist but caller expected a specific version.
+			return apperrors.ErrConflict
+		}
+
+		// Increment version and save.
+		cart.Version = expectedVersion + 1
+		newData, err := json.Marshal(cart)
+		if err != nil {
+			return fmt.Errorf("marshal cart in tx: %w", err)
+		}
+
+		_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			pipe.Set(ctx, key, newData, r.ttl)
+			return nil
+		})
+		return err
+	}
+
+	err := r.client.Watch(ctx, txf, key)
+	if err != nil {
+		if err == redis.TxFailedErr {
+			// WATCH detected a concurrent modification of the key.
+			return false, nil
+		}
+		if err == apperrors.ErrConflict {
+			// Version mismatch detected inside the transaction.
+			return false, nil
+		}
+		return false, fmt.Errorf("redis watch tx: %w", err)
+	}
+
+	return true, nil
+}
+
 // Delete removes a cart from Redis by user ID.
 func (r *CartRepository) Delete(ctx context.Context, userID string) error {
 	key := keyPrefix + userID

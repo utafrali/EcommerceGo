@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"time"
 
@@ -83,7 +84,11 @@ func (s *OrderService) CreateOrder(ctx context.Context, input CreateOrderInput) 
 			Price:     itemInput.Price,
 			Quantity:  itemInput.Quantity,
 		}
-		subtotal += items[i].LineTotal()
+		lineTotal := items[i].LineTotal()
+		if subtotal > 0 && lineTotal > math.MaxInt64/2-subtotal {
+			return nil, apperrors.InvalidInput("order subtotal overflow: total amount is too large")
+		}
+		subtotal += lineTotal
 	}
 
 	totalAmount := subtotal - input.DiscountAmount + input.ShippingAmount

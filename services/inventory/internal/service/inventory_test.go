@@ -745,6 +745,12 @@ func TestStock_Available(t *testing.T) {
 			reserved: 0,
 			expected: 0,
 		},
+		{
+			name:     "over-reserved returns zero",
+			quantity: 10,
+			reserved: 15,
+			expected: 0,
+		},
 	}
 
 	for _, tt := range tests {

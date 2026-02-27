@@ -339,6 +339,15 @@ func (r *AddressRepository) SetDefault(ctx context.Context, userID, addressID st
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// Lock the current default address row(s) to prevent concurrent races.
+	_, err = tx.Exec(ctx,
+		`SELECT id FROM addresses WHERE user_id = $1 AND is_default = true FOR UPDATE`,
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("lock default address: %w", err)
+	}
+
 	// Unset any existing default for this user.
 	_, err = tx.Exec(ctx,
 		`UPDATE addresses SET is_default = false WHERE user_id = $1 AND is_default = true`,

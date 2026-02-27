@@ -14,6 +14,12 @@ type CartRepository interface {
 	// Save persists a cart to the store, overwriting any existing cart for the user.
 	Save(ctx context.Context, cart *domain.Cart) error
 
+	// SaveIfVersion atomically persists the cart only if the stored version matches
+	// the expected version. Returns true if the save succeeded, false if the version
+	// did not match (optimistic lock conflict). The cart's Version field is incremented
+	// on success.
+	SaveIfVersion(ctx context.Context, cart *domain.Cart, expectedVersion int) (bool, error)
+
 	// Delete removes a cart from the store by the user ID.
 	Delete(ctx context.Context, userID string) error
 }

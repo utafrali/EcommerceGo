@@ -181,7 +181,13 @@ func (s *CheckoutService) SetShippingAddress(ctx context.Context, sessionID stri
 
 	if session.IsExpired() {
 		session.Status = domain.StatusExpired
-		_ = s.repo.Update(ctx, session)
+		if err := s.repo.Update(ctx, session); err != nil {
+			s.logger.ErrorContext(ctx, "failed to update expired checkout session",
+				slog.String("checkout_id", session.ID),
+				slog.String("error", err.Error()),
+			)
+			return nil, fmt.Errorf("update expired checkout session: %w", err)
+		}
 		return nil, apperrors.InvalidInput("checkout session has expired")
 	}
 
@@ -215,7 +221,13 @@ func (s *CheckoutService) SetPaymentMethod(ctx context.Context, sessionID, metho
 
 	if session.IsExpired() {
 		session.Status = domain.StatusExpired
-		_ = s.repo.Update(ctx, session)
+		if err := s.repo.Update(ctx, session); err != nil {
+			s.logger.ErrorContext(ctx, "failed to update expired checkout session",
+				slog.String("checkout_id", session.ID),
+				slog.String("error", err.Error()),
+			)
+			return nil, fmt.Errorf("update expired checkout session: %w", err)
+		}
 		return nil, apperrors.InvalidInput("checkout session has expired")
 	}
 
@@ -246,7 +258,13 @@ func (s *CheckoutService) ProcessCheckout(ctx context.Context, sessionID string)
 
 	if session.IsExpired() {
 		session.Status = domain.StatusExpired
-		_ = s.repo.Update(ctx, session)
+		if err := s.repo.Update(ctx, session); err != nil {
+			s.logger.ErrorContext(ctx, "failed to update expired checkout session",
+				slog.String("checkout_id", session.ID),
+				slog.String("error", err.Error()),
+			)
+			return nil, fmt.Errorf("update expired checkout session: %w", err)
+		}
 		return nil, apperrors.InvalidInput("checkout session has expired")
 	}
 
@@ -256,6 +274,21 @@ func (s *CheckoutService) ProcessCheckout(ctx context.Context, sessionID string)
 
 	if session.PaymentMethod == "" {
 		return nil, apperrors.InvalidInput("payment method must be set before processing")
+	}
+
+	// Defense-in-depth: re-validate subtotal against embedded items.
+	// Items are embedded in the session so they should not change, but verify
+	// to catch any potential data corruption.
+	recalculatedSubtotal := session.CalculateSubtotal()
+	if recalculatedSubtotal != session.SubtotalAmount {
+		s.logger.WarnContext(ctx, "subtotal mismatch detected during checkout processing",
+			slog.String("checkout_id", session.ID),
+			slog.Int64("stored_subtotal", session.SubtotalAmount),
+			slog.Int64("recalculated_subtotal", recalculatedSubtotal),
+		)
+		// Update the subtotal and total to the recalculated values.
+		session.SubtotalAmount = recalculatedSubtotal
+		session.TotalAmount = session.CalculateTotal()
 	}
 
 	// Initialize saga steps.

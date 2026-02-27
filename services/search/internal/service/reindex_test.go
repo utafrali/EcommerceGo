@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -326,4 +327,55 @@ func TestReindex_MapsNestedCategoryBrandImage(t *testing.T) {
 	assert.Equal(t, "brand-nike", p.BrandID)
 	assert.Equal(t, "Nike", p.BrandName)
 	assert.Equal(t, "https://img.example.com/shoe.jpg", p.ImageURL)
+}
+
+
+func TestReindex_ConcurrencyGuard(t *testing.T) {
+	// Server that takes a moment to respond, giving time for a concurrent call.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+		resp := reindexResponse{
+			Data: []map[string]any{
+				{"id": "p1", "name": "Slow Product", "status": "published"},
+			},
+			TotalCount: 1,
+			Page:       1,
+			TotalPages: 1,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	eng := memory.New()
+	svc := NewSearchService(eng, newTestLogger(), srv.URL)
+
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		errs[0] = svc.Reindex(context.Background())
+	}()
+	// Small delay to ensure the first goroutine acquires the guard.
+	time.Sleep(50 * time.Millisecond)
+	go func() {
+		defer wg.Done()
+		errs[1] = svc.Reindex(context.Background())
+	}()
+	wg.Wait()
+
+	// Exactly one should succeed and the other should fail with "reindex already in progress".
+	successCount := 0
+	alreadyInProgressCount := 0
+	for _, err := range errs {
+		if err == nil {
+			successCount++
+		} else if err.Error() == "reindex already in progress" {
+			alreadyInProgressCount++
+		}
+	}
+	assert.Equal(t, 1, successCount, "exactly one reindex call should succeed")
+	assert.Equal(t, 1, alreadyInProgressCount, "exactly one reindex call should be rejected")
 }

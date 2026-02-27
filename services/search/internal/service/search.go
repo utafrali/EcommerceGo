@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"sync/atomic"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 // SearchService implements the business logic for search operations.
 type SearchService struct {
 	engine            engine.SearchEngine
+	reindexing        atomic.Bool
 	logger            *slog.Logger
 	productServiceURL string
 }
@@ -192,6 +194,11 @@ func (s *SearchService) BulkIndex(ctx context.Context, inputs []IndexProductInpu
 
 // Reindex fetches all products from the product service and reindexes them.
 func (s *SearchService) Reindex(ctx context.Context) error {
+	if !s.reindexing.CompareAndSwap(false, true) {
+		return fmt.Errorf("reindex already in progress")
+	}
+	defer s.reindexing.Store(false)
+
 	s.logger.InfoContext(ctx, "reindex started")
 
 	page := 1

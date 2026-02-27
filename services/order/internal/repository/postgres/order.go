@@ -34,14 +34,20 @@ func (r *OrderRepository) Create(ctx context.Context, o *domain.Order) error {
 	}
 	defer tx.Rollback(ctx)
 
-	shippingJSON, err := json.Marshal(o.ShippingAddress)
-	if err != nil {
-		return fmt.Errorf("marshal shipping address: %w", err)
+	var shippingJSON, billingJSON []byte
+
+	if o.ShippingAddress != nil {
+		shippingJSON, err = json.Marshal(o.ShippingAddress)
+		if err != nil {
+			return fmt.Errorf("marshal shipping address: %w", err)
+		}
 	}
 
-	billingJSON, err := json.Marshal(o.BillingAddress)
-	if err != nil {
-		return fmt.Errorf("marshal billing address: %w", err)
+	if o.BillingAddress != nil {
+		billingJSON, err = json.Marshal(o.BillingAddress)
+		if err != nil {
+			return fmt.Errorf("marshal billing address: %w", err)
+		}
 	}
 
 	orderQuery := `
@@ -132,7 +138,7 @@ func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order
 		return nil, fmt.Errorf("scan order: %w", err)
 	}
 
-	if shippingJSON != nil {
+	if len(shippingJSON) > 0 && string(shippingJSON) != "null" {
 		var addr domain.Address
 		if err := json.Unmarshal(shippingJSON, &addr); err != nil {
 			return nil, fmt.Errorf("unmarshal shipping address: %w", err)
@@ -140,7 +146,7 @@ func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order
 		o.ShippingAddress = &addr
 	}
 
-	if billingJSON != nil {
+	if len(billingJSON) > 0 && string(billingJSON) != "null" {
 		var addr domain.Address
 		if err := json.Unmarshal(billingJSON, &addr); err != nil {
 			return nil, fmt.Errorf("unmarshal billing address: %w", err)
@@ -243,7 +249,7 @@ func (r *OrderRepository) List(ctx context.Context, filter repository.OrderFilte
 			return nil, 0, fmt.Errorf("scan order row: %w", err)
 		}
 
-		if shippingJSON != nil {
+		if len(shippingJSON) > 0 && string(shippingJSON) != "null" {
 			var addr domain.Address
 			if err := json.Unmarshal(shippingJSON, &addr); err != nil {
 				return nil, 0, fmt.Errorf("unmarshal shipping address: %w", err)
@@ -251,7 +257,7 @@ func (r *OrderRepository) List(ctx context.Context, filter repository.OrderFilte
 			o.ShippingAddress = &addr
 		}
 
-		if billingJSON != nil {
+		if len(billingJSON) > 0 && string(billingJSON) != "null" {
 			var addr domain.Address
 			if err := json.Unmarshal(billingJSON, &addr); err != nil {
 				return nil, 0, fmt.Errorf("unmarshal billing address: %w", err)

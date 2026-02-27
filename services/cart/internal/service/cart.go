@@ -77,6 +77,7 @@ func (s *CartService) GetCart(ctx context.Context, userID string) (*domain.Cart,
 }
 
 // AddItem adds an item to the user's cart. If the same product+variant exists, it merges by increasing quantity.
+// Uses optimistic locking to prevent race conditions on concurrent cart modifications.
 func (s *CartService) AddItem(ctx context.Context, userID string, input AddItemInput) (*domain.Cart, error) {
 	if userID == "" {
 		return nil, apperrors.InvalidInput("user id is required")
@@ -104,6 +105,8 @@ func (s *CartService) AddItem(ctx context.Context, userID string, input AddItemI
 	if err != nil {
 		return nil, err
 	}
+
+	expectedVersion := cart.Version
 
 	// Check if the item already exists (same product+variant). If so, merge.
 	found := false
@@ -143,8 +146,12 @@ func (s *CartService) AddItem(ctx context.Context, userID string, input AddItemI
 	cart.UpdatedAt = now
 	cart.ExpiresAt = now.Add(s.cartTTL)
 
-	if err := s.repo.Save(ctx, cart); err != nil {
+	ok, err := s.repo.SaveIfVersion(ctx, cart, expectedVersion)
+	if err != nil {
 		return nil, fmt.Errorf("save cart: %w", err)
+	}
+	if !ok {
+		return nil, apperrors.Conflict("cart was modified concurrently, please retry")
 	}
 
 	if err := s.producer.PublishCartUpdated(ctx, cart); err != nil {
@@ -165,6 +172,7 @@ func (s *CartService) AddItem(ctx context.Context, userID string, input AddItemI
 }
 
 // UpdateItemQuantity updates the quantity of an item in the cart. If quantity is 0, the item is removed.
+// Uses optimistic locking to prevent race conditions on concurrent cart modifications.
 func (s *CartService) UpdateItemQuantity(ctx context.Context, userID, productID, variantID string, quantity int) (*domain.Cart, error) {
 	if userID == "" {
 		return nil, apperrors.InvalidInput("user id is required")
@@ -186,6 +194,8 @@ func (s *CartService) UpdateItemQuantity(ctx context.Context, userID, productID,
 	if err != nil {
 		return nil, fmt.Errorf("get cart for update: %w", err)
 	}
+
+	expectedVersion := cart.Version
 
 	found := false
 	for i := range cart.Items {
@@ -209,8 +219,12 @@ func (s *CartService) UpdateItemQuantity(ctx context.Context, userID, productID,
 	cart.UpdatedAt = now
 	cart.ExpiresAt = now.Add(s.cartTTL)
 
-	if err := s.repo.Save(ctx, cart); err != nil {
+	ok, err := s.repo.SaveIfVersion(ctx, cart, expectedVersion)
+	if err != nil {
 		return nil, fmt.Errorf("save cart: %w", err)
+	}
+	if !ok {
+		return nil, apperrors.Conflict("cart was modified concurrently, please retry")
 	}
 
 	if err := s.producer.PublishCartUpdated(ctx, cart); err != nil {
@@ -231,6 +245,7 @@ func (s *CartService) UpdateItemQuantity(ctx context.Context, userID, productID,
 }
 
 // RemoveItem removes a specific item from the cart.
+// Uses optimistic locking to prevent race conditions on concurrent cart modifications.
 func (s *CartService) RemoveItem(ctx context.Context, userID, productID, variantID string) (*domain.Cart, error) {
 	if userID == "" {
 		return nil, apperrors.InvalidInput("user id is required")
@@ -246,6 +261,8 @@ func (s *CartService) RemoveItem(ctx context.Context, userID, productID, variant
 	if err != nil {
 		return nil, fmt.Errorf("get cart for remove: %w", err)
 	}
+
+	expectedVersion := cart.Version
 
 	found := false
 	for i := range cart.Items {
@@ -264,8 +281,12 @@ func (s *CartService) RemoveItem(ctx context.Context, userID, productID, variant
 	cart.UpdatedAt = now
 	cart.ExpiresAt = now.Add(s.cartTTL)
 
-	if err := s.repo.Save(ctx, cart); err != nil {
+	ok, err := s.repo.SaveIfVersion(ctx, cart, expectedVersion)
+	if err != nil {
 		return nil, fmt.Errorf("save cart: %w", err)
+	}
+	if !ok {
+		return nil, apperrors.Conflict("cart was modified concurrently, please retry")
 	}
 
 	if err := s.producer.PublishCartUpdated(ctx, cart); err != nil {
@@ -328,6 +349,7 @@ func (s *CartService) newEmptyCart(userID string) *domain.Cart {
 		UserID:    userID,
 		Items:     []domain.CartItem{},
 		Currency:  "USD",
+		Version:   0,
 		CreatedAt: now,
 		UpdatedAt: now,
 		ExpiresAt: now.Add(s.cartTTL),

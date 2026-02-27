@@ -108,6 +108,17 @@ func PaymentFailed(message string) *AppError {
 	}
 }
 
+
+// Conflict creates a 409 error for concurrent modification conflicts.
+func Conflict(message string) *AppError {
+	return &AppError{
+		Code:    "CONFLICT",
+		Message: message,
+		Status:  http.StatusConflict,
+		Err:     ErrConflict,
+	}
+}
+
 // Wrap wraps an error with additional context.
 func Wrap(err error, message string) error {
 	return fmt.Errorf("%s: %w", message, err)

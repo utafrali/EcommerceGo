@@ -20,7 +20,11 @@ type Stock struct {
 }
 
 // Available returns the quantity available for purchase (Quantity - Reserved).
+// If reserved exceeds quantity (data corruption), returns 0 instead of negative.
 func (s *Stock) Available() int {
+	if s.Reserved > s.Quantity {
+		return 0
+	}
 	return s.Quantity - s.Reserved
 }
 

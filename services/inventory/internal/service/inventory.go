@@ -287,6 +287,8 @@ func (s *InventoryService) ReserveStock(ctx context.Context, checkoutID string, 
 }
 
 // ReleaseReservation releases a reservation, restoring the reserved count.
+// It uses SELECT FOR UPDATE inside the transaction to prevent double-release
+// from concurrent calls (e.g., overlapping CleanExpiredReservations runs).
 func (s *InventoryService) ReleaseReservation(ctx context.Context, reservationID string) error {
 	reservation, err := s.reservationRepo.GetByID(ctx, reservationID)
 	if err != nil {
@@ -303,10 +305,26 @@ func (s *InventoryService) ReleaseReservation(ctx context.Context, reservationID
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// Re-check reservation status under row lock to prevent double-release.
+	var lockedStatus string
+	lockQuery := `
+		SELECT status
+		FROM stock_reservations
+		WHERE id = $1
+		FOR UPDATE`
+
+	if err := tx.QueryRow(ctx, lockQuery, reservationID).Scan(&lockedStatus); err != nil {
+		return fmt.Errorf("lock reservation for release: %w", err)
+	}
+	if lockedStatus != domain.ReservationStatusActive {
+		// Another concurrent call already released/confirmed this reservation.
+		return apperrors.InvalidInput(fmt.Sprintf("reservation %s is already %s", reservationID, lockedStatus))
+	}
+
 	// Restore the reserved count.
 	updateQuery := `
 		UPDATE stock
-		SET reserved = reserved - $1, updated_at = NOW()
+		SET reserved = GREATEST(reserved - $1, 0), updated_at = NOW()
 		WHERE product_id = $2 AND variant_id = $3`
 
 	_, err = tx.Exec(ctx, updateQuery, reservation.Quantity, reservation.ProductID, reservation.VariantID)

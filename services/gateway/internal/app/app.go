@@ -45,7 +45,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 
 // Run starts the HTTP server and blocks until the context is canceled.
 func (a *App) Run(ctx context.Context) error {
-	errCh := make(chan error, 1)
+	errCh := make(chan error, 2)
 
 	go func() {
 		a.logger.Info("starting HTTP server",

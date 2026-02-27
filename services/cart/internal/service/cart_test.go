@@ -37,6 +37,11 @@ func (m *mockCartRepository) Save(ctx context.Context, cart *domain.Cart) error 
 	return args.Error(0)
 }
 
+func (m *mockCartRepository) SaveIfVersion(ctx context.Context, cart *domain.Cart, expectedVersion int) (bool, error) {
+	args := m.Called(ctx, cart, expectedVersion)
+	return args.Bool(0), args.Error(1)
+}
+
 func (m *mockCartRepository) Delete(ctx context.Context, userID string) error {
 	args := m.Called(ctx, userID)
 	return args.Error(0)
@@ -73,6 +78,7 @@ func newCartWithItem(userID string) *domain.Cart {
 			},
 		},
 		Currency:  "USD",
+		Version:   1,
 		CreatedAt: now,
 		UpdatedAt: now,
 		ExpiresAt: now.Add(7 * 24 * time.Hour),
@@ -95,6 +101,7 @@ func TestGetCart_Empty(t *testing.T) {
 	assert.Equal(t, "user-1", cart.UserID)
 	assert.Empty(t, cart.Items)
 	assert.Equal(t, "USD", cart.Currency)
+	assert.Equal(t, 0, cart.Version)
 	assert.NotZero(t, cart.CreatedAt)
 	assert.NotZero(t, cart.UpdatedAt)
 	assert.NotZero(t, cart.ExpiresAt)
@@ -126,7 +133,7 @@ func TestAddItem_NewItem(t *testing.T) {
 
 	// Cart does not exist yet, returns not found.
 	repo.On("Get", ctx, "user-1").Return(nil, apperrors.NotFound("cart", "user-1"))
-	repo.On("Save", ctx, mock.AnythingOfType("*domain.Cart")).Return(nil)
+	repo.On("SaveIfVersion", ctx, mock.AnythingOfType("*domain.Cart"), 0).Return(true, nil)
 
 	input := AddItemInput{
 		ProductID: "prod-1",
@@ -162,7 +169,7 @@ func TestAddItem_MergeExisting(t *testing.T) {
 
 	existing := newCartWithItem("user-1")
 	repo.On("Get", ctx, "user-1").Return(existing, nil)
-	repo.On("Save", ctx, mock.AnythingOfType("*domain.Cart")).Return(nil)
+	repo.On("SaveIfVersion", ctx, mock.AnythingOfType("*domain.Cart"), 1).Return(true, nil)
 
 	// Add the same product+variant again.
 	input := AddItemInput{
@@ -191,7 +198,7 @@ func TestAddItem_DifferentVariant(t *testing.T) {
 
 	existing := newCartWithItem("user-1")
 	repo.On("Get", ctx, "user-1").Return(existing, nil)
-	repo.On("Save", ctx, mock.AnythingOfType("*domain.Cart")).Return(nil)
+	repo.On("SaveIfVersion", ctx, mock.AnythingOfType("*domain.Cart"), 1).Return(true, nil)
 
 	// Add a different variant of the same product.
 	input := AddItemInput{
@@ -316,6 +323,35 @@ func TestAddItem_EmptyProductID(t *testing.T) {
 	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
 }
 
+func TestAddItem_ConcurrentModificationConflict(t *testing.T) {
+	repo := new(mockCartRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	existing := newCartWithItem("user-1")
+	repo.On("Get", ctx, "user-1").Return(existing, nil)
+	// SaveIfVersion returns false to simulate a version conflict.
+	repo.On("SaveIfVersion", ctx, mock.AnythingOfType("*domain.Cart"), 1).Return(false, nil)
+
+	input := AddItemInput{
+		ProductID: "prod-1",
+		VariantID: "var-2",
+		Name:      "Another Product",
+		SKU:       "AP-001",
+		Price:     999,
+		Quantity:  1,
+	}
+
+	cart, err := svc.AddItem(ctx, "user-1", input)
+
+	assert.Nil(t, cart)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrConflict)
+	assert.Contains(t, err.Error(), "cart was modified concurrently")
+
+	repo.AssertExpectations(t)
+}
+
 func TestUpdateItemQuantity_Success(t *testing.T) {
 	repo := new(mockCartRepository)
 	svc := newTestService(repo)
@@ -323,7 +359,7 @@ func TestUpdateItemQuantity_Success(t *testing.T) {
 
 	existing := newCartWithItem("user-1")
 	repo.On("Get", ctx, "user-1").Return(existing, nil)
-	repo.On("Save", ctx, mock.AnythingOfType("*domain.Cart")).Return(nil)
+	repo.On("SaveIfVersion", ctx, mock.AnythingOfType("*domain.Cart"), 1).Return(true, nil)
 
 	cart, err := svc.UpdateItemQuantity(ctx, "user-1", "prod-1", "var-1", 5)
 
@@ -341,7 +377,7 @@ func TestUpdateItemQuantity_ZeroRemoves(t *testing.T) {
 
 	existing := newCartWithItem("user-1")
 	repo.On("Get", ctx, "user-1").Return(existing, nil)
-	repo.On("Save", ctx, mock.AnythingOfType("*domain.Cart")).Return(nil)
+	repo.On("SaveIfVersion", ctx, mock.AnythingOfType("*domain.Cart"), 1).Return(true, nil)
 
 	cart, err := svc.UpdateItemQuantity(ctx, "user-1", "prod-1", "var-1", 0)
 
@@ -395,6 +431,25 @@ func TestUpdateItemQuantity_CartNotFound(t *testing.T) {
 	repo.AssertExpectations(t)
 }
 
+func TestUpdateItemQuantity_ConcurrentModificationConflict(t *testing.T) {
+	repo := new(mockCartRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	existing := newCartWithItem("user-1")
+	repo.On("Get", ctx, "user-1").Return(existing, nil)
+	repo.On("SaveIfVersion", ctx, mock.AnythingOfType("*domain.Cart"), 1).Return(false, nil)
+
+	cart, err := svc.UpdateItemQuantity(ctx, "user-1", "prod-1", "var-1", 5)
+
+	assert.Nil(t, cart)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrConflict)
+	assert.Contains(t, err.Error(), "cart was modified concurrently")
+
+	repo.AssertExpectations(t)
+}
+
 func TestRemoveItem_Success(t *testing.T) {
 	repo := new(mockCartRepository)
 	svc := newTestService(repo)
@@ -402,7 +457,7 @@ func TestRemoveItem_Success(t *testing.T) {
 
 	existing := newCartWithItem("user-1")
 	repo.On("Get", ctx, "user-1").Return(existing, nil)
-	repo.On("Save", ctx, mock.AnythingOfType("*domain.Cart")).Return(nil)
+	repo.On("SaveIfVersion", ctx, mock.AnythingOfType("*domain.Cart"), 1).Return(true, nil)
 
 	cart, err := svc.RemoveItem(ctx, "user-1", "prod-1", "var-1")
 
@@ -440,6 +495,25 @@ func TestRemoveItem_CartNotFound(t *testing.T) {
 
 	assert.Nil(t, cart)
 	assert.Error(t, err)
+
+	repo.AssertExpectations(t)
+}
+
+func TestRemoveItem_ConcurrentModificationConflict(t *testing.T) {
+	repo := new(mockCartRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	existing := newCartWithItem("user-1")
+	repo.On("Get", ctx, "user-1").Return(existing, nil)
+	repo.On("SaveIfVersion", ctx, mock.AnythingOfType("*domain.Cart"), 1).Return(false, nil)
+
+	cart, err := svc.RemoveItem(ctx, "user-1", "prod-1", "var-1")
+
+	assert.Nil(t, cart)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrConflict)
+	assert.Contains(t, err.Error(), "cart was modified concurrently")
 
 	repo.AssertExpectations(t)
 }
@@ -577,6 +651,7 @@ func TestAddItem_ExceedsMaxItemsPerCart(t *testing.T) {
 		UserID:    "user-1",
 		Items:     make([]domain.CartItem, MaxItemsPerCart),
 		Currency:  "USD",
+		Version:   3,
 		CreatedAt: now,
 		UpdatedAt: now,
 		ExpiresAt: now.Add(7 * 24 * time.Hour),
@@ -635,6 +710,7 @@ func TestAddItem_MergeExceedsMaxQuantity(t *testing.T) {
 			},
 		},
 		Currency:  "USD",
+		Version:   2,
 		CreatedAt: now,
 		UpdatedAt: now,
 		ExpiresAt: now.Add(7 * 24 * time.Hour),

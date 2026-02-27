@@ -25,6 +25,9 @@ type Config struct {
 	PostgresDB   string `env:"MEDIA_DB_NAME" envDefault:"media_db"`
 	PostgresSSL  string `env:"POSTGRES_SSL_MODE" envDefault:"disable"`
 
+	// Base URL for media file access (used by memory storage).
+	BaseURL string `env:"MEDIA_BASE_URL" envDefault:""`
+
 	// Kafka
 	KafkaBrokers []string `env:"KAFKA_BROKERS" envDefault:"localhost:9092" envSeparator:","`
 }

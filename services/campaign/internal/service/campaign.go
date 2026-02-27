@@ -521,8 +521,8 @@ func (s *CampaignService) ValidateMultipleCoupons(ctx context.Context, input *Va
 		validation *CouponValidation
 	}
 
-	var candidates []candidateCoupon
-	var warnings []string
+	candidates := make([]candidateCoupon, 0)
+	warnings := make([]string, 0)
 
 	for _, code := range input.Codes {
 		validation, err := s.ValidateCoupon(ctx, code, validateInput)
@@ -694,7 +694,7 @@ func (s *CampaignService) ValidateMultipleCoupons(ctx context.Context, input *Va
 	}
 
 	// Build the final valid set.
-	var validCoupons []CouponValidation
+	validCoupons := make([]CouponValidation, 0)
 	var totalDiscount int64
 
 	for _, c := range candidates {
@@ -705,9 +705,6 @@ func (s *CampaignService) ValidateMultipleCoupons(ctx context.Context, input *Va
 		totalDiscount += c.validation.DiscountAmount
 	}
 
-	if validCoupons == nil {
-		validCoupons = []CouponValidation{}
-	}
 
 	// Ensure total discount does not exceed order amount.
 	if totalDiscount > input.OrderAmount {

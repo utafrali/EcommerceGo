@@ -8,6 +8,7 @@ type Cart struct {
 	UserID    string     `json:"user_id"`
 	Items     []CartItem `json:"items"`
 	Currency  string     `json:"currency"`
+	Version   int        `json:"version"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 	ExpiresAt time.Time  `json:"expires_at"`
