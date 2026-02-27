@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { formatPrice, formatDate, cn } from '@/lib/utils';
 import { ORDER_STATUSES } from '@/lib/constants';
-import { Badge, Pagination, useToast } from '@/components/ui';
+import { Badge, Pagination, useToast, EmptyState, PackageIcon } from '@/components/ui';
 import type { Order, ApiListResponse } from '@/types';
 
 // ─── Orders List Page ───────────────────────────────────────────────────────
@@ -215,51 +215,17 @@ function OrderRow({ order }: { order: Order }) {
 
 function EmptyOrders() {
   return (
-    <div className="mt-16 flex flex-col items-center text-center">
-      {/* Package icon */}
-      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-stone-100">
-        <svg
-          width={48}
-          height={48}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-stone-400"
-        >
-          <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
-          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-          <line x1={12} y1={22.08} x2={12} y2={12} />
-        </svg>
-      </div>
-      <h2 className="mt-6 text-xl font-semibold text-stone-900">
-        You haven&apos;t placed any orders yet
-      </h2>
-      <p className="mt-2 text-sm text-stone-500">
-        When you place an order, it will appear here.
-      </p>
-      <Link
-        href="/products"
-        className="mt-6 inline-flex items-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-light focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
-      >
-        Start Shopping
-        <svg
-          width={16}
-          height={16}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="flex-shrink-0"
-        >
-          <path d="M5 12h14M12 5l7 7-7 7" />
-        </svg>
-      </Link>
-    </div>
+    <EmptyState
+      icon={<PackageIcon className="text-brand" />}
+      iconBgClass="bg-brand/10"
+      heading="No orders yet"
+      message="Start your shopping journey today! Discover our latest collections and find something special."
+      primaryAction={{
+        label: 'Explore Products',
+        href: '/products',
+      }}
+      className="mt-16"
+    />
   );
 }
 

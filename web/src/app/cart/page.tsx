@@ -8,7 +8,14 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { formatPrice, calculateDiscount, cn } from '@/lib/utils';
-import { QuantitySelector, PriceDisplay, Badge, useToast } from '@/components/ui';
+import {
+  QuantitySelector,
+  PriceDisplay,
+  Badge,
+  useToast,
+  EmptyState,
+  CartIcon,
+} from '@/components/ui';
 import type { Product, Campaign } from '@/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -533,39 +540,17 @@ function CartItemRow({
 
 function EmptyCart() {
   return (
-    <div className="mt-16 flex flex-col items-center text-center">
-      {/* Cart icon */}
-      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-stone-100">
-        <svg
-          width={48}
-          height={48}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-stone-400"
-        >
-          <circle cx={9} cy={21} r={1} />
-          <circle cx={20} cy={21} r={1} />
-          <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
-        </svg>
-      </div>
-      <h2 className="mt-6 text-xl font-semibold text-stone-900">
-        Your cart is empty
-      </h2>
-      <p className="mt-2 text-sm text-stone-500">
-        Looks like you haven&apos;t added anything to your cart yet.
-      </p>
-      <Link
-        href="/products"
-        className="mt-6 inline-flex items-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-brand-light transition-colors focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
-      >
-        Continue Shopping
-        <ArrowRightIcon />
-      </Link>
-    </div>
+    <EmptyState
+      icon={<CartIcon className="text-brand" />}
+      iconBgClass="bg-brand/10"
+      heading="Your cart is empty"
+      message="Discover amazing products and start shopping today. Your perfect find is just a click away!"
+      primaryAction={{
+        label: 'Explore Products',
+        href: '/products',
+      }}
+      className="mt-16"
+    />
   );
 }
 

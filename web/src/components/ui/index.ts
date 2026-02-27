@@ -19,3 +19,12 @@ export {
   ProductGridSkeleton,
   ProductDetailSkeleton,
 } from './LoadingSkeleton';
+export {
+  EmptyState,
+  CartIcon,
+  HeartIcon,
+  PackageIcon,
+  SearchIcon,
+  ChatBubbleIcon,
+} from './EmptyState';
+export type { EmptyStateProps } from './EmptyState';

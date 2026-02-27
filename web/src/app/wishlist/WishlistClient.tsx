@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { ProductGridSkeleton } from '@/components/ui/LoadingSkeleton';
 import { formatPrice, getProductImageUrl } from '@/lib/utils';
 import { WishlistButton } from '@/components/ui/WishlistButton';
+import { EmptyState, HeartIcon } from '@/components/ui';
 import type { Product } from '@/types';
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -70,31 +71,20 @@ export function WishlistClient() {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <svg
-          className="mb-4 h-16 w-16 text-stone-300"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-        </svg>
-        <h2 className="mb-2 text-lg font-semibold text-stone-700">
-          Sign in to view your wishlist
-        </h2>
-        <p className="mb-6 text-sm text-stone-500">
-          Keep track of the products you love by signing in to your account.
-        </p>
-        <Link
-          href="/auth/login"
-          className="rounded-lg bg-brand px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-light"
-        >
-          Sign In
-        </Link>
-      </div>
+      <EmptyState
+        icon={<HeartIcon className="text-brand" />}
+        iconBgClass="bg-brand/10"
+        heading="Sign in to view your wishlist"
+        message="Save your favorite products and access them anytime. Sign in to start building your personal collection."
+        primaryAction={{
+          label: 'Sign In',
+          href: '/auth/login',
+        }}
+        secondaryAction={{
+          label: 'Create Account',
+          href: '/auth/register',
+        }}
+      />
     );
   }
 
@@ -108,31 +98,16 @@ export function WishlistClient() {
 
   if (products.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <svg
-          className="mb-4 h-16 w-16 text-stone-300"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-        </svg>
-        <h2 className="mb-2 text-lg font-semibold text-stone-700">
-          Your wishlist is empty
-        </h2>
-        <p className="mb-6 text-sm text-stone-500">
-          Browse our products and add your favorites here.
-        </p>
-        <Link
-          href="/products"
-          className="rounded-lg bg-brand px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-light"
-        >
-          Start Shopping
-        </Link>
-      </div>
+      <EmptyState
+        icon={<HeartIcon className="text-brand" />}
+        iconBgClass="bg-brand/10"
+        heading="Your wishlist is empty"
+        message="Discover products you'll love and save them here. Start exploring our curated collection today!"
+        primaryAction={{
+          label: 'Explore Products',
+          href: '/products',
+        }}
+      />
     );
   }
 
