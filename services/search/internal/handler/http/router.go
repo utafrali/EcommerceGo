@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/utafrali/EcommerceGo/pkg/health"
 	"github.com/utafrali/EcommerceGo/pkg/middleware"
@@ -27,10 +28,14 @@ func NewRouter(
 	r.Use(chimw.Compress(5))
 	r.Use(chimw.Timeout(30 * time.Second))
 	r.Use(middleware.RequestLogging(logger))
+	r.Use(middleware.PrometheusMetrics("search"))
 
 	// Health check endpoints
 	r.Get("/health/live", healthHandler.LivenessHandler())
 	r.Get("/health/ready", healthHandler.ReadinessHandler())
+	r.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		promhttp.Handler().ServeHTTP(w, r)
+	})
 
 	// Search API endpoints
 	searchHandler := NewSearchHandler(searchService, logger)

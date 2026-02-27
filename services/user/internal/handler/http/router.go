@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/utafrali/EcommerceGo/pkg/health"
 	"github.com/utafrali/EcommerceGo/pkg/middleware"
@@ -28,10 +29,14 @@ func NewRouter(
 	r.Use(CORS(corsConfig))
 	r.Use(middleware.Recovery(logger))
 	r.Use(middleware.RequestLogging(logger))
+	r.Use(middleware.PrometheusMetrics("user"))
 
 	// Health check endpoints
 	r.Get("/health/live", healthHandler.LivenessHandler())
 	r.Get("/health/ready", healthHandler.ReadinessHandler())
+	r.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		promhttp.Handler().ServeHTTP(w, r)
+	})
 
 	// Auth endpoints (public)
 	authHandler := NewAuthHandler(userService, logger)

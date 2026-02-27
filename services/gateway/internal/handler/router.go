@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	pkgmiddleware "github.com/utafrali/EcommerceGo/pkg/middleware"
 	"github.com/utafrali/EcommerceGo/services/gateway/internal/config"
@@ -22,10 +23,14 @@ func NewRouter(cfg *config.Config, sp *proxy.ServiceProxy, logger *slog.Logger) 
 	r.Use(middleware.RateLimit(cfg.RateLimitRPS, cfg.RateLimitBurst, logger))
 	r.Use(pkgmiddleware.Recovery(logger))
 	r.Use(pkgmiddleware.RequestLogging(logger))
+	r.Use(pkgmiddleware.PrometheusMetrics("gateway"))
 
 	// Health check endpoints (no auth required).
 	r.Get("/health/live", LivenessHandler())
 	r.Get("/health/ready", ReadinessHandler())
+	r.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		promhttp.Handler().ServeHTTP(w, r)
+	})
 
 	// JWT auth middleware applied to all /api routes.
 	r.Route("/api", func(r chi.Router) {
