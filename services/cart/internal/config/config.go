@@ -32,5 +32,16 @@ func Load() (*Config, error) {
 	if err := pkgconfig.Load(cfg); err != nil {
 		return nil, fmt.Errorf("load cart config: %w", err)
 	}
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
 	return cfg, nil
+}
+
+// validate checks configuration invariants.
+func (c *Config) validate() error {
+	if c.HTTPPort < 1 || c.HTTPPort > 65535 {
+		return fmt.Errorf("invalid HTTP port: %d", c.HTTPPort)
+	}
+	return nil
 }

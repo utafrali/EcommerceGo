@@ -117,6 +117,9 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	healthHandler.Register("postgres", func(ctx context.Context) error {
 		return pool.Ping(ctx)
 	})
+	healthHandler.Register("kafka", func(ctx context.Context) error {
+		return kafkaProducer.Ping(ctx)
+	})
 
 	// HTTP router.
 	router := handler.NewRouter(notificationService, healthHandler, logger)

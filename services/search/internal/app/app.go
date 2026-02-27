@@ -81,6 +81,9 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	if esEng != nil {
 		healthHandler.Register("elasticsearch", esEng.Ping)
 	}
+	healthHandler.Register("kafka", func(ctx context.Context) error {
+		return pkgkafka.PingBrokers(ctx, cfg.KafkaBrokers)
+	})
 
 	// HTTP router.
 	router := handler.NewRouter(searchService, healthHandler, logger)

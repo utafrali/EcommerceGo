@@ -35,7 +35,21 @@ func Load() (*Config, error) {
 	if err := pkgconfig.Load(cfg); err != nil {
 		return nil, fmt.Errorf("load campaign config: %w", err)
 	}
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
 	return cfg, nil
+}
+
+// validate checks configuration invariants.
+func (c *Config) validate() error {
+	if c.HTTPPort < 1 || c.HTTPPort > 65535 {
+		return fmt.Errorf("invalid HTTP port: %d", c.HTTPPort)
+	}
+	if c.GRPCPort < 1 || c.GRPCPort > 65535 {
+		return fmt.Errorf("invalid gRPC port: %d", c.GRPCPort)
+	}
+	return nil
 }
 
 // PostgresDSN returns the PostgreSQL connection string.

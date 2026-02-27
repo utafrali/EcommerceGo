@@ -87,6 +87,9 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	healthHandler.Register("postgres", func(ctx context.Context) error {
 		return pool.Ping(ctx)
 	})
+	healthHandler.Register("kafka", func(ctx context.Context) error {
+		return producer.Ping(ctx)
+	})
 
 	// HTTP router.
 	router := handler.NewRouter(mediaService, healthHandler, logger)

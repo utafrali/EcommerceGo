@@ -64,6 +64,9 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	healthHandler.Register("redis", func(ctx context.Context) error {
 		return rdb.Ping(ctx).Err()
 	})
+	healthHandler.Register("kafka", func(ctx context.Context) error {
+		return producer.Ping(ctx)
+	})
 
 	// HTTP router.
 	router := handler.NewRouter(cartService, healthHandler, logger)
