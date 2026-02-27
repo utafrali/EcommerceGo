@@ -18,6 +18,7 @@ var publicRoutes = []struct {
 	{method: http.MethodGet, prefix: "/api/v1/products"},
 	{method: http.MethodGet, prefix: "/api/v1/categories"},
 	{method: http.MethodGet, prefix: "/api/v1/brands"},
+	{method: http.MethodGet, prefix: "/api/v1/banners"},
 	{method: http.MethodGet, prefix: "/api/v1/search"},
 	{method: http.MethodGet, prefix: "/api/v1/campaigns"},
 	{method: http.MethodPost, prefix: "/api/v1/auth"},

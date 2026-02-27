@@ -195,7 +195,7 @@ export default function CartPage() {
   if (authLoading || cartLoading) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+        <h1 className="text-3xl font-bold tracking-tight text-stone-900">
           Shopping Cart
         </h1>
         <CartSkeleton />
@@ -210,7 +210,7 @@ export default function CartPage() {
   if (isEmpty) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+        <h1 className="text-3xl font-bold tracking-tight text-stone-900">
           Shopping Cart
         </h1>
         <EmptyCart />
@@ -222,14 +222,14 @@ export default function CartPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+      <h1 className="text-3xl font-bold tracking-tight text-stone-900">
         Shopping Cart
       </h1>
 
       <div className="mt-8 lg:grid lg:grid-cols-12 lg:gap-x-12">
         {/* Cart items list */}
         <section aria-label="Cart items" className="lg:col-span-7">
-          <ul className="divide-y divide-gray-200 border-b border-t border-gray-200">
+          <ul className="divide-y divide-stone-200 border-b border-t border-stone-200">
             {cart.items.map((item) => {
               const product = products[item.product_id];
               const isUpdating = updatingItems.has(item.product_id);
@@ -253,7 +253,7 @@ export default function CartPage() {
           <div className="mt-6">
             <Link
               href="/products"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:text-brand-light transition-colors"
             >
               <ArrowLeftIcon />
               Continue Shopping
@@ -266,8 +266,8 @@ export default function CartPage() {
           aria-label="Order summary"
           className="mt-10 lg:col-span-5 lg:mt-0"
         >
-          <div className="rounded-lg bg-gray-50 px-6 py-6">
-            <h2 className="text-lg font-semibold text-gray-900">
+          <div className="rounded-lg bg-stone-50 px-6 py-6">
+            <h2 className="text-lg font-semibold text-stone-900">
               Order Summary
             </h2>
 
@@ -275,7 +275,7 @@ export default function CartPage() {
             <div className="mt-6">
               <label
                 htmlFor="coupon-code"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-stone-700"
               >
                 Coupon / Campaign Code
               </label>
@@ -292,7 +292,7 @@ export default function CartPage() {
                   <button
                     type="button"
                     onClick={handleRemoveCoupon}
-                    className="ml-auto text-sm text-gray-500 hover:text-red-600 transition-colors"
+                    className="ml-auto text-sm text-stone-500 hover:text-red-600 transition-colors"
                   >
                     Remove
                   </button>
@@ -308,7 +308,7 @@ export default function CartPage() {
                       if (e.key === 'Enter') handleApplyCoupon();
                     }}
                     placeholder="Enter code"
-                    className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm placeholder:text-stone-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                   />
                   <button
                     type="button"
@@ -317,8 +317,8 @@ export default function CartPage() {
                     className={cn(
                       'rounded-md px-4 py-2 text-sm font-medium transition-colors',
                       couponLoading || !couponCode.trim()
-                        ? 'cursor-not-allowed bg-gray-200 text-gray-400'
-                        : 'bg-gray-900 text-white hover:bg-gray-800',
+                        ? 'cursor-not-allowed bg-stone-200 text-stone-400'
+                        : 'bg-stone-900 text-white hover:bg-stone-800',
                     )}
                   >
                     {couponLoading ? 'Applying...' : 'Apply'}
@@ -330,8 +330,8 @@ export default function CartPage() {
             {/* Summary lines */}
             <dl className="mt-6 space-y-4">
               <div className="flex items-center justify-between">
-                <dt className="text-sm text-gray-600">Subtotal</dt>
-                <dd className="text-sm font-medium text-gray-900">
+                <dt className="text-sm text-stone-600">Subtotal</dt>
+                <dd className="text-sm font-medium text-stone-900">
                   {formatPrice(subtotal)}
                 </dd>
               </div>
@@ -345,9 +345,9 @@ export default function CartPage() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between border-t border-gray-200 pt-4">
-                <dt className="text-sm text-gray-600">Shipping</dt>
-                <dd className="text-sm font-medium text-gray-900">
+              <div className="flex items-center justify-between border-t border-stone-200 pt-4">
+                <dt className="text-sm text-stone-600">Shipping</dt>
+                <dd className="text-sm font-medium text-stone-900">
                   {shippingCost === 0 ? (
                     <span className="text-green-600">Free</span>
                   ) : (
@@ -357,16 +357,16 @@ export default function CartPage() {
               </div>
 
               {shippingCost > 0 && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-stone-500">
                   Free shipping on orders over {formatPrice(FREE_SHIPPING_THRESHOLD)}
                 </p>
               )}
 
-              <div className="flex items-center justify-between border-t border-gray-200 pt-4">
-                <dt className="text-base font-semibold text-gray-900">
+              <div className="flex items-center justify-between border-t border-stone-200 pt-4">
+                <dt className="text-base font-semibold text-stone-900">
                   Total
                 </dt>
-                <dd className="text-base font-semibold text-gray-900">
+                <dd className="text-base font-semibold text-stone-900">
                   {formatPrice(total)}
                 </dd>
               </div>
@@ -380,15 +380,15 @@ export default function CartPage() {
               className={cn(
                 'mt-6 w-full rounded-md px-6 py-3 text-base font-medium text-white shadow-sm transition-colors',
                 productsLoading || subtotal === 0
-                  ? 'cursor-not-allowed bg-indigo-300'
-                  : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
+                  ? 'cursor-not-allowed bg-stone-300'
+                  : 'bg-brand hover:bg-brand-light focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2',
               )}
             >
               {!isAuthenticated ? 'Sign in to Checkout' : 'Proceed to Checkout'}
             </button>
 
             {!isAuthenticated && (
-              <p className="mt-2 text-center text-xs text-gray-500">
+              <p className="mt-2 text-center text-xs text-stone-500">
                 You will be redirected to sign in before checkout.
               </p>
             )}
@@ -423,11 +423,11 @@ function CartItemRow({
   if (isLoading || !product) {
     return (
       <li className="flex gap-4 py-6">
-        <div className="h-24 w-24 animate-pulse rounded-md bg-gray-200" />
+        <div className="h-24 w-24 animate-pulse rounded-md bg-stone-200" />
         <div className="flex flex-1 flex-col gap-2">
-          <div className="h-4 w-1/3 animate-pulse rounded bg-gray-200" />
-          <div className="h-3 w-1/4 animate-pulse rounded bg-gray-200" />
-          <div className="h-3 w-1/5 animate-pulse rounded bg-gray-200" />
+          <div className="h-4 w-1/3 animate-pulse rounded bg-stone-200" />
+          <div className="h-3 w-1/4 animate-pulse rounded bg-stone-200" />
+          <div className="h-3 w-1/5 animate-pulse rounded bg-stone-200" />
         </div>
       </li>
     );
@@ -447,7 +447,7 @@ function CartItemRow({
       )}
     >
       {/* Product image */}
-      <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+      <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-stone-200">
         <Image
           src={imageUrl}
           alt={product.name}
@@ -461,10 +461,10 @@ function CartItemRow({
       <div className="flex flex-1 flex-col">
         <div className="flex justify-between">
           <div>
-            <h3 className="text-sm font-medium text-gray-900">
+            <h3 className="text-sm font-medium text-stone-900">
               <Link
                 href={`/products/${product.slug}`}
-                className="hover:text-indigo-600 transition-colors"
+                className="hover:text-brand transition-colors"
               >
                 {product.name}
               </Link>
@@ -478,7 +478,7 @@ function CartItemRow({
                 </Badge>
               )}
               {product.brand && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-stone-500">
                   {product.brand.name}
                 </span>
               )}
@@ -492,7 +492,7 @@ function CartItemRow({
 
           {/* Line total (desktop) */}
           <div className="hidden sm:block text-right">
-            <span className="text-sm font-semibold text-gray-900">
+            <span className="text-sm font-semibold text-stone-900">
               {formatPrice(lineTotal)}
             </span>
           </div>
@@ -519,7 +519,7 @@ function CartItemRow({
           </div>
 
           {/* Line total (mobile) */}
-          <span className="text-sm font-semibold text-gray-900 sm:hidden">
+          <span className="text-sm font-semibold text-stone-900 sm:hidden">
             {formatPrice(lineTotal)}
           </span>
         </div>
@@ -534,7 +534,7 @@ function EmptyCart() {
   return (
     <div className="mt-16 flex flex-col items-center text-center">
       {/* Cart icon */}
-      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
+      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-stone-100">
         <svg
           width={48}
           height={48}
@@ -544,22 +544,22 @@ function EmptyCart() {
           strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-gray-400"
+          className="text-stone-400"
         >
           <circle cx={9} cy={21} r={1} />
           <circle cx={20} cy={21} r={1} />
           <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
         </svg>
       </div>
-      <h2 className="mt-6 text-xl font-semibold text-gray-900">
+      <h2 className="mt-6 text-xl font-semibold text-stone-900">
         Your cart is empty
       </h2>
-      <p className="mt-2 text-sm text-gray-500">
+      <p className="mt-2 text-sm text-stone-500">
         Looks like you haven&apos;t added anything to your cart yet.
       </p>
       <Link
         href="/products"
-        className="mt-6 inline-flex items-center gap-2 rounded-md bg-indigo-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+        className="mt-6 inline-flex items-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-brand-light transition-colors focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
       >
         Continue Shopping
         <ArrowRightIcon />
@@ -574,29 +574,29 @@ function CartSkeleton() {
   return (
     <div className="mt-8 lg:grid lg:grid-cols-12 lg:gap-x-12">
       <div className="lg:col-span-7">
-        <div className="divide-y divide-gray-200 border-b border-t border-gray-200">
+        <div className="divide-y divide-stone-200 border-b border-t border-stone-200">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="flex gap-4 py-6">
-              <div className="h-24 w-24 animate-pulse rounded-md bg-gray-200" />
+              <div className="h-24 w-24 animate-pulse rounded-md bg-stone-200" />
               <div className="flex flex-1 flex-col gap-2">
-                <div className="h-4 w-2/5 animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-1/4 animate-pulse rounded bg-gray-200" />
-                <div className="h-3 w-1/6 animate-pulse rounded bg-gray-200" />
-                <div className="mt-auto h-9 w-28 animate-pulse rounded bg-gray-200" />
+                <div className="h-4 w-2/5 animate-pulse rounded bg-stone-200" />
+                <div className="h-3 w-1/4 animate-pulse rounded bg-stone-200" />
+                <div className="h-3 w-1/6 animate-pulse rounded bg-stone-200" />
+                <div className="mt-auto h-9 w-28 animate-pulse rounded bg-stone-200" />
               </div>
             </div>
           ))}
         </div>
       </div>
       <div className="mt-10 lg:col-span-5 lg:mt-0">
-        <div className="rounded-lg bg-gray-50 px-6 py-6">
-          <div className="h-6 w-1/3 animate-pulse rounded bg-gray-200" />
+        <div className="rounded-lg bg-stone-50 px-6 py-6">
+          <div className="h-6 w-1/3 animate-pulse rounded bg-stone-200" />
           <div className="mt-6 space-y-4">
-            <div className="h-10 w-full animate-pulse rounded bg-gray-200" />
-            <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
-            <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
-            <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
-            <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+            <div className="h-10 w-full animate-pulse rounded bg-stone-200" />
+            <div className="h-4 w-full animate-pulse rounded bg-stone-200" />
+            <div className="h-4 w-full animate-pulse rounded bg-stone-200" />
+            <div className="h-4 w-full animate-pulse rounded bg-stone-200" />
+            <div className="h-12 w-full animate-pulse rounded bg-stone-200" />
           </div>
         </div>
       </div>

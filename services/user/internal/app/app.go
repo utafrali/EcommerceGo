@@ -86,6 +86,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	userRepo := postgres.NewUserRepository(pool)
 	addressRepo := postgres.NewAddressRepository(pool)
 	refreshTokenRepo := postgres.NewRefreshTokenRepository(pool)
+	wishlistRepo := postgres.NewWishlistRepository(pool)
 	eventProducer := event.NewProducer(producer, logger)
 	userService := service.NewUserService(userRepo, addressRepo, refreshTokenRepo, jwtManager, eventProducer, logger)
 
@@ -96,7 +97,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	})
 
 	// HTTP router.
-	router := handler.NewRouter(userService, jwtManager, healthHandler, logger)
+	router := handler.NewRouter(userService, wishlistRepo, jwtManager, healthHandler, logger)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.HTTPPort),

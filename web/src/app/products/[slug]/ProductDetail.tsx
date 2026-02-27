@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import type { Product, ProductVariant, ReviewSummary } from '@/types';
 import { ImageGallery, RatingStars, PriceDisplay, QuantitySelector, Badge } from '@/components/ui';
+import { WishlistButton } from '@/components/ui/WishlistButton';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
@@ -58,6 +59,13 @@ function trackRecentlyViewed(product: Product) {
   } catch {
     // localStorage may be unavailable -- silently ignore
   }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function calculateDiscountPercentage(originalPrice: number, salePrice: number): number | null {
+  if (originalPrice <= 0 || salePrice >= originalPrice) return null;
+  return Math.round(((originalPrice - salePrice) / originalPrice) * 100);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -129,6 +137,14 @@ export function ProductDetail({ product, reviewSummary }: ProductDetailProps) {
       ? selectedVariant.price
       : product.base_price;
 
+  // Calculate discount percentage (variant price vs base price)
+  const discountPercent = useMemo(() => {
+    if (selectedVariant?.price !== null && selectedVariant?.price !== undefined) {
+      return calculateDiscountPercentage(product.base_price, selectedVariant.price);
+    }
+    return null;
+  }, [product.base_price, selectedVariant]);
+
   // Build the image URL for the cart
   const primaryImageUrl = useMemo(() => {
     if (product.images && product.images.length > 0) {
@@ -164,166 +180,203 @@ export function ProductDetail({ product, reviewSummary }: ProductDetailProps) {
   const images = product.images || [];
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-      {/* Left: Image Gallery */}
-      <div>
-        <ImageGallery images={images} />
-      </div>
-
-      {/* Right: Product Info */}
-      <div className="flex flex-col">
-        {/* Brand */}
-        {product.brand && (
-          <Link
-            href={`/products?brand_id=${product.brand.id}`}
-            className="mb-1 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-          >
-            {product.brand.name}
-          </Link>
-        )}
-
-        {/* Product Name */}
-        <h1 className="mb-3 text-2xl font-bold text-gray-900 sm:text-3xl">
-          {product.name}
-        </h1>
-
-        {/* Rating Summary */}
-        {reviewSummary.total_count > 0 && (
-          <div className="mb-4">
-            <RatingStars
-              rating={reviewSummary.average_rating}
-              count={reviewSummary.total_count}
-              size="md"
-            />
-          </div>
-        )}
-
-        {/* Price */}
-        <div className="mb-6">
-          <PriceDisplay price={displayPrice} currency={product.currency} size="lg" />
+    <>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        {/* Left: Image Gallery */}
+        <div>
+          <ImageGallery images={images} />
         </div>
 
-        {/* Status Badge */}
-        {product.status !== 'published' && (
-          <div className="mb-4">
-            <Badge
-              variant={product.status === 'draft' ? 'warning' : 'error'}
-              size="md"
+        {/* Right: Product Info */}
+        <div className="flex flex-col">
+          {/* Brand */}
+          {product.brand && (
+            <Link
+              href={`/products?brand_id=${product.brand.id}`}
+              className="mb-1 text-sm font-medium text-brand hover:text-brand-light transition-colors"
             >
-              {product.status === 'draft' ? 'Coming Soon' : product.status}
-            </Badge>
-          </div>
-        )}
+              {product.brand.name}
+            </Link>
+          )}
 
-        {/* Variant Selectors */}
-        {hasVariants && (
-          <div className="mb-6 space-y-4">
-            {Object.entries(attributeOptions).map(([attrKey, values]) => (
-              <div key={attrKey}>
-                <label className="mb-2 block text-sm font-medium text-gray-700 capitalize">
-                  {attrKey}
-                  {selectedAttributes[attrKey] && (
-                    <span className="ml-2 font-normal text-gray-500">
-                      : {selectedAttributes[attrKey]}
-                    </span>
-                  )}
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {values.map((value) => {
-                    const isSelected = selectedAttributes[attrKey] === value;
-                    // For color attributes, render color swatches
-                    if (attrKey.toLowerCase() === 'color') {
+          {/* Product Name + Wishlist */}
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="mb-3 text-2xl font-bold text-stone-900 sm:text-3xl">
+              {product.name}
+            </h1>
+            <WishlistButton productId={product.id} size="md" />
+          </div>
+
+          {/* Rating Summary */}
+          {reviewSummary.total_count > 0 && (
+            <div className="mb-4">
+              <RatingStars
+                rating={reviewSummary.average_rating}
+                count={reviewSummary.total_count}
+                size="md"
+              />
+            </div>
+          )}
+
+          {/* Price + Discount Badge */}
+          <div className="mb-6 flex items-center gap-3">
+            <PriceDisplay price={displayPrice} currency={product.currency} size="lg" />
+            {discountPercent && discountPercent > 0 && (
+              <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-semibold text-white">
+                -{discountPercent}%
+              </span>
+            )}
+          </div>
+
+          {/* Status Badge */}
+          {product.status !== 'published' && (
+            <div className="mb-4">
+              <Badge
+                variant={product.status === 'draft' ? 'warning' : 'error'}
+                size="md"
+              >
+                {product.status === 'draft' ? 'Coming Soon' : product.status}
+              </Badge>
+            </div>
+          )}
+
+          {/* Variant Selectors */}
+          {hasVariants && (
+            <div className="mb-6 space-y-4">
+              {Object.entries(attributeOptions).map(([attrKey, values]) => (
+                <div key={attrKey}>
+                  <label className="mb-2 block text-sm font-medium text-stone-700 capitalize">
+                    {attrKey}
+                    {selectedAttributes[attrKey] && (
+                      <span className="ml-2 font-normal text-stone-500">
+                        : {selectedAttributes[attrKey]}
+                      </span>
+                    )}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {values.map((value) => {
+                      const isSelected = selectedAttributes[attrKey] === value;
+                      // For color attributes, render color swatches
+                      if (attrKey.toLowerCase() === 'color') {
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => handleAttributeSelect(attrKey, value)}
+                            aria-label={`Select color ${value}`}
+                            title={value}
+                            className={cn(
+                              'h-9 w-9 rounded-full border-2 transition-all',
+                              isSelected
+                                ? 'border-brand ring-2 ring-brand ring-offset-1'
+                                : 'border-stone-300 hover:border-stone-400',
+                            )}
+                            style={{ backgroundColor: value.toLowerCase() }}
+                          />
+                        );
+                      }
+                      // Default: pill/button selector
                       return (
                         <button
                           key={value}
                           type="button"
                           onClick={() => handleAttributeSelect(attrKey, value)}
-                          aria-label={`Select color ${value}`}
-                          title={value}
                           className={cn(
-                            'h-9 w-9 rounded-full border-2 transition-all',
+                            'rounded-md border px-4 py-2 text-sm font-medium transition-all',
                             isSelected
-                              ? 'border-indigo-600 ring-2 ring-indigo-600 ring-offset-1'
-                              : 'border-gray-300 hover:border-gray-400',
+                              ? 'border-brand bg-brand-lighter text-brand'
+                              : 'border-stone-300 bg-white text-stone-700 hover:border-stone-400 hover:bg-stone-50',
                           )}
-                          style={{ backgroundColor: value.toLowerCase() }}
-                        />
+                        >
+                          {value}
+                        </button>
                       );
-                    }
-                    // Default: pill/button selector
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => handleAttributeSelect(attrKey, value)}
-                        className={cn(
-                          'rounded-md border px-4 py-2 text-sm font-medium transition-all',
-                          isSelected
-                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                            : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50',
-                        )}
-                      >
-                        {value}
-                      </button>
-                    );
-                  })}
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
-            {/* Selected variant SKU */}
-            {selectedVariant && (
-              <p className="text-xs text-gray-500">
-                SKU: {selectedVariant.sku}
-              </p>
-            )}
+              {/* Selected variant SKU */}
+              {selectedVariant && (
+                <p className="text-xs text-stone-500">
+                  SKU: {selectedVariant.sku}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Quantity + Add to Cart */}
+          <div className="flex items-center gap-4">
+            <QuantitySelector
+              value={quantity}
+              onChange={setQuantity}
+              min={1}
+              max={99}
+              disabled={isAddingToCart}
+            />
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              disabled={isAddingToCart || product.status !== 'published'}
+              className={cn(
+                'flex flex-1 items-center justify-center gap-2 rounded-lg px-6 py-3 text-base font-semibold text-white transition-colors',
+                isAddingToCart || product.status !== 'published'
+                  ? 'cursor-not-allowed bg-stone-400'
+                  : 'bg-brand hover:bg-brand-light active:bg-rose-800',
+              )}
+            >
+              {isAddingToCart ? (
+                <>
+                  <LoadingSpinner />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <CartIcon />
+                  Add to Cart
+                </>
+              )}
+            </button>
           </div>
-        )}
 
-        {/* Quantity + Add to Cart */}
-        <div className="flex items-center gap-4">
-          <QuantitySelector
-            value={quantity}
-            onChange={setQuantity}
-            min={1}
-            max={99}
-            disabled={isAddingToCart}
-          />
+          {/* Short Description Preview */}
+          {product.description && (
+            <div className="mt-6 border-t border-stone-200 pt-6">
+              <p className="text-sm text-stone-600 line-clamp-3">
+                {product.description}
+              </p>
+            </div>
+          )}
+
+          {/* Shipping / Returns / Security Info */}
+          <div className="mt-6 space-y-3 border-t border-stone-200 pt-6">
+            <div className="flex items-center gap-3 text-sm text-stone-600">
+              <TruckIcon /> <span>Free shipping on orders over $50</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-stone-600">
+              <RefreshIcon /> <span>30-day return policy</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-stone-600">
+              <ShieldIcon /> <span>Secure payment guaranteed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Sticky Add to Cart Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-stone-200 bg-white p-4 shadow-lg lg:hidden">
+        <div className="flex items-center gap-3">
+          <PriceDisplay price={displayPrice} currency={product.currency} size="md" />
           <button
-            type="button"
             onClick={handleAddToCart}
             disabled={isAddingToCart || product.status !== 'published'}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-2 rounded-lg px-6 py-3 text-base font-semibold text-white transition-colors',
-              isAddingToCart || product.status !== 'published'
-                ? 'cursor-not-allowed bg-gray-400'
-                : 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800',
-            )}
+            className="flex-1 rounded-lg bg-brand py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-light disabled:bg-stone-300"
           >
-            {isAddingToCart ? (
-              <>
-                <LoadingSpinner />
-                Adding...
-              </>
-            ) : (
-              <>
-                <CartIcon />
-                Add to Cart
-              </>
-            )}
+            {isAddingToCart ? 'Adding...' : 'Add to Cart'}
           </button>
         </div>
-
-        {/* Short Description Preview */}
-        {product.description && (
-          <div className="mt-6 border-t border-gray-200 pt-6">
-            <p className="text-sm text-gray-600 line-clamp-3">
-              {product.description}
-            </p>
-          </div>
-        )}
       </div>
-    </div>
+    </>
   );
 }
 
@@ -368,6 +421,66 @@ function LoadingSpinner() {
         fill="currentColor"
         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
       />
+    </svg>
+  );
+}
+
+function TruckIcon() {
+  return (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-shrink-0 text-stone-500"
+    >
+      <rect x={1} y={3} width={15} height={13} />
+      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+      <circle cx={5.5} cy={18.5} r={2.5} />
+      <circle cx={18.5} cy={18.5} r={2.5} />
+    </svg>
+  );
+}
+
+function RefreshIcon() {
+  return (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-shrink-0 text-stone-500"
+    >
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-shrink-0 text-stone-500"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polyline points="9 12 11 14 15 10" />
     </svg>
   );
 }

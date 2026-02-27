@@ -36,4 +36,13 @@ type CampaignRepository interface {
 
 	// RecordUsage records a campaign usage entry.
 	RecordUsage(ctx context.Context, usage *domain.CampaignUsage) error
+
+	// GetStackingRules returns all stacking rules for the given campaign.
+	GetStackingRules(ctx context.Context, campaignID string) ([]domain.StackingRule, error)
+
+	// CreateStackingRule inserts a new stacking rule.
+	CreateStackingRule(ctx context.Context, rule *domain.StackingRule) error
+
+	// DeleteStackingRule removes a stacking rule by its ID.
+	DeleteStackingRule(ctx context.Context, id string) error
 }

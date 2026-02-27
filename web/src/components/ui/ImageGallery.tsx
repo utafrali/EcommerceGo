@@ -26,7 +26,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
 
   if (sorted.length === 0) {
     return (
-      <div className="flex aspect-square items-center justify-center rounded-lg bg-gray-100 text-gray-400">
+      <div className="flex aspect-square items-center justify-center rounded-lg bg-stone-100 text-stone-400">
         No images available
       </div>
     );
@@ -35,7 +35,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
   return (
     <div className="space-y-4">
       {/* Main image with zoom on hover */}
-      <div className="group relative aspect-square overflow-hidden rounded-lg bg-gray-100">
+      <div className="group relative aspect-square overflow-hidden rounded-lg bg-stone-100">
         <Image
           src={selectedImage.url}
           alt={selectedImage.alt_text || 'Product image'}
@@ -44,6 +44,13 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           className="object-cover transition-transform duration-300 group-hover:scale-150"
           priority
         />
+
+        {/* Image counter badge */}
+        {sorted.length > 1 && (
+          <div className="absolute bottom-3 right-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white">
+            {selectedIndex + 1} / {sorted.length}
+          </div>
+        )}
       </div>
 
       {/* Thumbnail strip */}
@@ -58,8 +65,8 @@ export function ImageGallery({ images }: ImageGalleryProps) {
               className={cn(
                 'relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border-2 transition-all',
                 index === selectedIndex
-                  ? 'border-indigo-600 ring-1 ring-indigo-600'
-                  : 'border-gray-200 hover:border-gray-400',
+                  ? 'border-brand ring-1 ring-brand'
+                  : 'border-stone-200 hover:border-stone-400',
               )}
             >
               <Image

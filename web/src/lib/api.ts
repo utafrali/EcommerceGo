@@ -5,6 +5,8 @@ import type {
   ProductListParams,
   Category,
   Brand,
+  Banner,
+  WishlistItem,
   Review,
   ReviewListResponse,
   CreateReviewRequest,
@@ -305,6 +307,55 @@ export class ApiClient {
   async searchSuggest(query: string, limit = 5) {
     return this.request<{ data: { suggestions: string[] } }>(
       `/api/search/suggest?q=${encodeURIComponent(query)}&limit=${limit}`,
+    );
+  }
+
+  // ── Banners ─────────────────────────────────────────────────────────────
+
+  async getBanners(params?: { position?: string; is_active?: string }) {
+    const qs = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) qs.set(key, value);
+      });
+    }
+    const query = qs.toString();
+    return this.request<{ data: Banner[]; total_count: number }>(
+      `/api/banners${query ? '?' + query : ''}`,
+    );
+  }
+
+  // ── Category Tree ───────────────────────────────────────────────────────
+
+  async getCategoryTree() {
+    return this.request<ApiResponse<Category[]>>('/api/categories?tree=true');
+  }
+
+  // ── Wishlist ────────────────────────────────────────────────────────────
+
+  async getWishlist(page = 1) {
+    return this.request<ApiResponse<{ items: WishlistItem[]; total: number; page: number; per_page: number }>>(
+      `/api/wishlist?page=${page}`,
+    );
+  }
+
+  async addToWishlist(productId: string) {
+    return this.request<ApiResponse<{ product_id: string }>>(
+      `/api/wishlist/${productId}`,
+      { method: 'POST' },
+    );
+  }
+
+  async removeFromWishlist(productId: string) {
+    return this.request<ApiResponse<{ product_id: string }>>(
+      `/api/wishlist/${productId}`,
+      { method: 'DELETE' },
+    );
+  }
+
+  async wishlistExists(productId: string) {
+    return this.request<ApiResponse<{ exists: boolean }>>(
+      `/api/wishlist/${productId}`,
     );
   }
 }

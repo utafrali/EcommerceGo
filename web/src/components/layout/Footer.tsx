@@ -6,16 +6,16 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-gray-900 text-gray-300">
+    <footer className="bg-stone-900 text-stone-300">
       {/* Newsletter Section */}
-      <div className="border-b border-gray-800">
+      <div className="border-b border-stone-800">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <div>
               <h3 className="text-lg font-semibold text-white">
                 Subscribe to our newsletter
               </h3>
-              <p className="mt-1 text-sm text-gray-400">
+              <p className="mt-1 text-sm text-stone-400">
                 Get the latest deals and updates delivered to your inbox.
               </p>
             </div>
@@ -23,11 +23,11 @@ export default function Footer() {
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="flex-1 rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="flex-1 rounded-lg border border-stone-700 bg-stone-800 px-4 py-2 text-sm text-white placeholder-stone-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
               />
               <button
                 type="submit"
-                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+                className="rounded-lg bg-brand px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-light focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-stone-900"
               >
                 Subscribe
               </button>
@@ -46,7 +46,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/products?category=electronics"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Electronics
                 </Link>
@@ -54,7 +54,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/products?category=clothing"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Clothing
                 </Link>
@@ -62,7 +62,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/products?category=home-kitchen"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Home &amp; Kitchen
                 </Link>
@@ -70,7 +70,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/products?category=sports"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Sports
                 </Link>
@@ -78,7 +78,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/products?category=books"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Books
                 </Link>
@@ -95,7 +95,7 @@ export default function Footer() {
               <li>
                 <a
                   href="#"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Help Center
                 </a>
@@ -103,7 +103,7 @@ export default function Footer() {
               <li>
                 <a
                   href="#"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Shipping Info
                 </a>
@@ -111,7 +111,7 @@ export default function Footer() {
               <li>
                 <a
                   href="#"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Returns
                 </a>
@@ -119,7 +119,7 @@ export default function Footer() {
               <li>
                 <a
                   href="#"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Contact Us
                 </a>
@@ -134,7 +134,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/products"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Products
                 </Link>
@@ -142,7 +142,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/cart"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Cart
                 </Link>
@@ -150,7 +150,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/orders"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Orders
                 </Link>
@@ -165,7 +165,7 @@ export default function Footer() {
               <li>
                 <a
                   href="#"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   About Us
                 </a>
@@ -173,7 +173,7 @@ export default function Footer() {
               <li>
                 <a
                   href="#"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Careers
                 </a>
@@ -181,7 +181,7 @@ export default function Footer() {
               <li>
                 <a
                   href="#"
-                  className="text-sm text-gray-400 transition-colors hover:text-white"
+                  className="text-sm text-stone-400 transition-colors hover:text-white"
                 >
                   Blog
                 </a>
@@ -191,12 +191,12 @@ export default function Footer() {
         </div>
 
         {/* Brand & Social */}
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-gray-800 pt-8 sm:flex-row">
+        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-stone-800 pt-8 sm:flex-row">
           <div>
             <Link href="/" className="text-lg font-bold text-white">
               EcommerceGo
             </Link>
-            <p className="mt-1 max-w-xs text-sm text-gray-400">
+            <p className="mt-1 max-w-xs text-sm text-stone-400">
               AI-driven open-source e-commerce platform built with Go
               microservices and Next.js.
             </p>
@@ -208,7 +208,7 @@ export default function Footer() {
               href="https://github.com/utafrali/EcommerceGo"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-400 transition-colors hover:text-white"
+              className="text-stone-400 transition-colors hover:text-white"
               aria-label="GitHub"
             >
               <svg
@@ -228,7 +228,7 @@ export default function Footer() {
               href="https://x.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-400 transition-colors hover:text-white"
+              className="text-stone-400 transition-colors hover:text-white"
               aria-label="X (Twitter)"
             >
               <svg
@@ -245,9 +245,9 @@ export default function Footer() {
       </div>
 
       {/* Copyright */}
-      <div className="bg-gray-950">
+      <div className="bg-stone-950">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center text-sm text-stone-500">
             &copy; {currentYear} EcommerceGo. All rights reserved.
           </p>
         </div>

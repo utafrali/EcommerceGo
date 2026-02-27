@@ -63,11 +63,11 @@ export function ReviewSection({
       <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="text-center">
-            <div className="text-4xl font-bold text-gray-900">
+            <div className="text-4xl font-bold text-stone-900">
               {reviewSummary.average_rating.toFixed(1)}
             </div>
             <RatingStars rating={reviewSummary.average_rating} size="md" />
-            <div className="mt-1 text-sm text-gray-500">
+            <div className="mt-1 text-sm text-stone-500">
               {reviewSummary.total_count} review{reviewSummary.total_count !== 1 ? 's' : ''}
             </div>
           </div>
@@ -81,12 +81,12 @@ export function ReviewSection({
           onReviewSubmitted={handleReviewSubmitted}
         />
       ) : (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-center">
-          <p className="text-gray-600">
+        <div className="rounded-lg border border-stone-200 bg-stone-50 p-6 text-center">
+          <p className="text-stone-600">
             Want to share your experience?{' '}
             <Link
               href="/auth/login"
-              className="font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+              className="font-medium text-brand hover:text-brand-light transition-colors"
             >
               Sign in to write a review
             </Link>
@@ -97,7 +97,7 @@ export function ReviewSection({
       {/* Review List */}
       <div className={cn('space-y-6', isLoadingPage && 'opacity-50 pointer-events-none')}>
         {reviews.length === 0 ? (
-          <p className="py-8 text-center text-gray-500">
+          <p className="py-8 text-center text-stone-500">
             No reviews yet. Be the first to share your thoughts!
           </p>
         ) : (
@@ -128,10 +128,10 @@ function ReviewCard({ review }: { review: Review }) {
   const initial = review.user_id.charAt(0).toUpperCase();
 
   return (
-    <div className="border-b border-gray-100 pb-6 last:border-b-0">
+    <div className="border-b border-stone-100 pb-6 last:border-b-0">
       <div className="flex items-start gap-4">
         {/* Avatar */}
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-lighter text-sm font-semibold text-brand">
           {initial}
         </div>
 
@@ -139,19 +139,19 @@ function ReviewCard({ review }: { review: Review }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <RatingStars rating={review.rating} size="sm" />
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-stone-400">
               {formatDate(review.created_at)}
             </span>
           </div>
 
           {review.title && (
-            <h4 className="text-sm font-semibold text-gray-900 mb-1">
+            <h4 className="text-sm font-semibold text-stone-900 mb-1">
               {review.title}
             </h4>
           )}
 
           {review.body && (
-            <p className="text-sm text-gray-700 leading-relaxed">
+            <p className="text-sm text-stone-700 leading-relaxed">
               {review.body}
             </p>
           )}
@@ -224,7 +224,7 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="rounded-lg border-2 border-dashed border-gray-300 px-6 py-4 text-sm font-medium text-gray-600 transition-colors hover:border-indigo-400 hover:text-indigo-600"
+        className="rounded-lg border-2 border-dashed border-stone-300 px-6 py-4 text-sm font-medium text-stone-600 transition-colors hover:border-brand hover:text-brand"
       >
         Write a Review
       </button>
@@ -234,15 +234,15 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
+      className="rounded-lg border border-stone-200 bg-white p-6 shadow-sm"
     >
-      <h3 className="mb-4 text-lg font-semibold text-gray-900">
+      <h3 className="mb-4 text-lg font-semibold text-stone-900">
         Write a Review
       </h3>
 
       {/* Star Rating Selector */}
       <div className="mb-4">
-        <label className="mb-2 block text-sm font-medium text-gray-700">
+        <label className="mb-2 block text-sm font-medium text-stone-700">
           Rating
         </label>
         <div className="flex gap-1">
@@ -265,7 +265,7 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
                   'transition-colors',
                   (hoverRating || rating) >= star
                     ? 'text-yellow-400'
-                    : 'text-gray-300',
+                    : 'text-stone-300',
                 )}
               >
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
@@ -282,7 +282,7 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
       <div className="mb-4">
         <label
           htmlFor="review-title"
-          className="mb-1 block text-sm font-medium text-gray-700"
+          className="mb-1 block text-sm font-medium text-stone-700"
         >
           Title
         </label>
@@ -294,8 +294,8 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
           placeholder="Summarize your experience"
           maxLength={100}
           className={cn(
-            'w-full rounded-md border px-3 py-2 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500',
-            errors.title ? 'border-red-300' : 'border-gray-300',
+            'w-full rounded-md border px-3 py-2 text-sm text-stone-900 placeholder-stone-400 transition-colors focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand',
+            errors.title ? 'border-red-300' : 'border-stone-300',
           )}
         />
         {errors.title && (
@@ -307,7 +307,7 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
       <div className="mb-4">
         <label
           htmlFor="review-body"
-          className="mb-1 block text-sm font-medium text-gray-700"
+          className="mb-1 block text-sm font-medium text-stone-700"
         >
           Review
         </label>
@@ -319,8 +319,8 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
           rows={4}
           maxLength={2000}
           className={cn(
-            'w-full rounded-md border px-3 py-2 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y',
-            errors.body ? 'border-red-300' : 'border-gray-300',
+            'w-full rounded-md border px-3 py-2 text-sm text-stone-900 placeholder-stone-400 transition-colors focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand resize-y',
+            errors.body ? 'border-red-300' : 'border-stone-300',
           )}
         />
         {errors.body && (
@@ -336,8 +336,8 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
           className={cn(
             'rounded-md px-5 py-2 text-sm font-medium text-white transition-colors',
             isSubmitting
-              ? 'cursor-not-allowed bg-gray-400'
-              : 'bg-indigo-600 hover:bg-indigo-700',
+              ? 'cursor-not-allowed bg-stone-400'
+              : 'bg-brand hover:bg-brand-light',
           )}
         >
           {isSubmitting ? 'Submitting...' : 'Submit Review'}
@@ -349,7 +349,7 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
             setErrors({});
           }}
           disabled={isSubmitting}
-          className="rounded-md px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
+          className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:text-stone-800 transition-colors"
         >
           Cancel
         </button>

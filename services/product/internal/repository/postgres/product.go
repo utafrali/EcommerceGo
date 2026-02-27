@@ -402,7 +402,8 @@ func (r *ProductRepository) GetVariants(ctx context.Context, productID string) (
 // GetCategory retrieves a single category by its ID.
 func (r *ProductRepository) GetCategory(ctx context.Context, categoryID string) (*domain.Category, error) {
 	query := `
-		SELECT id, name, slug, parent_id, sort_order, is_active
+		SELECT id, name, slug, parent_id, sort_order, is_active,
+			image_url, icon_url, description, level, product_count, created_at, updated_at
 		FROM categories
 		WHERE id = $1`
 
@@ -414,6 +415,13 @@ func (r *ProductRepository) GetCategory(ctx context.Context, categoryID string) 
 		&c.ParentID,
 		&c.SortOrder,
 		&c.IsActive,
+		&c.ImageURL,
+		&c.IconURL,
+		&c.Description,
+		&c.Level,
+		&c.ProductCount,
+		&c.CreatedAt,
+		&c.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

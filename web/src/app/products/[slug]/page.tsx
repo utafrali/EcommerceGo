@@ -83,12 +83,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Breadcrumb */}
-      <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
-        <Link href="/" className="hover:text-indigo-600 transition-colors">
+      <nav className="mb-6 flex items-center gap-2 text-sm text-stone-500">
+        <Link href="/" className="hover:text-brand transition-colors">
           Home
         </Link>
         <ChevronRight />
-        <Link href="/products" className="hover:text-indigo-600 transition-colors">
+        <Link href="/products" className="hover:text-brand transition-colors">
           Products
         </Link>
         {product.category && (
@@ -96,14 +96,14 @@ export default async function ProductDetailPage({ params }: PageProps) {
             <ChevronRight />
             <Link
               href={`/products?category_id=${product.category.id}`}
-              className="hover:text-indigo-600 transition-colors"
+              className="hover:text-brand transition-colors"
             >
               {product.category.name}
             </Link>
           </>
         )}
         <ChevronRight />
-        <span className="text-gray-900 font-medium truncate max-w-[200px]">
+        <span className="text-stone-900 font-medium truncate max-w-[200px]">
           {product.name}
         </span>
       </nav>
@@ -127,7 +127,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       {/* Similar Products */}
       {similarProducts.length > 0 && (
         <section className="mt-16">
-          <h2 className="mb-6 text-2xl font-bold text-gray-900">
+          <h2 className="mb-6 text-2xl font-bold text-stone-900">
             Similar Products
           </h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -154,7 +154,7 @@ function ChevronRight() {
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="flex-shrink-0 text-gray-400"
+      className="flex-shrink-0 text-stone-400"
     >
       <path d="M9 18l6-6-6-6" />
     </svg>

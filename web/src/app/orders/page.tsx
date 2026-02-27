@@ -68,7 +68,7 @@ export default function OrdersPage() {
   if (authLoading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+        <h1 className="text-3xl font-bold tracking-tight text-stone-900">
           My Orders
         </h1>
         <OrdersListSkeleton />
@@ -87,7 +87,7 @@ export default function OrdersPage() {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+        <h1 className="text-3xl font-bold tracking-tight text-stone-900">
           My Orders
         </h1>
         <OrdersListSkeleton />
@@ -100,7 +100,7 @@ export default function OrdersPage() {
   if (orders.length === 0) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+        <h1 className="text-3xl font-bold tracking-tight text-stone-900">
           My Orders
         </h1>
         <EmptyOrders />
@@ -112,7 +112,7 @@ export default function OrdersPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
-      <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+      <h1 className="text-3xl font-bold tracking-tight text-stone-900">
         My Orders
       </h1>
 
@@ -141,18 +141,18 @@ export default function OrdersPage() {
 function OrderRow({ order }: { order: Order }) {
   const statusConfig = ORDER_STATUSES[order.status] || {
     label: order.status,
-    color: 'bg-gray-100 text-gray-800',
+    color: 'bg-stone-100 text-stone-800',
   };
 
   const itemCount = order.items?.length ?? 0;
   const truncatedId = order.id.slice(0, 8);
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-6">
+    <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-6">
       {/* Top row: ID + Status */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-semibold text-gray-900">
+          <h3 className="text-sm font-semibold text-stone-900">
             Order{' '}
             <span title={order.id} className="cursor-help">
               #{truncatedId}
@@ -170,7 +170,7 @@ function OrderRow({ order }: { order: Order }) {
 
         <time
           dateTime={order.created_at}
-          className="text-sm text-gray-500"
+          className="text-sm text-stone-500"
         >
           {formatDate(order.created_at)}
         </time>
@@ -178,18 +178,18 @@ function OrderRow({ order }: { order: Order }) {
 
       {/* Details row */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-6 text-sm text-gray-600">
+        <div className="flex items-center gap-6 text-sm text-stone-600">
           <span>
             {itemCount} {itemCount === 1 ? 'item' : 'items'}
           </span>
-          <span className="font-semibold text-gray-900">
+          <span className="font-semibold text-stone-900">
             {formatPrice(order.total_amount, order.currency)}
           </span>
         </div>
 
         <Link
           href={`/orders/${order.id}`}
-          className="inline-flex items-center gap-1.5 rounded-md bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-600 transition-colors hover:bg-indigo-100"
+          className="inline-flex items-center gap-1.5 rounded-md bg-brand-lighter px-3 py-1.5 text-sm font-medium text-brand transition-colors hover:bg-brand-lighter/80"
         >
           View Details
           <svg
@@ -217,7 +217,7 @@ function EmptyOrders() {
   return (
     <div className="mt-16 flex flex-col items-center text-center">
       {/* Package icon */}
-      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
+      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-stone-100">
         <svg
           width={48}
           height={48}
@@ -227,22 +227,22 @@ function EmptyOrders() {
           strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-gray-400"
+          className="text-stone-400"
         >
           <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
           <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
           <line x1={12} y1={22.08} x2={12} y2={12} />
         </svg>
       </div>
-      <h2 className="mt-6 text-xl font-semibold text-gray-900">
+      <h2 className="mt-6 text-xl font-semibold text-stone-900">
         You haven&apos;t placed any orders yet
       </h2>
-      <p className="mt-2 text-sm text-gray-500">
+      <p className="mt-2 text-sm text-stone-500">
         When you place an order, it will appear here.
       </p>
       <Link
         href="/products"
-        className="mt-6 inline-flex items-center gap-2 rounded-md bg-indigo-600 px-6 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+        className="mt-6 inline-flex items-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-light focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
       >
         Start Shopping
         <svg
@@ -271,21 +271,21 @@ function OrdersListSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-6"
+          className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm sm:p-6"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-5 w-28 animate-pulse rounded bg-gray-200" />
-              <div className="h-5 w-20 animate-pulse rounded-full bg-gray-200" />
+              <div className="h-5 w-28 animate-pulse rounded bg-stone-200" />
+              <div className="h-5 w-20 animate-pulse rounded-full bg-stone-200" />
             </div>
-            <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-32 animate-pulse rounded bg-stone-200" />
           </div>
           <div className="mt-4 flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <div className="h-4 w-16 animate-pulse rounded bg-gray-200" />
-              <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-16 animate-pulse rounded bg-stone-200" />
+              <div className="h-4 w-20 animate-pulse rounded bg-stone-200" />
             </div>
-            <div className="h-8 w-28 animate-pulse rounded-md bg-gray-200" />
+            <div className="h-8 w-28 animate-pulse rounded-md bg-stone-200" />
           </div>
         </div>
       ))}

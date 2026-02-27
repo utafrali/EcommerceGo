@@ -23,21 +23,24 @@ const (
 
 // Campaign represents a promotional campaign in the system.
 type Campaign struct {
-	ID                   string   `json:"id"`
-	Name                 string   `json:"name"`
-	Description          string   `json:"description"`
-	Type                 string   `json:"type"`
-	Status               string   `json:"status"`
-	DiscountValue        int64    `json:"discount_value"`
-	MinOrderAmount       int64    `json:"min_order_amount"`
-	MaxDiscountAmount    int64    `json:"max_discount_amount"`
-	Code                 string   `json:"code,omitempty"`
-	MaxUsageCount        int      `json:"max_usage_count"`
-	CurrentUsageCount    int      `json:"current_usage_count"`
+	ID                   string    `json:"id"`
+	Name                 string    `json:"name"`
+	Description          string    `json:"description"`
+	Type                 string    `json:"type"`
+	Status               string    `json:"status"`
+	DiscountValue        int64     `json:"discount_value"`
+	MinOrderAmount       int64     `json:"min_order_amount"`
+	MaxDiscountAmount    int64     `json:"max_discount_amount"`
+	Code                 string    `json:"code,omitempty"`
+	MaxUsageCount        int       `json:"max_usage_count"`
+	CurrentUsageCount    int       `json:"current_usage_count"`
+	IsStackable          bool      `json:"is_stackable"`
+	Priority             int       `json:"priority"`
+	ExclusionGroup       *string   `json:"exclusion_group,omitempty"`
 	StartDate            time.Time `json:"start_date"`
 	EndDate              time.Time `json:"end_date"`
-	ApplicableCategories []string `json:"applicable_categories"`
-	ApplicableProducts   []string `json:"applicable_products"`
+	ApplicableCategories []string  `json:"applicable_categories"`
+	ApplicableProducts   []string  `json:"applicable_products"`
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
 }
@@ -50,6 +53,26 @@ type CampaignUsage struct {
 	OrderID         string    `json:"order_id"`
 	DiscountApplied int64     `json:"discount_applied"`
 	CreatedAt       time.Time `json:"created_at"`
+}
+
+// Stacking rule type constants.
+const (
+	StackingRuleTypeCompatible = "compatible"
+	StackingRuleTypeExclusive  = "exclusive"
+)
+
+// StackingRule defines the stacking relationship between two campaigns.
+type StackingRule struct {
+	ID          string    `json:"id"`
+	CampaignAID string    `json:"campaign_a_id"`
+	CampaignBID string    `json:"campaign_b_id"`
+	RuleType    string    `json:"rule_type"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+// IsValidStackingRuleType checks whether the given rule type string is valid.
+func IsValidStackingRuleType(rt string) bool {
+	return rt == StackingRuleTypeCompatible || rt == StackingRuleTypeExclusive
 }
 
 // ValidTypes returns the set of valid campaign types.

@@ -48,7 +48,7 @@ export function useToast(): ToastContextValue {
 const variantStyles: Record<ToastVariant, string> = {
   success: 'bg-green-600',
   error: 'bg-red-600',
-  info: 'bg-indigo-600',
+  info: 'bg-brand',
 };
 
 const variantIcons: Record<ToastVariant, ReactNode> = {

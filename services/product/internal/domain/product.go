@@ -41,16 +41,6 @@ type ProductVariant struct {
 	UpdatedAt   time.Time         `json:"updated_at"`
 }
 
-// Category represents a product category with optional hierarchical nesting.
-type Category struct {
-	ID        string  `json:"id"`
-	Name      string  `json:"name"`
-	Slug      string  `json:"slug"`
-	ParentID  *string `json:"parent_id,omitempty"`
-	SortOrder int     `json:"sort_order"`
-	IsActive  bool    `json:"is_active"`
-}
-
 // ProductImage represents an image associated with a product.
 type ProductImage struct {
 	ID        string    `json:"id"`

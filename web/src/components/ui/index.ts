@@ -9,7 +9,9 @@ export { QuantitySelector } from './QuantitySelector';
 export { SearchBar } from './SearchBar';
 export { FilterSidebar } from './FilterSidebar';
 export type { FilterState } from './FilterSidebar';
+export { ActiveFilterChips } from './ActiveFilterChips';
 export { Pagination } from './Pagination';
+export { WishlistButton } from './WishlistButton';
 export { ToastProvider, useToast } from './Toast';
 export {
   TextSkeleton,

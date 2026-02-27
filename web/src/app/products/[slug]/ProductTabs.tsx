@@ -37,7 +37,7 @@ export function ProductTabs({
   return (
     <div>
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-stone-200">
         <nav className="-mb-px flex gap-6" aria-label="Product tabs">
           {tabs.map((tab) => (
             <button
@@ -47,8 +47,8 @@ export function ProductTabs({
               className={cn(
                 'whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors',
                 activeTab === tab.id
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
+                  ? 'border-brand text-brand'
+                  : 'border-transparent text-stone-500 hover:border-stone-300 hover:text-stone-700',
               )}
               aria-selected={activeTab === tab.id}
               role="tab"
@@ -90,16 +90,16 @@ export function ProductTabs({
 function DescriptionPanel({ description }: { description: string }) {
   if (!description) {
     return (
-      <p className="text-gray-500 italic">
+      <p className="text-stone-500 italic">
         No description available for this product.
       </p>
     );
   }
 
   return (
-    <div className="prose prose-gray max-w-none">
+    <div className="prose prose-stone max-w-none">
       {description.split('\n').map((paragraph, index) => (
-        <p key={index} className="mb-4 text-gray-700 leading-relaxed">
+        <p key={index} className="mb-4 text-stone-700 leading-relaxed">
           {paragraph}
         </p>
       ))}
@@ -120,7 +120,7 @@ function SpecificationsPanel({ product }: { product: Product }) {
 
   if (!hasSpecs) {
     return (
-      <p className="text-gray-500 italic">
+      <p className="text-stone-500 italic">
         No specifications available for this product.
       </p>
     );
@@ -131,19 +131,19 @@ function SpecificationsPanel({ product }: { product: Product }) {
       {/* Product Metadata */}
       {metadataEntries.length > 0 && (
         <div>
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">
+          <h3 className="mb-4 text-lg font-semibold text-stone-900">
             Product Details
           </h3>
-          <dl className="divide-y divide-gray-200 rounded-lg border border-gray-200">
+          <dl className="divide-y divide-stone-200 rounded-lg border border-stone-200">
             {metadataEntries.map(([key, value]) => (
               <div
                 key={key}
                 className="grid grid-cols-3 gap-4 px-4 py-3 sm:px-6"
               >
-                <dt className="text-sm font-medium text-gray-500 capitalize">
+                <dt className="text-sm font-medium text-stone-500 capitalize">
                   {key.replace(/_/g, ' ')}
                 </dt>
-                <dd className="col-span-2 text-sm text-gray-900">
+                <dd className="col-span-2 text-sm text-stone-900">
                   {typeof value === 'object'
                     ? JSON.stringify(value)
                     : String(value)}
@@ -157,53 +157,53 @@ function SpecificationsPanel({ product }: { product: Product }) {
       {/* Variant Details */}
       {variants.length > 0 && (
         <div>
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">
+          <h3 className="mb-4 text-lg font-semibold text-stone-900">
             Available Variants
           </h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 rounded-lg border border-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-stone-200 rounded-lg border border-stone-200">
+              <thead className="bg-stone-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
                     Name
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
                     SKU
                   </th>
                   {/* Dynamic attribute columns */}
                   {Object.keys(variants[0]?.attributes || {}).map((attrKey) => (
                     <th
                       key={attrKey}
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
                     >
                       {attrKey}
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
                     Price
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
+              <tbody className="divide-y divide-stone-200 bg-white">
                 {variants.map((variant) => (
                   <tr key={variant.id}>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-900">
                       {variant.name}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 font-mono">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-500 font-mono">
                       {variant.sku}
                     </td>
                     {Object.keys(variants[0]?.attributes || {}).map(
                       (attrKey) => (
                         <td
                           key={attrKey}
-                          className="whitespace-nowrap px-4 py-3 text-sm text-gray-700"
+                          className="whitespace-nowrap px-4 py-3 text-sm text-stone-700"
                         >
                           {variant.attributes[attrKey] || '-'}
                         </td>
                       ),
                     )}
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 font-medium">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-900 font-medium">
                       {variant.price !== null
                         ? `$${(variant.price / 100).toFixed(2)}`
                         : 'Base price'}

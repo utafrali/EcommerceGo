@@ -9,12 +9,14 @@ import (
 	"github.com/utafrali/EcommerceGo/pkg/health"
 	"github.com/utafrali/EcommerceGo/pkg/middleware"
 	"github.com/utafrali/EcommerceGo/services/user/internal/auth"
+	"github.com/utafrali/EcommerceGo/services/user/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/user/internal/service"
 )
 
 // NewRouter creates a chi router with all user service routes registered.
 func NewRouter(
 	userService *service.UserService,
+	wishlistRepo domain.WishlistRepository,
 	jwtManager *auth.JWTManager,
 	healthHandler *health.Handler,
 	logger *slog.Logger,
@@ -42,8 +44,9 @@ func NewRouter(
 		r.Post("/reset-password", authHandler.ResetPassword)
 	})
 
-	// User profile and address endpoints (auth required)
+	// User profile, address, and wishlist endpoints (auth required)
 	userHandler := NewUserHandler(userService)
+	wishlistHandler := NewWishlistHandler(wishlistRepo)
 
 	// Token validator that bridges to our internal JWTManager.
 	tokenValidator := func(token string) (*middleware.Claims, error) {
@@ -69,6 +72,11 @@ func NewRouter(
 		r.Post("/me/addresses", userHandler.CreateAddress)
 		r.Put("/me/addresses/{id}", userHandler.UpdateAddress)
 		r.Delete("/me/addresses/{id}", userHandler.DeleteAddress)
+
+		r.Get("/wishlist", wishlistHandler.List)
+		r.Post("/wishlist/{productId}", wishlistHandler.Add)
+		r.Delete("/wishlist/{productId}", wishlistHandler.Remove)
+		r.Get("/wishlist/{productId}", wishlistHandler.Exists)
 	})
 
 	return r

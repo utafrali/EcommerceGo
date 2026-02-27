@@ -42,6 +42,9 @@ type CreateCampaignRequest struct {
 	MaxDiscountAmount    int64    `json:"max_discount_amount" validate:"gte=0"`
 	Code                 string   `json:"code" validate:"max=50"`
 	MaxUsageCount        int      `json:"max_usage_count" validate:"gte=0"`
+	IsStackable          bool     `json:"is_stackable"`
+	Priority             int      `json:"priority" validate:"gte=0"`
+	ExclusionGroup       *string  `json:"exclusion_group" validate:"omitempty,max=100"`
 	StartDate            string   `json:"start_date" validate:"required"`
 	EndDate              string   `json:"end_date" validate:"required"`
 	ApplicableCategories []string `json:"applicable_categories"`
@@ -59,6 +62,9 @@ type UpdateCampaignRequest struct {
 	MaxDiscountAmount    *int64   `json:"max_discount_amount" validate:"omitempty,gte=0"`
 	Code                 *string  `json:"code" validate:"omitempty,max=50"`
 	MaxUsageCount        *int     `json:"max_usage_count" validate:"omitempty,gte=0"`
+	IsStackable          *bool    `json:"is_stackable"`
+	Priority             *int     `json:"priority" validate:"omitempty,gte=0"`
+	ExclusionGroup       *string  `json:"exclusion_group" validate:"omitempty,max=100"`
 	StartDate            *string  `json:"start_date"`
 	EndDate              *string  `json:"end_date"`
 	ApplicableCategories []string `json:"applicable_categories"`
@@ -84,6 +90,22 @@ type ApplyCouponRequest struct {
 	OrderID     string   `json:"order_id" validate:"required,uuid"`
 	CategoryIDs []string `json:"category_ids"`
 	ProductIDs  []string `json:"product_ids"`
+}
+
+// ValidateMultipleCouponsRequest is the JSON request body for validating multiple coupons.
+type ValidateMultipleCouponsRequest struct {
+	Codes       []string `json:"codes" validate:"required,min=1,dive,required"`
+	OrderAmount int64    `json:"order_amount" validate:"required,gt=0"`
+	Currency    string   `json:"currency" validate:"omitempty,len=3"`
+	UserID      string   `json:"user_id" validate:"omitempty,uuid"`
+	CategoryIDs []string `json:"category_ids"`
+	ProductIDs  []string `json:"product_ids"`
+}
+
+// CreateStackingRuleRequest is the JSON request body for creating a stacking rule.
+type CreateStackingRuleRequest struct {
+	CampaignBID string `json:"campaign_b_id" validate:"required,uuid"`
+	RuleType    string `json:"rule_type" validate:"required,oneof=compatible exclusive"`
 }
 
 // --- Response envelope ---
@@ -149,6 +171,9 @@ func (h *CampaignHandler) CreateCampaign(w http.ResponseWriter, r *http.Request)
 		MaxDiscountAmount:    req.MaxDiscountAmount,
 		Code:                 req.Code,
 		MaxUsageCount:        req.MaxUsageCount,
+		IsStackable:          req.IsStackable,
+		Priority:             req.Priority,
+		ExclusionGroup:       req.ExclusionGroup,
 		StartDate:            startDate,
 		EndDate:              endDate,
 		ApplicableCategories: req.ApplicableCategories,
@@ -260,6 +285,9 @@ func (h *CampaignHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request)
 		MaxDiscountAmount:    req.MaxDiscountAmount,
 		Code:                 req.Code,
 		MaxUsageCount:        req.MaxUsageCount,
+		IsStackable:          req.IsStackable,
+		Priority:             req.Priority,
+		ExclusionGroup:       req.ExclusionGroup,
 		ApplicableCategories: req.ApplicableCategories,
 		ApplicableProducts:   req.ApplicableProducts,
 	}
@@ -377,6 +405,114 @@ func (h *CampaignHandler) ApplyCoupon(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, response{Data: usage})
+}
+
+// ValidateMultipleCoupons handles POST /api/v1/coupons/validate-multiple
+func (h *CampaignHandler) ValidateMultipleCoupons(w http.ResponseWriter, r *http.Request) {
+	var req ValidateMultipleCouponsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		})
+		return
+	}
+
+	if err := validator.Validate(req); err != nil {
+		h.writeValidationError(w, err)
+		return
+	}
+
+	input := &service.ValidateMultipleCouponsInput{
+		Codes:       req.Codes,
+		OrderAmount: req.OrderAmount,
+		Currency:    req.Currency,
+		UserID:      req.UserID,
+		CategoryIDs: req.CategoryIDs,
+		ProductIDs:  req.ProductIDs,
+	}
+
+	result, err := h.service.ValidateMultipleCoupons(r.Context(), input)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, response{Data: result})
+}
+
+// CreateStackingRule handles POST /api/v1/campaigns/{id}/stacking-rules
+func (h *CampaignHandler) CreateStackingRule(w http.ResponseWriter, r *http.Request) {
+	campaignID := chi.URLParam(r, "id")
+	if campaignID == "" {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
+		})
+		return
+	}
+
+	var req CreateStackingRuleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		})
+		return
+	}
+
+	if err := validator.Validate(req); err != nil {
+		h.writeValidationError(w, err)
+		return
+	}
+
+	input := &service.CreateStackingRuleInput{
+		CampaignAID: campaignID,
+		CampaignBID: req.CampaignBID,
+		RuleType:    req.RuleType,
+	}
+
+	rule, err := h.service.CreateStackingRule(r.Context(), input)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, response{Data: rule})
+}
+
+// GetStackingRules handles GET /api/v1/campaigns/{id}/stacking-rules
+func (h *CampaignHandler) GetStackingRules(w http.ResponseWriter, r *http.Request) {
+	campaignID := chi.URLParam(r, "id")
+	if campaignID == "" {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
+		})
+		return
+	}
+
+	rules, err := h.service.GetStackingRules(r.Context(), campaignID)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, response{Data: rules})
+}
+
+// DeleteStackingRule handles DELETE /api/v1/campaigns/stacking-rules/{ruleId}
+func (h *CampaignHandler) DeleteStackingRule(w http.ResponseWriter, r *http.Request) {
+	ruleID := chi.URLParam(r, "ruleId")
+	if ruleID == "" {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "rule id is required"},
+		})
+		return
+	}
+
+	if err := h.service.DeleteStackingRule(r.Context(), ruleID); err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusNoContent, nil)
 }
 
 // --- Helpers ---

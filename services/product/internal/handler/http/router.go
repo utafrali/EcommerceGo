@@ -18,6 +18,7 @@ func NewRouter(
 	reviewService *service.ReviewService,
 	categoryRepo *postgres.CategoryRepository,
 	brandRepo *postgres.BrandRepository,
+	bannerRepo *postgres.BannerRepository,
 	healthHandler *health.Handler,
 	logger *slog.Logger,
 ) http.Handler {
@@ -55,13 +56,17 @@ func NewRouter(
 		r.Post("/", reviewHandler.CreateReview)
 	})
 
-	// Category API endpoints
+	// Category API endpoints (full CRUD + tree)
 	categoryHandler := NewCategoryHandler(categoryRepo, logger)
 
 	r.Route("/api/v1/categories", func(r chi.Router) {
 		r.Use(ContentTypeJSON)
 
 		r.Get("/", categoryHandler.ListCategories)
+		r.Get("/{id}", categoryHandler.GetCategory)
+		r.Post("/", categoryHandler.CreateCategory)
+		r.Put("/{id}", categoryHandler.UpdateCategory)
+		r.Delete("/{id}", categoryHandler.DeleteCategory)
 	})
 
 	// Brand API endpoints
@@ -71,6 +76,19 @@ func NewRouter(
 		r.Use(ContentTypeJSON)
 
 		r.Get("/", brandHandler.ListBrands)
+	})
+
+	// Banner API endpoints
+	bannerHandler := NewBannerHandler(bannerRepo, logger)
+
+	r.Route("/api/v1/banners", func(r chi.Router) {
+		r.Use(ContentTypeJSON)
+
+		r.Get("/", bannerHandler.ListBanners)
+		r.Get("/{id}", bannerHandler.GetBanner)
+		r.Post("/", bannerHandler.CreateBanner)
+		r.Put("/{id}", bannerHandler.UpdateBanner)
+		r.Delete("/{id}", bannerHandler.DeleteBanner)
 	})
 
 	return r

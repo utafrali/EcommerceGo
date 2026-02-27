@@ -79,9 +79,10 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	reviewRepo := postgres.NewReviewRepository(pool)
 	reviewService := service.NewReviewService(reviewRepo, logger)
 
-	// Category & Brand repositories (simple list endpoints, no service layer needed).
+	// Category, Brand & Banner repositories (simple list endpoints, no service layer needed).
 	categoryRepo := postgres.NewCategoryRepository(pool)
 	brandRepo := postgres.NewBrandRepository(pool)
+	bannerRepo := postgres.NewBannerRepository(pool)
 
 	// Health checks.
 	healthHandler := health.NewHandler()
@@ -90,7 +91,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	})
 
 	// HTTP router.
-	router := handler.NewRouter(productService, reviewService, categoryRepo, brandRepo, healthHandler, logger)
+	router := handler.NewRouter(productService, reviewService, categoryRepo, brandRepo, bannerRepo, healthHandler, logger)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.HTTPPort),

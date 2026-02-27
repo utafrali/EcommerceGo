@@ -41,9 +41,10 @@ func (r *CampaignRepository) Create(ctx context.Context, c *domain.Campaign) err
 		INSERT INTO campaigns (
 			id, name, description, type, status, discount_value,
 			min_order_amount, max_discount_amount, code, max_usage_count,
-			current_usage_count, start_date, end_date, applicable_categories,
+			current_usage_count, is_stackable, priority, exclusion_group,
+			start_date, end_date, applicable_categories,
 			applicable_products, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`
 
 	_, err = r.pool.Exec(ctx, query,
 		c.ID,
@@ -57,6 +58,9 @@ func (r *CampaignRepository) Create(ctx context.Context, c *domain.Campaign) err
 		c.Code,
 		c.MaxUsageCount,
 		c.CurrentUsageCount,
+		c.IsStackable,
+		c.Priority,
+		c.ExclusionGroup,
 		c.StartDate,
 		c.EndDate,
 		categoriesJSON,
@@ -79,7 +83,8 @@ func (r *CampaignRepository) GetByID(ctx context.Context, id string) (*domain.Ca
 	query := `
 		SELECT id, name, description, type, status, discount_value,
 			   min_order_amount, max_discount_amount, code, max_usage_count,
-			   current_usage_count, start_date, end_date, applicable_categories,
+			   current_usage_count, is_stackable, priority, exclusion_group,
+			   start_date, end_date, applicable_categories,
 			   applicable_products, created_at, updated_at
 		FROM campaigns
 		WHERE id = $1`
@@ -92,7 +97,8 @@ func (r *CampaignRepository) GetByCode(ctx context.Context, code string) (*domai
 	query := `
 		SELECT id, name, description, type, status, discount_value,
 			   min_order_amount, max_discount_amount, code, max_usage_count,
-			   current_usage_count, start_date, end_date, applicable_categories,
+			   current_usage_count, is_stackable, priority, exclusion_group,
+			   start_date, end_date, applicable_categories,
 			   applicable_products, created_at, updated_at
 		FROM campaigns
 		WHERE code = $1`
@@ -128,7 +134,8 @@ func (r *CampaignRepository) List(ctx context.Context, filter repository.Campaig
 	query := fmt.Sprintf(`
 		SELECT id, name, description, type, status, discount_value,
 			   min_order_amount, max_discount_amount, code, max_usage_count,
-			   current_usage_count, start_date, end_date, applicable_categories,
+			   current_usage_count, is_stackable, priority, exclusion_group,
+			   start_date, end_date, applicable_categories,
 			   applicable_products, created_at, updated_at,
 			   count(*) OVER() AS total_count
 		FROM campaigns
@@ -179,6 +186,9 @@ func (r *CampaignRepository) List(ctx context.Context, filter repository.Campaig
 			&c.Code,
 			&c.MaxUsageCount,
 			&c.CurrentUsageCount,
+			&c.IsStackable,
+			&c.Priority,
+			&c.ExclusionGroup,
 			&c.StartDate,
 			&c.EndDate,
 			&categoriesJSON,
@@ -239,9 +249,10 @@ func (r *CampaignRepository) Update(ctx context.Context, c *domain.Campaign) err
 		UPDATE campaigns
 		SET name = $1, description = $2, type = $3, status = $4, discount_value = $5,
 		    min_order_amount = $6, max_discount_amount = $7, code = $8, max_usage_count = $9,
-		    start_date = $10, end_date = $11, applicable_categories = $12,
-		    applicable_products = $13, updated_at = $14
-		WHERE id = $15`
+		    is_stackable = $10, priority = $11, exclusion_group = $12,
+		    start_date = $13, end_date = $14, applicable_categories = $15,
+		    applicable_products = $16, updated_at = $17
+		WHERE id = $18`
 
 	ct, err := r.pool.Exec(ctx, query,
 		c.Name,
@@ -253,6 +264,9 @@ func (r *CampaignRepository) Update(ctx context.Context, c *domain.Campaign) err
 		c.MaxDiscountAmount,
 		c.Code,
 		c.MaxUsageCount,
+		c.IsStackable,
+		c.Priority,
+		c.ExclusionGroup,
 		c.StartDate,
 		c.EndDate,
 		categoriesJSON,
@@ -334,6 +348,9 @@ func (r *CampaignRepository) scanCampaign(ctx context.Context, query string, arg
 		&c.Code,
 		&c.MaxUsageCount,
 		&c.CurrentUsageCount,
+		&c.IsStackable,
+		&c.Priority,
+		&c.ExclusionGroup,
 		&c.StartDate,
 		&c.EndDate,
 		&categoriesJSON,
@@ -367,6 +384,85 @@ func (r *CampaignRepository) scanCampaign(ctx context.Context, query string, arg
 	}
 
 	return &c, nil
+}
+
+// GetStackingRules returns all stacking rules involving the given campaign.
+func (r *CampaignRepository) GetStackingRules(ctx context.Context, campaignID string) ([]domain.StackingRule, error) {
+	query := `
+		SELECT id, campaign_a_id, campaign_b_id, rule_type, created_at
+		FROM campaign_stacking_rules
+		WHERE campaign_a_id = $1 OR campaign_b_id = $1
+		ORDER BY created_at DESC`
+
+	rows, err := r.pool.Query(ctx, query, campaignID)
+	if err != nil {
+		return nil, fmt.Errorf("get stacking rules: %w", err)
+	}
+	defer rows.Close()
+
+	var rules []domain.StackingRule
+	for rows.Next() {
+		var rule domain.StackingRule
+		if err := rows.Scan(
+			&rule.ID,
+			&rule.CampaignAID,
+			&rule.CampaignBID,
+			&rule.RuleType,
+			&rule.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan stacking rule row: %w", err)
+		}
+		rules = append(rules, rule)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate stacking rule rows: %w", err)
+	}
+
+	if rules == nil {
+		rules = []domain.StackingRule{}
+	}
+
+	return rules, nil
+}
+
+// CreateStackingRule inserts a new stacking rule.
+func (r *CampaignRepository) CreateStackingRule(ctx context.Context, rule *domain.StackingRule) error {
+	query := `
+		INSERT INTO campaign_stacking_rules (id, campaign_a_id, campaign_b_id, rule_type, created_at)
+		VALUES ($1, $2, $3, $4, $5)`
+
+	_, err := r.pool.Exec(ctx, query,
+		rule.ID,
+		rule.CampaignAID,
+		rule.CampaignBID,
+		rule.RuleType,
+		rule.CreatedAt,
+	)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return apperrors.AlreadyExists("stacking_rule", "campaign_pair", rule.CampaignAID+":"+rule.CampaignBID)
+		}
+		return fmt.Errorf("create stacking rule: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteStackingRule removes a stacking rule by its ID.
+func (r *CampaignRepository) DeleteStackingRule(ctx context.Context, id string) error {
+	query := `DELETE FROM campaign_stacking_rules WHERE id = $1`
+
+	ct, err := r.pool.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("delete stacking rule: %w", err)
+	}
+
+	if ct.RowsAffected() == 0 {
+		return apperrors.NotFound("stacking_rule", id)
+	}
+
+	return nil
 }
 
 // isUniqueViolation checks if the error is a PostgreSQL unique constraint violation (SQLSTATE 23505).

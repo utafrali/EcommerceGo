@@ -149,7 +149,7 @@ export function SearchBar({
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="text-gray-400"
+            className="text-stone-400"
           >
             <circle cx={11} cy={11} r={8} />
             <path d="M21 21l-4.35-4.35" />
@@ -166,13 +166,13 @@ export function SearchBar({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           autoComplete="off"
-          className="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="block w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-10 pr-4 text-sm text-stone-900 placeholder:text-stone-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         />
       </form>
 
       {/* Suggestions dropdown */}
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-stone-200 bg-white shadow-lg">
           <ul role="listbox" className="py-1">
             {suggestions.map((suggestion, index) => (
               <li
@@ -187,8 +187,8 @@ export function SearchBar({
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={`flex cursor-pointer items-center gap-2 px-4 py-2.5 text-sm transition-colors ${
                   index === selectedIndex
-                    ? 'bg-indigo-50 text-indigo-700'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-brand-lighter text-brand'
+                    : 'text-stone-700 hover:bg-stone-50'
                 }`}
               >
                 <svg
@@ -200,7 +200,7 @@ export function SearchBar({
                   strokeWidth={2}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="shrink-0 text-gray-400"
+                  className="shrink-0 text-stone-400"
                 >
                   <circle cx={11} cy={11} r={8} />
                   <path d="M21 21l-4.35-4.35" />

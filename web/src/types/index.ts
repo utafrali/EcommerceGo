@@ -77,6 +77,12 @@ export interface Category {
   parent_id: string | null;
   sort_order: number;
   is_active: boolean;
+  image_url?: string | null;
+  icon_url?: string | null;
+  description?: string | null;
+  level?: number;
+  product_count?: number;
+  children?: Category[];
 }
 
 export interface Brand {
@@ -253,6 +259,32 @@ export interface InitiateCheckoutRequest {
 
 export interface SetShippingRequest {
   shipping_address: Address;
+}
+
+// ─── Banner Types ─────────────────────────────────────────────────────────
+
+export interface Banner {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  image_url: string;
+  link_url: string;
+  link_type: 'internal' | 'external';
+  position: 'hero_slider' | 'mid_banner' | 'category_banner';
+  sort_order: number;
+  is_active: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Wishlist Types ───────────────────────────────────────────────────────
+
+export interface WishlistItem {
+  user_id: string;
+  product_id: string;
+  created_at: string;
 }
 
 // ─── Query Parameter Types ─────────────────────────────────────────────────

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -47,6 +48,9 @@ type CreateCampaignInput struct {
 	MaxDiscountAmount    int64
 	Code                 string
 	MaxUsageCount        int
+	IsStackable          bool
+	Priority             int
+	ExclusionGroup       *string
 	StartDate            time.Time
 	EndDate              time.Time
 	ApplicableCategories []string
@@ -64,6 +68,9 @@ type UpdateCampaignInput struct {
 	MaxDiscountAmount    *int64
 	Code                 *string
 	MaxUsageCount        *int
+	IsStackable          *bool
+	Priority             *int
+	ExclusionGroup       *string
 	StartDate            *time.Time
 	EndDate              *time.Time
 	ApplicableCategories []string
@@ -95,6 +102,30 @@ type ApplyCouponInput struct {
 	OrderID     string
 	CategoryIDs []string
 	ProductIDs  []string
+}
+
+// ValidateMultipleCouponsInput holds the parameters for validating multiple coupon codes.
+type ValidateMultipleCouponsInput struct {
+	Codes       []string
+	OrderAmount int64
+	Currency    string
+	UserID      string
+	CategoryIDs []string
+	ProductIDs  []string
+}
+
+// MultiCouponValidation holds the result of a multi-coupon validation.
+type MultiCouponValidation struct {
+	ValidCoupons  []CouponValidation `json:"valid_coupons"`
+	TotalDiscount int64              `json:"total_discount"`
+	Warnings      []string           `json:"warnings"`
+}
+
+// CreateStackingRuleInput holds the parameters for creating a stacking rule.
+type CreateStackingRuleInput struct {
+	CampaignAID string
+	CampaignBID string
+	RuleType    string
 }
 
 // CreateCampaign creates a new campaign with the given input.
@@ -137,6 +168,9 @@ func (s *CampaignService) CreateCampaign(ctx context.Context, input *CreateCampa
 		Code:                 code,
 		MaxUsageCount:        input.MaxUsageCount,
 		CurrentUsageCount:    0,
+		IsStackable:          input.IsStackable,
+		Priority:             input.Priority,
+		ExclusionGroup:       input.ExclusionGroup,
 		StartDate:            input.StartDate,
 		EndDate:              input.EndDate,
 		ApplicableCategories: input.ApplicableCategories,
@@ -269,6 +303,22 @@ func (s *CampaignService) UpdateCampaign(ctx context.Context, id string, input *
 
 	if input.MaxUsageCount != nil {
 		campaign.MaxUsageCount = *input.MaxUsageCount
+	}
+
+	if input.IsStackable != nil {
+		campaign.IsStackable = *input.IsStackable
+	}
+
+	if input.Priority != nil {
+		campaign.Priority = *input.Priority
+	}
+
+	if input.ExclusionGroup != nil {
+		if *input.ExclusionGroup == "" {
+			campaign.ExclusionGroup = nil
+		} else {
+			campaign.ExclusionGroup = input.ExclusionGroup
+		}
 	}
 
 	if input.StartDate != nil {
@@ -441,6 +491,354 @@ func (s *CampaignService) DeactivateCampaign(ctx context.Context, id string) (*d
 	)
 
 	return campaign, nil
+}
+
+// ValidateMultipleCoupons validates multiple coupon codes for a single order and applies stacking rules.
+func (s *CampaignService) ValidateMultipleCoupons(ctx context.Context, input *ValidateMultipleCouponsInput) (*MultiCouponValidation, error) {
+	if len(input.Codes) == 0 {
+		return nil, apperrors.InvalidInput("at least one coupon code is required")
+	}
+	if input.OrderAmount <= 0 {
+		return nil, apperrors.InvalidInput("order amount must be positive")
+	}
+
+	validateInput := &ValidateCouponInput{
+		OrderAmount: input.OrderAmount,
+		Currency:    input.Currency,
+		UserID:      input.UserID,
+		CategoryIDs: input.CategoryIDs,
+		ProductIDs:  input.ProductIDs,
+	}
+
+	// Phase 1: Validate each coupon individually.
+	type candidateCoupon struct {
+		campaign   *domain.Campaign
+		validation *CouponValidation
+	}
+
+	var candidates []candidateCoupon
+	var warnings []string
+
+	for _, code := range input.Codes {
+		validation, err := s.ValidateCoupon(ctx, code, validateInput)
+		if err != nil {
+			return nil, fmt.Errorf("validate coupon %q: %w", code, err)
+		}
+
+		if !validation.Valid {
+			warnings = append(warnings, fmt.Sprintf("%s rejected: %s", code, validation.Message))
+			continue
+		}
+
+		campaign, err := s.repo.GetByCode(ctx, strings.ToUpper(strings.TrimSpace(code)))
+		if err != nil {
+			return nil, fmt.Errorf("get campaign for code %q: %w", code, err)
+		}
+
+		candidates = append(candidates, candidateCoupon{
+			campaign:   campaign,
+			validation: validation,
+		})
+	}
+
+	// If no valid candidates, return early.
+	if len(candidates) == 0 {
+		return &MultiCouponValidation{
+			ValidCoupons:  []CouponValidation{},
+			TotalDiscount: 0,
+			Warnings:      warnings,
+		}, nil
+	}
+
+	// If only one candidate, no stacking logic needed.
+	if len(candidates) == 1 {
+		return &MultiCouponValidation{
+			ValidCoupons:  []CouponValidation{*candidates[0].validation},
+			TotalDiscount: candidates[0].validation.DiscountAmount,
+			Warnings:      warnings,
+		}, nil
+	}
+
+	// Phase 2: Apply stacking rules.
+
+	// Sort candidates by priority (highest first), then by discount amount (highest first).
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].campaign.Priority != candidates[j].campaign.Priority {
+			return candidates[i].campaign.Priority > candidates[j].campaign.Priority
+		}
+		return candidates[i].validation.DiscountAmount > candidates[j].validation.DiscountAmount
+	})
+
+	// Step 2a: If any coupon is not stackable, keep only the highest priority one.
+	hasNonStackable := false
+	for _, c := range candidates {
+		if !c.campaign.IsStackable {
+			hasNonStackable = true
+			break
+		}
+	}
+
+	if hasNonStackable {
+		// Keep the non-stackable coupon with the best priority/discount.
+		// If a non-stackable coupon is present, only it survives.
+		var bestNonStackable *candidateCoupon
+		for i := range candidates {
+			if !candidates[i].campaign.IsStackable {
+				if bestNonStackable == nil {
+					bestNonStackable = &candidates[i]
+				}
+				// Already sorted by priority then discount, so the first non-stackable is the best.
+				break
+			}
+		}
+
+		// If the best overall is stackable and has a higher discount, warn about it.
+		for _, c := range candidates {
+			if c.campaign.ID != bestNonStackable.campaign.ID {
+				warnings = append(warnings, fmt.Sprintf("%s removed: not stackable with %s", c.campaign.Code, bestNonStackable.campaign.Code))
+			}
+		}
+
+		return &MultiCouponValidation{
+			ValidCoupons:  []CouponValidation{*bestNonStackable.validation},
+			TotalDiscount: bestNonStackable.validation.DiscountAmount,
+			Warnings:      warnings,
+		}, nil
+	}
+
+	// Step 2b: Check exclusion groups. If two coupons share the same exclusion group,
+	// keep the one with higher priority (already sorted).
+	exclusionGroupWinners := make(map[string]int) // exclusion_group -> index of winner in candidates
+	var filteredCandidates []candidateCoupon
+
+	for i, c := range candidates {
+		if c.campaign.ExclusionGroup == nil || *c.campaign.ExclusionGroup == "" {
+			filteredCandidates = append(filteredCandidates, c)
+			continue
+		}
+
+		group := *c.campaign.ExclusionGroup
+		if _, exists := exclusionGroupWinners[group]; !exists {
+			// First campaign in this group wins (already sorted by priority).
+			exclusionGroupWinners[group] = i
+			filteredCandidates = append(filteredCandidates, c)
+		} else {
+			// This campaign loses to the one already in the group.
+			winnerIdx := exclusionGroupWinners[group]
+			warnings = append(warnings, fmt.Sprintf(
+				"%s removed: same exclusion group %q as %s (lower priority)",
+				c.campaign.Code, group, candidates[winnerIdx].campaign.Code,
+			))
+		}
+	}
+
+	candidates = filteredCandidates
+
+	// Step 2c: Check explicit stacking rules for 'exclusive' pairs.
+	// Build a set of all candidate IDs for quick lookup.
+	candidateMap := make(map[string]int) // campaign_id -> index in candidates
+	for i, c := range candidates {
+		candidateMap[c.campaign.ID] = i
+	}
+
+	excludedIDs := make(map[string]bool)
+
+	for _, c := range candidates {
+		if excludedIDs[c.campaign.ID] {
+			continue
+		}
+
+		rules, err := s.repo.GetStackingRules(ctx, c.campaign.ID)
+		if err != nil {
+			return nil, fmt.Errorf("get stacking rules for campaign %s: %w", c.campaign.ID, err)
+		}
+
+		for _, rule := range rules {
+			if rule.RuleType != domain.StackingRuleTypeExclusive {
+				continue
+			}
+
+			// Determine the other campaign in the rule.
+			otherID := rule.CampaignBID
+			if otherID == c.campaign.ID {
+				otherID = rule.CampaignAID
+			}
+
+			// If the other campaign is also a candidate, remove the lower-priority one.
+			if otherIdx, exists := candidateMap[otherID]; exists && !excludedIDs[otherID] {
+				myIdx := candidateMap[c.campaign.ID]
+				// Candidates are sorted by priority: lower index = higher priority.
+				if myIdx < otherIdx {
+					// Current campaign wins, other is excluded.
+					excludedIDs[otherID] = true
+					warnings = append(warnings, fmt.Sprintf(
+						"%s removed: exclusive rule with %s",
+						candidates[otherIdx].campaign.Code, c.campaign.Code,
+					))
+				} else {
+					// Other campaign wins, current is excluded.
+					excludedIDs[c.campaign.ID] = true
+					warnings = append(warnings, fmt.Sprintf(
+						"%s removed: exclusive rule with %s",
+						c.campaign.Code, candidates[otherIdx].campaign.Code,
+					))
+					break
+				}
+			}
+		}
+	}
+
+	// Build the final valid set.
+	var validCoupons []CouponValidation
+	var totalDiscount int64
+
+	for _, c := range candidates {
+		if excludedIDs[c.campaign.ID] {
+			continue
+		}
+		validCoupons = append(validCoupons, *c.validation)
+		totalDiscount += c.validation.DiscountAmount
+	}
+
+	if validCoupons == nil {
+		validCoupons = []CouponValidation{}
+	}
+
+	// Ensure total discount does not exceed order amount.
+	if totalDiscount > input.OrderAmount {
+		totalDiscount = input.OrderAmount
+	}
+
+	return &MultiCouponValidation{
+		ValidCoupons:  validCoupons,
+		TotalDiscount: totalDiscount,
+		Warnings:      warnings,
+	}, nil
+}
+
+// GetBestCampaign validates all coupon codes and returns the one with the highest discount.
+func (s *CampaignService) GetBestCampaign(ctx context.Context, codes []string, orderAmount int64) (*CouponValidation, error) {
+	if len(codes) == 0 {
+		return nil, apperrors.InvalidInput("at least one coupon code is required")
+	}
+	if orderAmount <= 0 {
+		return nil, apperrors.InvalidInput("order amount must be positive")
+	}
+
+	validateInput := &ValidateCouponInput{
+		OrderAmount: orderAmount,
+	}
+
+	var best *CouponValidation
+
+	for _, code := range codes {
+		validation, err := s.ValidateCoupon(ctx, code, validateInput)
+		if err != nil {
+			return nil, fmt.Errorf("validate coupon %q: %w", code, err)
+		}
+
+		if !validation.Valid {
+			continue
+		}
+
+		if best == nil || validation.DiscountAmount > best.DiscountAmount {
+			best = validation
+		}
+	}
+
+	if best == nil {
+		return &CouponValidation{
+			Valid:   false,
+			Message: "no valid coupons found",
+		}, nil
+	}
+
+	return best, nil
+}
+
+// CreateStackingRule creates a new stacking rule between two campaigns.
+func (s *CampaignService) CreateStackingRule(ctx context.Context, input *CreateStackingRuleInput) (*domain.StackingRule, error) {
+	if input.CampaignAID == "" || input.CampaignBID == "" {
+		return nil, apperrors.InvalidInput("both campaign IDs are required")
+	}
+	if input.CampaignAID == input.CampaignBID {
+		return nil, apperrors.InvalidInput("cannot create a stacking rule between a campaign and itself")
+	}
+	if !domain.IsValidStackingRuleType(input.RuleType) {
+		return nil, apperrors.InvalidInput(fmt.Sprintf("invalid rule type %q, must be one of: compatible, exclusive", input.RuleType))
+	}
+
+	// Verify both campaigns exist.
+	if _, err := s.repo.GetByID(ctx, input.CampaignAID); err != nil {
+		return nil, fmt.Errorf("get campaign A: %w", err)
+	}
+	if _, err := s.repo.GetByID(ctx, input.CampaignBID); err != nil {
+		return nil, fmt.Errorf("get campaign B: %w", err)
+	}
+
+	// Normalize: always store smaller ID first to avoid duplicate inverse pairs.
+	aID, bID := input.CampaignAID, input.CampaignBID
+	if aID > bID {
+		aID, bID = bID, aID
+	}
+
+	now := time.Now().UTC()
+	rule := &domain.StackingRule{
+		ID:          uuid.New().String(),
+		CampaignAID: aID,
+		CampaignBID: bID,
+		RuleType:    input.RuleType,
+		CreatedAt:   now,
+	}
+
+	if err := s.repo.CreateStackingRule(ctx, rule); err != nil {
+		return nil, fmt.Errorf("create stacking rule: %w", err)
+	}
+
+	s.logger.InfoContext(ctx, "stacking rule created",
+		slog.String("rule_id", rule.ID),
+		slog.String("campaign_a_id", rule.CampaignAID),
+		slog.String("campaign_b_id", rule.CampaignBID),
+		slog.String("rule_type", rule.RuleType),
+	)
+
+	return rule, nil
+}
+
+// GetStackingRules returns all stacking rules for a given campaign.
+func (s *CampaignService) GetStackingRules(ctx context.Context, campaignID string) ([]domain.StackingRule, error) {
+	if campaignID == "" {
+		return nil, apperrors.InvalidInput("campaign id is required")
+	}
+
+	// Verify the campaign exists.
+	if _, err := s.repo.GetByID(ctx, campaignID); err != nil {
+		return nil, fmt.Errorf("get campaign for stacking rules: %w", err)
+	}
+
+	rules, err := s.repo.GetStackingRules(ctx, campaignID)
+	if err != nil {
+		return nil, fmt.Errorf("get stacking rules: %w", err)
+	}
+
+	return rules, nil
+}
+
+// DeleteStackingRule removes a stacking rule by its ID.
+func (s *CampaignService) DeleteStackingRule(ctx context.Context, id string) error {
+	if id == "" {
+		return apperrors.InvalidInput("rule id is required")
+	}
+
+	if err := s.repo.DeleteStackingRule(ctx, id); err != nil {
+		return fmt.Errorf("delete stacking rule: %w", err)
+	}
+
+	s.logger.InfoContext(ctx, "stacking rule deleted",
+		slog.String("rule_id", id),
+	)
+
+	return nil
 }
 
 // calculateDiscount computes the discount amount based on campaign type and order amount.

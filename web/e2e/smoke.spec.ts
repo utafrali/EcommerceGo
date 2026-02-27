@@ -6,35 +6,28 @@ test.describe('Smoke Tests', () => {
     await expect(page).toHaveTitle('EcommerceGo');
   });
 
-  test('homepage displays welcome heading', async ({ page }) => {
+  test('homepage displays hero heading', async ({ page }) => {
     await page.goto('/');
+    // The HeroSlider fallback always renders "Discover Quality Products"
     const heading = page.getByRole('heading', {
       name: 'Discover Quality Products',
     });
     await expect(heading).toBeVisible();
   });
 
-  test('homepage displays platform description', async ({ page }) => {
-    await page.goto('/');
-    await expect(
-      page.getByText(
-        'Shop the best deals across electronics, clothing, home essentials, and more.',
-      ),
-    ).toBeVisible();
-  });
-
   test('homepage has Shop Now link', async ({ page }) => {
     await page.goto('/');
-    const link = page.getByRole('link', { name: 'Shop Now' });
+    const link = page.getByRole('link', { name: 'Shop Now' }).first();
     await expect(link).toBeVisible();
     await expect(link).toHaveAttribute('href', '/products');
   });
 
-  test('homepage has Sign In link', async ({ page }) => {
+  test('homepage displays benefit bar', async ({ page }) => {
     await page.goto('/');
-    // The header has a "Sign In" link
-    const link = page.locator('header').getByRole('link', { name: 'Sign In' });
-    await expect(link).toBeVisible();
+    await expect(page.getByText('Free Shipping')).toBeVisible();
+    await expect(page.getByText('Secure Payment')).toBeVisible();
+    await expect(page.getByText('Easy Returns')).toBeVisible();
+    await expect(page.getByText('24/7 Support')).toBeVisible();
   });
 
   test('page has correct meta description', async ({ page }) => {
@@ -65,23 +58,26 @@ test.describe('Navigation', () => {
 
   test('header contains Products nav link', async ({ page }) => {
     await page.goto('/');
+    // Products link is in the Layer 3 category nav (desktop only)
     const productsLink = page
-      .locator('header')
+      .locator('header nav')
       .getByRole('link', { name: 'Products' });
     await expect(productsLink).toBeVisible();
     await expect(productsLink).toHaveAttribute('href', '/products');
   });
 
-  test('header contains Cart nav link', async ({ page }) => {
+  test('header contains shopping cart link', async ({ page }) => {
     await page.goto('/');
     const cartLink = page
       .locator('header')
-      .getByRole('link', { name: 'Cart' });
+      .getByRole('link', { name: 'Shopping cart' });
     await expect(cartLink).toBeVisible();
     await expect(cartLink).toHaveAttribute('href', '/cart');
   });
 
-  test('header contains Sign In nav link', async ({ page }) => {
+  test('header contains Sign In link for unauthenticated users', async ({
+    page,
+  }) => {
     await page.goto('/');
     const signInLink = page
       .locator('header')
@@ -90,12 +86,21 @@ test.describe('Navigation', () => {
     await expect(signInLink).toHaveAttribute('href', '/auth/login');
   });
 
+  test('header contains wishlist link', async ({ page }) => {
+    await page.goto('/');
+    const wishlistLink = page
+      .locator('header')
+      .getByRole('link', { name: 'Wishlist' });
+    await expect(wishlistLink).toBeVisible();
+    await expect(wishlistLink).toHaveAttribute('href', '/wishlist');
+  });
+
   test('clicking Products nav link navigates to products page', async ({
     page,
   }) => {
     await page.goto('/');
     await page
-      .locator('header')
+      .locator('header nav')
       .getByRole('link', { name: 'Products' })
       .click();
     await expect(page).toHaveURL('/products');
@@ -104,18 +109,19 @@ test.describe('Navigation', () => {
     ).toBeVisible();
   });
 
-  test('clicking Cart nav link navigates to cart page', async ({ page }) => {
+  test('clicking cart link navigates to cart page', async ({ page }) => {
     await page.goto('/');
-    await page.locator('header').getByRole('link', { name: 'Cart' }).click();
+    await page
+      .locator('header')
+      .getByRole('link', { name: 'Shopping cart' })
+      .click();
     await expect(page).toHaveURL('/cart');
     await expect(
       page.getByRole('heading', { name: 'Shopping Cart' }),
     ).toBeVisible();
   });
 
-  test('clicking Sign In nav link navigates to login page', async ({
-    page,
-  }) => {
+  test('clicking Sign In link navigates to login page', async ({ page }) => {
     await page.goto('/');
     await page
       .locator('header')
@@ -133,5 +139,11 @@ test.describe('Navigation', () => {
     await expect(footer).toContainText(
       'AI-driven open-source e-commerce platform',
     );
+  });
+
+  test('footer displays newsletter section', async ({ page }) => {
+    await page.goto('/');
+    const footer = page.locator('footer');
+    await expect(footer.getByText('Subscribe to our newsletter')).toBeVisible();
   });
 });

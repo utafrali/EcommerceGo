@@ -1,225 +1,211 @@
 import Link from 'next/link';
-import type { Product, Category } from '@/types';
+import type { Product, Category, Banner } from '@/types';
 import { api } from '@/lib/api';
-import { CATEGORY_ICONS } from '@/lib/constants';
-import { ProductCard } from '@/components/ui';
+import { HeroSlider } from '@/components/home/HeroSlider';
+import { BenefitBar } from '@/components/home/BenefitBar';
+import { CategoryShowcase } from '@/components/home/CategoryShowcase';
+import { ProductCarousel } from '@/components/home/ProductCarousel';
 import { RecentlyViewed } from '@/components/home/RecentlyViewed';
 
-// ─── Data Fetching ────────────────────────────────────────────────────────────
+// ─── Data Fetching ───────────────────────────────────────────────────────────
 
-async function getFeaturedProducts(): Promise<Product[] | null> {
+async function getHeroBanners(): Promise<Banner[]> {
   try {
-    const res = await api.getProducts({ per_page: 8, status: 'published' });
-    return res.data;
+    const res = await api.getBanners({ position: 'hero_slider' });
+    return res.data || [];
   } catch {
-    return null;
+    return [];
   }
 }
 
-async function getNewArrivals(): Promise<Product[] | null> {
+async function getMidBanners(): Promise<Banner[]> {
   try {
-    const res = await api.getProducts({ per_page: 4, status: 'published' });
-    return res.data;
+    const res = await api.getBanners({ position: 'mid_banner' });
+    return res.data || [];
   } catch {
-    return null;
+    return [];
   }
 }
 
-async function getAllCategories(): Promise<Category[] | null> {
+async function getFeaturedProducts(): Promise<Product[]> {
   try {
-    const res = await api.getCategories();
-    return res.data;
+    const res = await api.getProducts({
+      per_page: 12,
+      status: 'published',
+      sort: 'rating',
+    });
+    return res.data || [];
   } catch {
-    return null;
+    return [];
   }
 }
 
-// ─── Page Component ───────────────────────────────────────────────────────────
+async function getNewArrivals(): Promise<Product[]> {
+  try {
+    const res = await api.getProducts({
+      per_page: 8,
+      status: 'published',
+      sort: 'newest',
+    });
+    return res.data || [];
+  } catch {
+    return [];
+  }
+}
+
+async function getCategoryTree(): Promise<Category[]> {
+  try {
+    const res = await api.getCategoryTree();
+    return (res.data || []).filter((c) => c.is_active);
+  } catch {
+    return [];
+  }
+}
+
+// ─── Page Component ──────────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const [featuredProducts, newArrivals, categories] = await Promise.all([
+  const results = await Promise.allSettled([
+    getHeroBanners(),
+    getMidBanners(),
     getFeaturedProducts(),
     getNewArrivals(),
-    getAllCategories(),
+    getCategoryTree(),
   ]);
+
+  const heroBanners = results[0].status === 'fulfilled' ? results[0].value : [];
+  const midBanners = results[1].status === 'fulfilled' ? results[1].value : [];
+  const featuredProducts =
+    results[2].status === 'fulfilled' ? results[2].value : [];
+  const newArrivals =
+    results[3].status === 'fulfilled' ? results[3].value : [];
+  const categories =
+    results[4].status === 'fulfilled' ? results[4].value : [];
+
+  const firstMidBanner =
+    midBanners.length > 0 ? midBanners[0] : null;
 
   return (
     <div>
-      {/* ── Hero Banner ──────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800">
-        {/* Decorative dot pattern */}
-        <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,255,255,0.08)_0%,transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.06)_0%,transparent_50%)]" />
-        {/* Animated shimmer overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer" />
-        <div className="relative mx-auto max-w-7xl px-4 py-28 sm:px-6 sm:py-36 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] sm:text-5xl lg:text-6xl">
-              Discover Quality Products
-            </h1>
-            <p className="mt-6 text-lg leading-8 text-indigo-100 drop-shadow-sm">
-              Shop the best deals across electronics, clothing, home essentials, and more.
-            </p>
-            <div className="mt-10 flex items-center justify-center gap-4">
-              <Link
-                href="/products"
-                className="rounded-md bg-white px-6 py-3 text-sm font-semibold text-indigo-600 shadow-sm transition-colors hover:bg-indigo-50"
-              >
-                Shop Now
-              </Link>
-              <Link
-                href="#categories"
-                className="rounded-md border border-white/30 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-              >
-                View Categories
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* 1. Hero Slider */}
+      <HeroSlider banners={heroBanners} />
 
-      {/* ── Featured Products ────────────────────────────────────────────── */}
-      <section className="bg-white py-12 sm:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-2xl font-bold tracking-tight text-gray-900">
-              Featured Products
-            </h2>
-            <Link
-              href="/products"
-              className="text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-500"
-            >
-              View All Products &rarr;
-            </Link>
-          </div>
+      {/* 2. Benefit Bar */}
+      <BenefitBar />
 
-          {featuredProducts === null ? (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-6 py-12 text-center">
-              <p className="text-gray-600">Unable to load products.</p>
-              <Link
-                href="/"
-                className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-500"
-              >
-                Try Again
-              </Link>
-            </div>
-          ) : featuredProducts.length === 0 ? (
-            <p className="py-12 text-center text-gray-500">
-              No products available yet. Check back soon!
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {featuredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+      {/* 3. Category Showcase */}
+      {categories.length > 0 && (
+        <CategoryShowcase categories={categories} />
+      )}
 
-      {/* ── Shop by Category ─────────────────────────────────────────────── */}
-      {categories !== null && categories.length > 0 && (
-        <section id="categories" className="bg-gray-50 py-12 sm:py-16">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <h2 className="mb-8 text-2xl font-bold tracking-tight text-gray-900">
-              Shop by Category
-            </h2>
+      {/* 4. Featured Products Carousel */}
+      {featuredProducts.length > 0 && (
+        <ProductCarousel
+          title="Featured Products"
+          viewAllHref="/products"
+          products={featuredProducts}
+        />
+      )}
 
-            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
-              {categories.map((category) => (
-                <Link
-                  key={category.id}
-                  href={`/products?category_id=${category.id}`}
-                  className="group flex flex-col items-center rounded-xl border border-gray-200 bg-white px-5 py-8 text-center transition-all duration-300 hover:border-indigo-300 hover:shadow-lg hover:bg-gradient-to-br hover:from-white hover:to-indigo-50"
+      {/* 5. Mid Banner (promotional) */}
+      {firstMidBanner && (
+        <section className="bg-stone-50">
+          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            {firstMidBanner.link_url ? (
+              firstMidBanner.link_type === 'external' ? (
+                <a
+                  href={firstMidBanner.link_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group block overflow-hidden rounded-xl"
                 >
-                  <span className="mb-4 text-5xl transition-transform duration-300 group-hover:scale-110" role="img" aria-label={category.name}>
-                    {CATEGORY_ICONS[category.slug] || '🏷️'}
-                  </span>
-                  <span className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600">
-                    {category.name}
-                  </span>
+                  <div className="relative aspect-[21/6] overflow-hidden rounded-xl">
+                    <div
+                      className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.02]"
+                      style={{
+                        backgroundImage: `url(${firstMidBanner.image_url})`,
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+                    <div className="relative flex h-full items-center px-8 sm:px-12">
+                      <div>
+                        <h3 className="text-2xl font-bold text-white sm:text-3xl">
+                          {firstMidBanner.title}
+                        </h3>
+                        {firstMidBanner.subtitle && (
+                          <p className="mt-2 text-sm text-white/80 sm:text-base">
+                            {firstMidBanner.subtitle}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              ) : (
+                <Link
+                  href={firstMidBanner.link_url}
+                  className="group block overflow-hidden rounded-xl"
+                >
+                  <div className="relative aspect-[21/6] overflow-hidden rounded-xl">
+                    <div
+                      className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.02]"
+                      style={{
+                        backgroundImage: `url(${firstMidBanner.image_url})`,
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+                    <div className="relative flex h-full items-center px-8 sm:px-12">
+                      <div>
+                        <h3 className="text-2xl font-bold text-white sm:text-3xl">
+                          {firstMidBanner.title}
+                        </h3>
+                        {firstMidBanner.subtitle && (
+                          <p className="mt-2 text-sm text-white/80 sm:text-base">
+                            {firstMidBanner.subtitle}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </Link>
-              ))}
-            </div>
+              )
+            ) : (
+              <div className="relative aspect-[21/6] overflow-hidden rounded-xl">
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{
+                    backgroundImage: `url(${firstMidBanner.image_url})`,
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+                <div className="relative flex h-full items-center px-8 sm:px-12">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white sm:text-3xl">
+                      {firstMidBanner.title}
+                    </h3>
+                    {firstMidBanner.subtitle && (
+                      <p className="mt-2 text-sm text-white/80 sm:text-base">
+                        {firstMidBanner.subtitle}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       )}
 
-      {/* ── Promotional Banner ───────────────────────────────────────────── */}
-      <section className="bg-indigo-600">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <div className="text-center sm:text-left">
-              <p className="text-lg font-semibold text-white">
-                Use code{' '}
-                <span className="rounded bg-white/20 px-2 py-0.5 font-mono">
-                  WELCOME10
-                </span>{' '}
-                for 10% off your first order!
-              </p>
-            </div>
-            <Link
-              href="/products"
-              className="shrink-0 rounded-md bg-white px-6 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm transition-colors hover:bg-indigo-50"
-            >
-              Start Shopping
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* 6. New Arrivals Carousel */}
+      {newArrivals.length > 0 && (
+        <ProductCarousel
+          title="New Arrivals"
+          viewAllHref="/products?sort=newest"
+          products={newArrivals}
+        />
+      )}
 
-      {/* ── New Arrivals ─────────────────────────────────────────────────── */}
-      <section className="bg-white py-12 sm:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-2xl font-bold tracking-tight text-gray-900">
-              New Arrivals
-            </h2>
-            <Link
-              href="/products"
-              className="text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-500"
-            >
-              View All &rarr;
-            </Link>
-          </div>
-
-          {newArrivals === null ? (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-6 py-12 text-center">
-              <p className="text-gray-600">Unable to load products.</p>
-              <Link
-                href="/"
-                className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-500"
-              >
-                Try Again
-              </Link>
-            </div>
-          ) : newArrivals.length === 0 ? (
-            <p className="py-12 text-center text-gray-500">
-              No new arrivals yet. Check back soon!
-            </p>
-          ) : (
-            <>
-              {/* Mobile: horizontal scroll */}
-              <div className="flex gap-4 overflow-x-auto pb-4 sm:hidden">
-                {newArrivals.map((product) => (
-                  <div key={product.id} className="w-64 shrink-0">
-                    <ProductCard product={product} />
-                  </div>
-                ))}
-              </div>
-              {/* Tablet+: grid */}
-              <div className="hidden gap-6 sm:grid sm:grid-cols-2 lg:grid-cols-4">
-                {newArrivals.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* ── Recently Viewed (client component) ───────────────────────────── */}
+      {/* 7. Recently Viewed */}
       <RecentlyViewed />
     </div>
   );

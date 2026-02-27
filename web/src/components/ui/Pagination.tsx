@@ -68,8 +68,8 @@ export function Pagination({
         className={cn(
           baseBtn,
           currentPage <= 1
-            ? 'cursor-not-allowed text-gray-300'
-            : 'text-gray-600 hover:bg-gray-100',
+            ? 'cursor-not-allowed text-stone-300'
+            : 'text-stone-600 hover:bg-stone-100',
         )}
       >
         <svg
@@ -92,7 +92,7 @@ export function Pagination({
         page === -1 ? (
           <span
             key={`ellipsis-${idx}`}
-            className="flex h-9 min-w-[2.25rem] items-center justify-center text-sm text-gray-400"
+            className="flex h-9 min-w-[2.25rem] items-center justify-center text-sm text-stone-400"
           >
             ...
           </span>
@@ -105,8 +105,8 @@ export function Pagination({
             className={cn(
               baseBtn,
               page === currentPage
-                ? 'bg-indigo-600 text-white'
-                : 'text-gray-700 hover:bg-gray-100',
+                ? 'bg-brand text-white'
+                : 'text-stone-700 hover:bg-stone-100',
             )}
           >
             {page}
@@ -123,8 +123,8 @@ export function Pagination({
         className={cn(
           baseBtn,
           currentPage >= totalPages
-            ? 'cursor-not-allowed text-gray-300'
-            : 'text-gray-600 hover:bg-gray-100',
+            ? 'cursor-not-allowed text-stone-300'
+            : 'text-stone-600 hover:bg-stone-100',
         )}
       >
         <span className="mr-1 hidden sm:inline">Next</span>

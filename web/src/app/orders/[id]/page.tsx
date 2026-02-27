@@ -113,7 +113,7 @@ export default function OrderDetailPage() {
 
   const statusConfig = ORDER_STATUSES[order.status] || {
     label: order.status,
-    color: 'bg-gray-100 text-gray-800',
+    color: 'bg-stone-100 text-stone-800',
   };
 
   const subtotal = order.items.reduce(
@@ -129,7 +129,7 @@ export default function OrderDetailPage() {
       {/* Back link */}
       <Link
         href="/orders"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-500"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-brand transition-colors hover:text-brand-light"
       >
         <svg
           width={16}
@@ -148,14 +148,14 @@ export default function OrderDetailPage() {
       </Link>
 
       {/* Order header */}
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+      <div className="mt-6 rounded-lg border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-2xl font-bold tracking-tight text-stone-900">
               Order #{order.id.slice(0, 8)}
             </h1>
             <p
-              className="mt-1 text-sm text-gray-500"
+              className="mt-1 text-sm text-stone-500"
               title={order.id}
             >
               Full ID: {order.id}
@@ -171,7 +171,7 @@ export default function OrderDetailPage() {
           </span>
         </div>
 
-        <div className="mt-4 text-sm text-gray-600">
+        <div className="mt-4 text-sm text-stone-600">
           <time dateTime={order.created_at}>
             Placed on {formatDate(order.created_at)}
           </time>
@@ -179,9 +179,9 @@ export default function OrderDetailPage() {
       </div>
 
       {/* Items table */}
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="mt-6 rounded-lg border border-stone-200 bg-white shadow-sm">
         <div className="px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-lg font-semibold text-stone-900">
             Items ({order.items.length})
           </h2>
         </div>
@@ -190,46 +190,46 @@ export default function OrderDetailPage() {
         <div className="hidden sm:block">
           <table className="w-full">
             <thead>
-              <tr className="border-t border-gray-200 bg-gray-50">
+              <tr className="border-t border-stone-200 bg-stone-50">
                 <th
                   scope="col"
-                  className="py-3 pl-6 pr-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                  className="py-3 pl-6 pr-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500"
                 >
                   Product
                 </th>
                 <th
                   scope="col"
-                  className="px-3 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500"
+                  className="px-3 py-3 text-center text-xs font-medium uppercase tracking-wider text-stone-500"
                 >
                   Qty
                 </th>
                 <th
                   scope="col"
-                  className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500"
+                  className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-stone-500"
                 >
                   Unit Price
                 </th>
                 <th
                   scope="col"
-                  className="py-3 pl-3 pr-6 text-right text-xs font-medium uppercase tracking-wider text-gray-500"
+                  className="py-3 pl-3 pr-6 text-right text-xs font-medium uppercase tracking-wider text-stone-500"
                 >
                   Total
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-stone-200">
               {order.items.map((item) => (
                 <tr key={item.id}>
-                  <td className="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-medium text-gray-900">
+                  <td className="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-medium text-stone-900">
                     {item.product_name}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-center text-sm text-gray-600">
+                  <td className="whitespace-nowrap px-3 py-4 text-center text-sm text-stone-600">
                     {item.quantity}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-right text-sm text-gray-600">
+                  <td className="whitespace-nowrap px-3 py-4 text-right text-sm text-stone-600">
                     {formatPrice(item.unit_price, order.currency)}
                   </td>
-                  <td className="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium text-gray-900">
+                  <td className="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium text-stone-900">
                     {formatPrice(item.total_price, order.currency)}
                   </td>
                 </tr>
@@ -240,18 +240,18 @@ export default function OrderDetailPage() {
 
         {/* Mobile list */}
         <div className="block sm:hidden">
-          <ul className="divide-y divide-gray-200 border-t border-gray-200">
+          <ul className="divide-y divide-stone-200 border-t border-stone-200">
             {order.items.map((item) => (
               <li key={item.id} className="px-4 py-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-stone-900">
                     {item.product_name}
                   </span>
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-stone-900">
                     {formatPrice(item.total_price, order.currency)}
                   </span>
                 </div>
-                <div className="mt-1 flex items-center justify-between text-sm text-gray-500">
+                <div className="mt-1 flex items-center justify-between text-sm text-stone-500">
                   <span>Qty: {item.quantity}</span>
                   <span>
                     {formatPrice(item.unit_price, order.currency)} each
@@ -267,11 +267,11 @@ export default function OrderDetailPage() {
       <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
         {/* Shipping address */}
         {order.shipping_address && (
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-            <h2 className="text-lg font-semibold text-gray-900">
+          <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+            <h2 className="text-lg font-semibold text-stone-900">
               Shipping Address
             </h2>
-            <address className="mt-3 text-sm not-italic text-gray-600 leading-relaxed">
+            <address className="mt-3 text-sm not-italic text-stone-600 leading-relaxed">
               {order.shipping_address.line1}
               {order.shipping_address.line2 && (
                 <>
@@ -290,20 +290,20 @@ export default function OrderDetailPage() {
         )}
 
         {/* Order totals */}
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="text-lg font-semibold text-stone-900">
             Order Summary
           </h2>
           <dl className="mt-3 space-y-3">
             <div className="flex items-center justify-between">
-              <dt className="text-sm text-gray-600">Subtotal</dt>
-              <dd className="text-sm font-medium text-gray-900">
+              <dt className="text-sm text-stone-600">Subtotal</dt>
+              <dd className="text-sm font-medium text-stone-900">
                 {formatPrice(subtotal, order.currency)}
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-sm text-gray-600">Shipping</dt>
-              <dd className="text-sm font-medium text-gray-900">
+              <dt className="text-sm text-stone-600">Shipping</dt>
+              <dd className="text-sm font-medium text-stone-900">
                 {shippingCost <= 0 ? (
                   <span className="text-green-600">Free</span>
                 ) : (
@@ -311,11 +311,11 @@ export default function OrderDetailPage() {
                 )}
               </dd>
             </div>
-            <div className="flex items-center justify-between border-t border-gray-200 pt-3">
-              <dt className="text-base font-semibold text-gray-900">
+            <div className="flex items-center justify-between border-t border-stone-200 pt-3">
+              <dt className="text-base font-semibold text-stone-900">
                 Total
               </dt>
-              <dd className="text-base font-semibold text-gray-900">
+              <dd className="text-base font-semibold text-stone-900">
                 {formatPrice(order.total_amount, order.currency)}
               </dd>
             </div>
@@ -331,7 +331,7 @@ export default function OrderDetailPage() {
 function OrderNotFound() {
   return (
     <div className="mt-16 flex flex-col items-center text-center">
-      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
+      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-stone-100">
         <svg
           width={48}
           height={48}
@@ -341,23 +341,23 @@ function OrderNotFound() {
           strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-gray-400"
+          className="text-stone-400"
         >
           <circle cx={11} cy={11} r={8} />
           <path d="M21 21l-4.35-4.35" />
           <path d="M8 11h6" />
         </svg>
       </div>
-      <h2 className="mt-6 text-xl font-semibold text-gray-900">
+      <h2 className="mt-6 text-xl font-semibold text-stone-900">
         Order not found
       </h2>
-      <p className="mt-2 text-sm text-gray-500">
+      <p className="mt-2 text-sm text-stone-500">
         The order you are looking for does not exist or you do not have
         permission to view it.
       </p>
       <Link
         href="/orders"
-        className="mt-6 inline-flex items-center gap-2 rounded-md bg-indigo-600 px-6 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+        className="mt-6 inline-flex items-center gap-2 rounded-md bg-brand px-6 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-light focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
       >
         <svg
           width={16}
@@ -384,36 +384,36 @@ function OrderDetailSkeleton() {
   return (
     <>
       {/* Back link skeleton */}
-      <div className="h-5 w-28 animate-pulse rounded bg-gray-200" />
+      <div className="h-5 w-28 animate-pulse rounded bg-stone-200" />
 
       {/* Header skeleton */}
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+      <div className="mt-6 rounded-lg border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
-            <div className="h-7 w-48 animate-pulse rounded bg-gray-200" />
-            <div className="h-4 w-64 animate-pulse rounded bg-gray-200" />
+            <div className="h-7 w-48 animate-pulse rounded bg-stone-200" />
+            <div className="h-4 w-64 animate-pulse rounded bg-stone-200" />
           </div>
-          <div className="h-7 w-24 animate-pulse rounded-full bg-gray-200" />
+          <div className="h-7 w-24 animate-pulse rounded-full bg-stone-200" />
         </div>
-        <div className="mt-4 h-4 w-40 animate-pulse rounded bg-gray-200" />
+        <div className="mt-4 h-4 w-40 animate-pulse rounded bg-stone-200" />
       </div>
 
       {/* Items table skeleton */}
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="mt-6 rounded-lg border border-stone-200 bg-white shadow-sm">
         <div className="px-4 py-4 sm:px-6">
-          <div className="h-6 w-24 animate-pulse rounded bg-gray-200" />
+          <div className="h-6 w-24 animate-pulse rounded bg-stone-200" />
         </div>
-        <div className="border-t border-gray-200">
+        <div className="border-t border-stone-200">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="flex items-center justify-between border-b border-gray-200 px-6 py-4"
+              className="flex items-center justify-between border-b border-stone-200 px-6 py-4"
             >
-              <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-40 animate-pulse rounded bg-stone-200" />
               <div className="flex gap-8">
-                <div className="h-4 w-8 animate-pulse rounded bg-gray-200" />
-                <div className="h-4 w-16 animate-pulse rounded bg-gray-200" />
-                <div className="h-4 w-16 animate-pulse rounded bg-gray-200" />
+                <div className="h-4 w-8 animate-pulse rounded bg-stone-200" />
+                <div className="h-4 w-16 animate-pulse rounded bg-stone-200" />
+                <div className="h-4 w-16 animate-pulse rounded bg-stone-200" />
               </div>
             </div>
           ))}
@@ -422,28 +422,28 @@ function OrderDetailSkeleton() {
 
       {/* Totals and address skeleton */}
       <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-          <div className="h-6 w-36 animate-pulse rounded bg-gray-200" />
+        <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="h-6 w-36 animate-pulse rounded bg-stone-200" />
           <div className="mt-3 space-y-2">
-            <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
-            <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
-            <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-full animate-pulse rounded bg-stone-200" />
+            <div className="h-4 w-3/4 animate-pulse rounded bg-stone-200" />
+            <div className="h-4 w-1/2 animate-pulse rounded bg-stone-200" />
           </div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-          <div className="h-6 w-32 animate-pulse rounded bg-gray-200" />
+        <div className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="h-6 w-32 animate-pulse rounded bg-stone-200" />
           <div className="mt-3 space-y-3">
             <div className="flex justify-between">
-              <div className="h-4 w-16 animate-pulse rounded bg-gray-200" />
-              <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-16 animate-pulse rounded bg-stone-200" />
+              <div className="h-4 w-20 animate-pulse rounded bg-stone-200" />
             </div>
             <div className="flex justify-between">
-              <div className="h-4 w-16 animate-pulse rounded bg-gray-200" />
-              <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-16 animate-pulse rounded bg-stone-200" />
+              <div className="h-4 w-20 animate-pulse rounded bg-stone-200" />
             </div>
-            <div className="flex justify-between border-t border-gray-200 pt-3">
-              <div className="h-5 w-12 animate-pulse rounded bg-gray-200" />
-              <div className="h-5 w-24 animate-pulse rounded bg-gray-200" />
+            <div className="flex justify-between border-t border-stone-200 pt-3">
+              <div className="h-5 w-12 animate-pulse rounded bg-stone-200" />
+              <div className="h-5 w-24 animate-pulse rounded bg-stone-200" />
             </div>
           </div>
         </div>

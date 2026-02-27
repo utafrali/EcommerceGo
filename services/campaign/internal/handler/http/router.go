@@ -36,15 +36,22 @@ func NewRouter(
 
 		r.Post("/", campaignHandler.CreateCampaign)
 		r.Get("/", campaignHandler.ListCampaigns)
+
+		// Stacking rules delete endpoint (must come before /{id} to avoid conflict).
+		r.Delete("/stacking-rules/{ruleId}", campaignHandler.DeleteStackingRule)
+
 		r.Get("/{id}", campaignHandler.GetCampaign)
 		r.Put("/{id}", campaignHandler.UpdateCampaign)
 		r.Post("/{id}/deactivate", campaignHandler.DeactivateCampaign)
+		r.Post("/{id}/stacking-rules", campaignHandler.CreateStackingRule)
+		r.Get("/{id}/stacking-rules", campaignHandler.GetStackingRules)
 	})
 
 	r.Route("/api/v1/coupons", func(r chi.Router) {
 		r.Use(ContentTypeJSON)
 
 		r.Post("/validate", campaignHandler.ValidateCoupon)
+		r.Post("/validate-multiple", campaignHandler.ValidateMultipleCoupons)
 		r.Post("/apply", campaignHandler.ApplyCoupon)
 	})
 
