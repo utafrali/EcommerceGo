@@ -60,7 +60,8 @@ type listResponse struct {
 	TotalCount int `json:"total_count"`
 	Page       int `json:"page"`
 	PerPage    int `json:"per_page"`
-	TotalPages int `json:"total_pages"`
+	TotalPages int  `json:"total_pages"`
+	HasNext    bool `json:"has_next"`
 }
 
 // --- Handlers ---
@@ -176,6 +177,7 @@ func (h *NotificationHandler) ListNotificationsByUser(w http.ResponseWriter, r *
 		Page:       page,
 		PerPage:    perPage,
 		TotalPages: totalPages,
+		HasNext:    page < totalPages,
 	})
 }
 

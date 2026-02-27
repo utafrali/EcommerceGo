@@ -228,8 +228,8 @@ export default function CartPage() {
 
       <div className="mt-8 lg:grid lg:grid-cols-12 lg:gap-x-12">
         {/* Cart items list */}
-        <section aria-label="Cart items" className="lg:col-span-7">
-          <ul className="divide-y divide-stone-200 border-b border-t border-stone-200">
+        <section aria-label="Shopping cart items" className="lg:col-span-7">
+          <ul aria-label="Shopping cart items" className="divide-y divide-stone-200 border-b border-t border-stone-200">
             {cart.items.map((item) => {
               const product = products[item.product_id];
               const isUpdating = updatingItems.has(item.product_id);
@@ -328,7 +328,7 @@ export default function CartPage() {
             </div>
 
             {/* Summary lines */}
-            <dl className="mt-6 space-y-4">
+            <dl className="mt-6 space-y-4" role="status" aria-live="polite">
               <div className="flex items-center justify-between">
                 <dt className="text-sm text-stone-600">Subtotal</dt>
                 <dd className="text-sm font-medium text-stone-900">
@@ -512,6 +512,7 @@ function CartItemRow({
               type="button"
               onClick={() => onRemove(productId)}
               disabled={isUpdating}
+              aria-label="Remove item"
               className="text-sm font-medium text-red-600 hover:text-red-500 transition-colors disabled:cursor-not-allowed disabled:text-red-300"
             >
               Remove

@@ -39,8 +39,13 @@ func NewRouter(
 	r.Route("/api/v1/products", func(r chi.Router) {
 		r.Use(ContentTypeJSON)
 
-		r.Get("/", productHandler.ListProducts)
-		r.Get("/{idOrSlug}", productHandler.GetProduct)
+		// GET listing routes with cache headers (60s)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.CacheControl(60))
+			r.Get("/", productHandler.ListProducts)
+			r.Get("/{idOrSlug}", productHandler.GetProduct)
+		})
+
 		r.Post("/", productHandler.CreateProduct)
 		r.Put("/{id}", productHandler.UpdateProduct)
 		r.Delete("/{id}", productHandler.DeleteProduct)
@@ -62,8 +67,13 @@ func NewRouter(
 	r.Route("/api/v1/categories", func(r chi.Router) {
 		r.Use(ContentTypeJSON)
 
-		r.Get("/", categoryHandler.ListCategories)
-		r.Get("/{id}", categoryHandler.GetCategory)
+		// GET listing routes with cache headers (60s)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.CacheControl(60))
+			r.Get("/", categoryHandler.ListCategories)
+			r.Get("/{id}", categoryHandler.GetCategory)
+		})
+
 		r.Post("/", categoryHandler.CreateCategory)
 		r.Put("/{id}", categoryHandler.UpdateCategory)
 		r.Delete("/{id}", categoryHandler.DeleteCategory)
@@ -75,7 +85,11 @@ func NewRouter(
 	r.Route("/api/v1/brands", func(r chi.Router) {
 		r.Use(ContentTypeJSON)
 
-		r.Get("/", brandHandler.ListBrands)
+		// GET listing routes with cache headers (60s)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.CacheControl(60))
+			r.Get("/", brandHandler.ListBrands)
+		})
 	})
 
 	// Banner API endpoints
@@ -84,8 +98,13 @@ func NewRouter(
 	r.Route("/api/v1/banners", func(r chi.Router) {
 		r.Use(ContentTypeJSON)
 
-		r.Get("/", bannerHandler.ListBanners)
-		r.Get("/{id}", bannerHandler.GetBanner)
+		// GET listing routes with cache headers (60s)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.CacheControl(60))
+			r.Get("/", bannerHandler.ListBanners)
+			r.Get("/{id}", bannerHandler.GetBanner)
+		})
+
 		r.Post("/", bannerHandler.CreateBanner)
 		r.Put("/{id}", bannerHandler.UpdateBanner)
 		r.Delete("/{id}", bannerHandler.DeleteBanner)

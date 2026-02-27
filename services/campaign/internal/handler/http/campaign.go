@@ -131,7 +131,8 @@ type listResponse struct {
 	TotalCount int `json:"total_count"`
 	Page       int `json:"page"`
 	PerPage    int `json:"per_page"`
-	TotalPages int `json:"total_pages"`
+	TotalPages int  `json:"total_pages"`
+	HasNext    bool `json:"has_next"`
 }
 
 // --- Handlers ---
@@ -266,6 +267,7 @@ func (h *CampaignHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 		Page:       filter.Page,
 		PerPage:    filter.PerPage,
 		TotalPages: totalPages,
+		HasNext:    filter.Page < totalPages,
 	})
 }
 

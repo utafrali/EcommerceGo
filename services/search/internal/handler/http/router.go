@@ -2,9 +2,11 @@ package http
 
 import (
 	"log/slog"
+	"time"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
 
 	"github.com/utafrali/EcommerceGo/pkg/health"
 	"github.com/utafrali/EcommerceGo/pkg/middleware"
@@ -22,6 +24,8 @@ func NewRouter(
 	// Global middleware
 	r.Use(CORS)
 	r.Use(middleware.Recovery(logger))
+	r.Use(chimw.Compress(5))
+	r.Use(chimw.Timeout(30 * time.Second))
 	r.Use(middleware.RequestLogging(logger))
 
 	// Health check endpoints
