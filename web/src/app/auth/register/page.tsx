@@ -139,7 +139,11 @@ function RegisterForm() {
         <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
           {/* Error Message */}
           {error && (
-            <div className="mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div
+              className="mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              role="alert"
+              aria-live="assertive"
+            >
               <svg
                 className="mt-0.5 h-4 w-4 flex-shrink-0"
                 viewBox="0 0 24 24"

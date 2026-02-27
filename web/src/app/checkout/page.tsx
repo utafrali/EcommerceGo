@@ -131,9 +131,15 @@ function ShippingStep({
             value={address.line1}
             onChange={(e) => onChange('line1', e.target.value)}
             placeholder="123 Main Street"
+            aria-invalid={!!errors.line1}
+            aria-describedby={errors.line1 ? 'error-line1' : undefined}
             className={cn(inputCls, errors.line1 && 'border-red-500 focus:border-red-500 focus:ring-red-500')}
           />
-          {errors.line1 && <p className="mt-1 text-xs text-red-600">{errors.line1}</p>}
+          {errors.line1 && (
+            <p id="error-line1" className="mt-1 text-xs text-red-600" role="alert">
+              {errors.line1}
+            </p>
+          )}
         </div>
 
         {/* Line 2 */}
@@ -163,9 +169,15 @@ function ShippingStep({
               value={address.city}
               onChange={(e) => onChange('city', e.target.value)}
               placeholder="New York"
+              aria-invalid={!!errors.city}
+              aria-describedby={errors.city ? 'error-city' : undefined}
               className={cn(inputCls, errors.city && 'border-red-500 focus:border-red-500 focus:ring-red-500')}
             />
-            {errors.city && <p className="mt-1 text-xs text-red-600">{errors.city}</p>}
+            {errors.city && (
+              <p id="error-city" className="mt-1 text-xs text-red-600" role="alert">
+                {errors.city}
+              </p>
+            )}
           </div>
           <div>
             <label htmlFor="state" className={labelCls}>
@@ -177,9 +189,15 @@ function ShippingStep({
               value={address.state}
               onChange={(e) => onChange('state', e.target.value)}
               placeholder="NY"
+              aria-invalid={!!errors.state}
+              aria-describedby={errors.state ? 'error-state' : undefined}
               className={cn(inputCls, errors.state && 'border-red-500 focus:border-red-500 focus:ring-red-500')}
             />
-            {errors.state && <p className="mt-1 text-xs text-red-600">{errors.state}</p>}
+            {errors.state && (
+              <p id="error-state" className="mt-1 text-xs text-red-600" role="alert">
+                {errors.state}
+              </p>
+            )}
           </div>
         </div>
 
@@ -195,9 +213,15 @@ function ShippingStep({
               value={address.postal_code}
               onChange={(e) => onChange('postal_code', e.target.value)}
               placeholder="10001"
+              aria-invalid={!!errors.postal_code}
+              aria-describedby={errors.postal_code ? 'error-postal' : undefined}
               className={cn(inputCls, errors.postal_code && 'border-red-500 focus:border-red-500 focus:ring-red-500')}
             />
-            {errors.postal_code && <p className="mt-1 text-xs text-red-600">{errors.postal_code}</p>}
+            {errors.postal_code && (
+              <p id="error-postal" className="mt-1 text-xs text-red-600" role="alert">
+                {errors.postal_code}
+              </p>
+            )}
           </div>
           <div>
             <label htmlFor="country" className={labelCls}>
@@ -207,6 +231,8 @@ function ShippingStep({
               id="country"
               value={address.country}
               onChange={(e) => onChange('country', e.target.value)}
+              aria-invalid={!!errors.country}
+              aria-describedby={errors.country ? 'error-country' : undefined}
               className={cn(inputCls, errors.country && 'border-red-500 focus:border-red-500 focus:ring-red-500')}
             >
               <option value="">Select a country</option>
@@ -216,7 +242,11 @@ function ShippingStep({
                 </option>
               ))}
             </select>
-            {errors.country && <p className="mt-1 text-xs text-red-600">{errors.country}</p>}
+            {errors.country && (
+              <p id="error-country" className="mt-1 text-xs text-red-600" role="alert">
+                {errors.country}
+              </p>
+            )}
           </div>
         </div>
       </div>

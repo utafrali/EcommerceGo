@@ -151,7 +151,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
 
       {/* Toast container -- bottom-right, fixed */}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+      <div
+        className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col gap-2"
+        role="region"
+        aria-live="polite"
+        aria-label="Notifications"
+      >
         {toasts.map((t) => (
           <div key={t.id} className="pointer-events-auto">
             <ToastItem toast={t} onDismiss={dismissToast} />
