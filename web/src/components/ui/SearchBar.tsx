@@ -166,17 +166,28 @@ export function SearchBar({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           autoComplete="off"
+          aria-expanded={showSuggestions}
+          aria-controls="search-suggestions"
+          aria-activedescendant={
+            showSuggestions && selectedIndex >= 0
+              ? `suggestion-${selectedIndex}`
+              : undefined
+          }
           className="block w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-10 pr-4 text-sm text-stone-900 placeholder:text-stone-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         />
       </form>
 
       {/* Suggestions dropdown */}
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-stone-200 bg-white shadow-lg">
+        <div
+          id="search-suggestions"
+          className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-stone-200 bg-white shadow-lg"
+        >
           <ul role="listbox" className="py-1">
             {suggestions.map((suggestion, index) => (
               <li
                 key={suggestion}
+                id={`suggestion-${index}`}
                 role="option"
                 aria-selected={index === selectedIndex}
                 onMouseDown={(e) => {

@@ -315,7 +315,7 @@ export default function CartPage() {
                       if (e.key === 'Enter') handleApplyCoupon();
                     }}
                     placeholder="Enter code"
-                    className="flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm placeholder:text-stone-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                    className="flex-1 rounded-md border border-stone-300 px-3 py-2.5 text-base sm:text-sm shadow-sm placeholder:text-stone-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                   />
                   <button
                     type="button"

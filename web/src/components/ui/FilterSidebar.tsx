@@ -63,12 +63,16 @@ function FilterSection({
 }: FilterSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
+  const sectionId = `filter-section-${title.toLowerCase().replace(/\s+/g, '-')}`;
+
   return (
     <div className="border-b border-stone-200 py-4 first:pt-0 last:border-b-0">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className="flex w-full items-center justify-between text-left"
+        aria-expanded={isOpen}
+        aria-controls={sectionId}
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-stone-800">{title}</span>
@@ -80,7 +84,11 @@ function FilterSection({
         </div>
         <ChevronIcon open={isOpen} />
       </button>
-      {isOpen && <div className="mt-3">{children}</div>}
+      {isOpen && (
+        <div id={sectionId} className="mt-3">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -366,7 +374,7 @@ export function FilterSidebar({
               step="0.01"
               value={localMinPrice}
               onChange={(e) => setLocalMinPrice(e.target.value)}
-              className="block w-full rounded-md border border-stone-200 py-1.5 pl-6 pr-2 text-sm text-stone-700 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              className="block w-full rounded-md border border-stone-200 py-2 pl-6 pr-2 text-base sm:text-sm text-stone-700 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             />
           </div>
           <span className="text-stone-400">&ndash;</span>
@@ -381,7 +389,7 @@ export function FilterSidebar({
               step="0.01"
               value={localMaxPrice}
               onChange={(e) => setLocalMaxPrice(e.target.value)}
-              className="block w-full rounded-md border border-stone-200 py-1.5 pl-6 pr-2 text-sm text-stone-700 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+              className="block w-full rounded-md border border-stone-200 py-2 pl-6 pr-2 text-base sm:text-sm text-stone-700 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             />
           </div>
         </div>

@@ -33,7 +33,7 @@ export function QuantitySelector({
         disabled={disabled || isAtMin}
         aria-label="Decrease quantity"
         className={cn(
-          'flex h-9 w-9 items-center justify-center rounded-l-md text-gray-600 transition-colors',
+          'flex h-11 w-11 items-center justify-center rounded-l-md text-gray-600 transition-colors',
           disabled || isAtMin
             ? 'cursor-not-allowed bg-gray-50 text-gray-300'
             : 'hover:bg-gray-100 active:bg-gray-200',
@@ -47,7 +47,7 @@ export function QuantitySelector({
       {/* Quantity display */}
       <span
         className={cn(
-          'flex h-9 min-w-[2.5rem] items-center justify-center border-x border-gray-300 px-2 text-sm font-medium tabular-nums',
+          'flex h-11 min-w-[3rem] items-center justify-center border-x border-gray-300 px-2 text-sm font-medium tabular-nums',
           disabled ? 'text-gray-400' : 'text-gray-900',
         )}
       >
@@ -61,7 +61,7 @@ export function QuantitySelector({
         disabled={disabled || isAtMax}
         aria-label="Increase quantity"
         className={cn(
-          'flex h-9 w-9 items-center justify-center rounded-r-md text-gray-600 transition-colors',
+          'flex h-11 w-11 items-center justify-center rounded-r-md text-gray-600 transition-colors',
           disabled || isAtMax
             ? 'cursor-not-allowed bg-gray-50 text-gray-300'
             : 'hover:bg-gray-100 active:bg-gray-200',

@@ -77,7 +77,8 @@ export function ProductCard({ product }: ProductCardProps) {
               e.stopPropagation();
               // Quick View modal — future implementation
             }}
-            className="pointer-events-auto translate-y-3 rounded-full bg-white px-5 py-2 text-xs font-semibold uppercase tracking-wider text-stone-800 opacity-0 shadow-md transition-all duration-300 hover:bg-stone-900 hover:text-white group-hover:translate-y-0 group-hover:opacity-100"
+            aria-label={`Quick view: ${product.name}`}
+            className="pointer-events-auto translate-y-3 rounded-full bg-white px-6 py-3 text-xs sm:text-xs font-semibold uppercase tracking-wider text-stone-800 opacity-0 shadow-md transition-all duration-300 hover:bg-stone-900 hover:text-white group-hover:translate-y-0 group-hover:opacity-100"
           >
             Quick View
           </button>
@@ -107,7 +108,7 @@ export function ProductCard({ product }: ProductCardProps) {
             e.stopPropagation();
             setWishlisted((prev) => !prev);
           }}
-          className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-sm transition-colors duration-200 ${
+          className={`absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-sm transition-colors duration-200 ${
             wishlisted
               ? 'bg-brand/90 text-white hover:bg-brand'
               : 'bg-white/80 text-stone-500 hover:bg-white hover:text-brand'

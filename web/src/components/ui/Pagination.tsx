@@ -41,7 +41,7 @@ function getPageNumbers(current: number, total: number): number[] {
 // ─── Button Style Helpers ────────────────────────────────────────────────────
 
 const baseBtn =
-  'flex h-9 min-w-[2.25rem] items-center justify-center rounded-md px-2 text-sm font-medium transition-colors';
+  'flex h-10 min-w-[2.75rem] items-center justify-center rounded-md px-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2';
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
