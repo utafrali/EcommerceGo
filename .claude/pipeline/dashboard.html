@@ -318,6 +318,7 @@ function renderPipeline(domains) {
 }
 
 const ROUND_DATA = [
+  { round: 7, commit: 'b4a9d1e', title: 'Domain validation + state machine', desc: 'Price range validation, campaign discount cap, checkout state restriction, product sort_by DB query, status filters, port config validation', files: 14, tests: 1 },
   { round: 1, commit: 'd6a166e', title: 'Security hardening + performance', desc: 'JWT secret validation, rate limiter memory fix, N+1 query fixes, atomic coupon, path traversal fix, Kafka consumers', files: 47, tests: 143 },
   { round: 2, commit: '34477ca', title: 'Concurrency safety + robustness', desc: 'Race condition fixes, mutex guards, shutdown handlers, error propagation improvements', files: 32, tests: 52 },
   { round: 3, commit: 'e976325', title: 'MaxBytesReader + JWT context + ILIKE', desc: 'Body limits on all POST/PUT, JWT context auth for cart, ILIKE escape helper, ES health check', files: 18, tests: 20 },
@@ -327,6 +328,31 @@ const ROUND_DATA = [
 ];
 
 const FEATURE_HISTORY = [
+  {
+    round: 7, commit: 'b4a9d1e', title: 'Domain Validation, State Machine & Config Safety', files: 14,
+    colors: { badge: '#d29922' },
+    groups: [
+      { name: 'Domain Validation', features: [
+        { service: 'Product/Search', text: 'min_price <= max_price cross-field validation', tag: 'validation' },
+        { service: 'Campaign', text: 'Discount percentage capped at 10000 (100% in basis points)', tag: 'validation' },
+        { service: 'Search', text: 'Negative price rejection + sort_by whitelist (relevance/price/newest/name)', tag: 'validation' },
+        { service: 'Product', text: 'Status filter validation against domain constants (draft/published/archived)', tag: 'validation' },
+        { service: 'Campaign', text: 'Status filter validation (draft/active/paused/expired/archived)', tag: 'validation' },
+      ]},
+      { name: 'State Machine', features: [
+        { service: 'Checkout', text: 'SetShippingAddress/SetPaymentMethod restricted to "initiated" state only', tag: 'security' },
+      ]},
+      { name: 'Sorting & Query', features: [
+        { service: 'Product', text: 'sort_by query param with DB-level ORDER BY (newest/price_asc/price_desc/name)', tag: 'feature' },
+        { service: 'Search', text: 'sort_by whitelist validation (7 allowed values)', tag: 'validation' },
+      ]},
+      { name: 'Configuration', features: [
+        { service: 'Product/Gateway/User', text: 'Port range validation (1-65535) at config load time', tag: 'config' },
+        { service: 'Inventory', text: 'Fixed redundant low-stock threshold conditional logic', tag: 'bug' },
+        { service: 'Search', text: 'Memory engine nil slice → make() for JSON [] consistency', tag: 'bug' },
+      ]},
+    ]
+  },
   {
     round: 6, commit: 'a37e4ab', title: 'Input Validation, Semantic Errors & JSON Consistency', files: 20,
     colors: { badge: '#58a6ff' },
@@ -471,6 +497,15 @@ const FEATURE_HISTORY = [
 ];
 
 const AGENT_ROUNDS = {
+  7: [
+    { type: 'Explore', title: 'Deep Analysis Agent', status: 'done', desc: 'Scanned all 12 services. Found 15 findings. Verified 3/7 HIGH were real issues.', files: [] },
+    { type: 'Bash', title: 'Agent 1: Price Validation', status: 'done', desc: 'min_price<=max_price in product+search. Negative price rejection. Campaign discount cap.', files: ['product/handler', 'search/handler', 'campaign/service'] },
+    { type: 'Bash', title: 'Agent 2: State + Sort', status: 'done', desc: 'Checkout state machine (initiated only). Search sort_by whitelist. Inventory threshold fix.', files: ['checkout/service', 'search/handler', 'inventory/handler'] },
+    { type: 'Bash', title: 'Agent 3: Status Filters', status: 'done', desc: 'Product/Campaign status filter validation against domain constants. Product sort_by with DB ORDER BY.', files: ['product/handler', 'product/domain', 'product/repo', 'campaign/handler'] },
+    { type: 'Bash', title: 'Agent 4: Config + JSON', status: 'done', desc: 'Port range validation in 3 configs. Search engine empty slice JSON fix.', files: ['product/config', 'gateway/config', 'user/config', 'search/engine'] },
+    { type: 'Bash', title: 'Build & Test Verification', status: 'done', desc: 'Fixed gateway config tests (HTTPPort:8080). Added port validation test. ALL TESTS PASS.', files: ['gateway/config/config_test.go'] },
+    { type: 'Bash', title: 'Docker Rebuild + E2E', status: 'done', desc: '14 images rebuilt. 19 containers up. E2E: 44/44 PASS, 7 skipped.', files: [] },
+  ],
   6: [
     { type: 'Explore', title: 'Deep Analysis Agent', status: 'done', desc: 'Scanned all 12 services for issues. Found 20 findings (6 HIGH, 8 MED, 6 LOW). Verified 2/6 HIGH were real.', files: [] },
     { type: 'Bash', title: 'Agent 1: Query Param Validation', status: 'done', desc: 'Added page/per_page/price validation returning 400 on invalid values.', files: ['product/handler', 'order/handler', 'campaign/handler', 'notification/handler', 'media/handler', 'inventory/handler', 'payment/handler'] },

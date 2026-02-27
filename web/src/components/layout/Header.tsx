@@ -109,6 +109,25 @@ function ChevronDownIcon({ className }: { className?: string }) {
   );
 }
 
+function SparkleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.5}
+      stroke="currentColor"
+      className={className}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"
+      />
+    </svg>
+  );
+}
+
 // ─── Header Component ────────────────────────────────────────────────────────
 
 export default function Header() {
@@ -218,18 +237,20 @@ export default function Header() {
   const activeCategory = categories.find((c) => c.id === activeMegaMenuId);
 
   return (
-    <header className="sticky top-0 z-50 bg-white">
-      {/* ── Layer 1: Top Promotional Bar ────────────────────────────────── */}
+    <header className="sticky top-0 z-50 bg-white shadow-sm">
+      {/* ── Layer 1: Top Promotional Bar (Premium Gradient) ──────────────── */}
       {!topBarDismissed && (
-        <div className="relative bg-brand text-white">
-          <div className="mx-auto flex h-8 max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
-            <p className="text-xs font-medium tracking-wide sm:text-sm">
-              Free shipping on orders over $50
+        <div className="relative bg-gradient-to-r from-stone-900 to-stone-800 text-white">
+          <div className="mx-auto flex h-9 max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
+            <p className="flex items-center gap-1.5 text-xs font-medium tracking-wide animate-fade-in-slow sm:text-sm">
+              <SparkleIcon className="h-3.5 w-3.5 text-brand-accent" />
+              <span>Free shipping on orders over $50</span>
+              <SparkleIcon className="h-3.5 w-3.5 text-brand-accent" />
             </p>
             <button
               type="button"
               onClick={dismissTopBar}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-white/70 hover:text-white transition-colors sm:right-4"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-white/50 hover:text-white transition-colors sm:right-4"
               aria-label="Dismiss"
             >
               <svg
@@ -253,7 +274,7 @@ export default function Header() {
       {/* ── Layer 2: Main Header ─────────────────────────────────────────── */}
       <div className="border-b border-stone-200">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between gap-4">
+          <div className="flex h-[68px] items-center justify-between gap-4">
             {/* Mobile: Hamburger */}
             <button
               type="button"
@@ -264,30 +285,30 @@ export default function Header() {
               <MenuIcon className="h-6 w-6" />
             </button>
 
-            {/* Logo */}
+            {/* Logo — larger and bolder */}
             <Link
               href="/"
-              className="flex-shrink-0 text-xl font-bold tracking-tight text-stone-900"
+              className="flex-shrink-0 text-2xl font-extrabold tracking-tight text-stone-900"
             >
-              EcommerceGo
+              Ecommerce<span className="text-brand">Go</span>
             </Link>
 
-            {/* Desktop Search Bar (center) */}
+            {/* Desktop Search Bar (center) — rounded-full, taller */}
             <div className="hidden flex-1 justify-center px-8 md:flex">
-              <div className="w-full max-w-lg">
-                <SearchBar placeholder="Search products..." />
+              <div className="w-full max-w-xl">
+                <SearchBar placeholder="Search products, brands, and more..." />
               </div>
             </div>
 
             {/* Right actions */}
-            <div className="flex items-center gap-1 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-3">
               {/* Wishlist (desktop) */}
               <Link
                 href="/wishlist"
-                className="hidden rounded-lg p-2 text-stone-600 hover:bg-stone-50 transition-colors md:block"
+                className="hidden rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200 md:block"
                 aria-label="Wishlist"
               >
-                <HeartIcon className="h-5 w-5" />
+                <HeartIcon className="h-6 w-6" />
               </Link>
 
               {/* User menu (desktop) */}
@@ -297,10 +318,10 @@ export default function Header() {
                     <button
                       type="button"
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="flex items-center gap-1.5 rounded-lg p-2 text-stone-600 hover:bg-stone-50 transition-colors"
+                      className="flex items-center gap-1.5 rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200"
                       aria-label="User menu"
                     >
-                      <UserIcon className="h-5 w-5" />
+                      <UserIcon className="h-6 w-6" />
                       <span className="max-w-[100px] truncate text-sm font-medium">
                         {user.first_name}
                       </span>
@@ -346,9 +367,9 @@ export default function Header() {
                 ) : (
                   <Link
                     href="/auth/login"
-                    className="flex items-center gap-1.5 rounded-lg p-2 text-stone-600 hover:bg-stone-50 transition-colors"
+                    className="flex items-center gap-1.5 rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200"
                   >
-                    <UserIcon className="h-5 w-5" />
+                    <UserIcon className="h-6 w-6" />
                     <span className="text-sm font-medium">Sign In</span>
                   </Link>
                 )}
@@ -357,10 +378,10 @@ export default function Header() {
               {/* Cart */}
               <Link
                 href="/cart"
-                className="relative rounded-lg p-2 text-stone-600 hover:bg-stone-50 transition-colors"
+                className="relative rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200"
                 aria-label="Shopping cart"
               >
-                <ShoppingBagIcon className="h-5 w-5" />
+                <ShoppingBagIcon className="h-6 w-6" />
                 {itemCount > 0 && (
                   <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white">
                     {itemCount > 99 ? '99+' : itemCount}
@@ -375,14 +396,29 @@ export default function Header() {
       {/* ── Layer 3: Category Navigation (desktop) ───────────────────────── */}
       <nav className="relative hidden border-b border-stone-100 bg-white md:block">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-10 items-center gap-6">
+          <div className="flex h-11 items-center gap-7">
+            {/* Products link */}
             <Link
               href="/products"
-              className="relative text-sm font-medium text-stone-600 hover:text-stone-900 transition-colors"
+              className="group relative text-sm font-semibold text-stone-700 hover:text-stone-900 transition-colors"
             >
               Products
+              <span className="absolute -bottom-[14px] left-0 right-0 h-0.5 bg-brand origin-left scale-x-0 transition-transform duration-200 group-hover:scale-x-100" />
             </Link>
 
+            {/* New Arrivals — special link with accent */}
+            <Link
+              href="/products?sort=newest"
+              className="group relative text-sm font-semibold text-brand-accent hover:text-brand-accent transition-colors"
+            >
+              <span className="flex items-center gap-1">
+                New Arrivals
+                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-brand-accent animate-pulse" />
+              </span>
+              <span className="absolute -bottom-[14px] left-0 right-0 h-0.5 bg-brand-accent origin-left scale-x-0 transition-transform duration-200 group-hover:scale-x-100" />
+            </Link>
+
+            {/* Dynamic categories */}
             {categories.map((category) => (
               <div
                 key={category.id}
@@ -392,23 +428,40 @@ export default function Header() {
               >
                 <Link
                   href={`/products?category_id=${category.id}`}
-                  className={`relative flex items-center gap-1 text-sm font-medium transition-colors ${
+                  className={`group relative flex items-center gap-1 text-sm font-semibold transition-colors ${
                     activeMegaMenuId === category.id
                       ? 'text-brand'
-                      : 'text-stone-600 hover:text-stone-900'
+                      : 'text-stone-700 hover:text-stone-900'
                   }`}
                 >
                   {category.name}
                   {category.children && category.children.length > 0 && (
                     <ChevronDownIcon className="h-3 w-3" />
                   )}
-                  {/* Active underline */}
-                  {activeMegaMenuId === category.id && (
-                    <span className="absolute -bottom-[13px] left-0 right-0 h-0.5 bg-brand" />
+                  {/* Active underline (animated) */}
+                  {activeMegaMenuId === category.id ? (
+                    <span className="absolute -bottom-[14px] left-0 right-0 h-0.5 bg-brand animate-underline-expand origin-left" />
+                  ) : (
+                    <span className="absolute -bottom-[14px] left-0 right-0 h-0.5 bg-brand origin-left scale-x-0 transition-transform duration-200 group-hover:scale-x-100" />
                   )}
                 </Link>
               </div>
             ))}
+
+            {/* Sale — special link with red dot badge */}
+            <Link
+              href="/products?on_sale=true"
+              className="group relative text-sm font-bold text-red-600 hover:text-red-700 transition-colors"
+            >
+              <span className="flex items-center gap-1.5">
+                Sale
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-600" />
+                </span>
+              </span>
+              <span className="absolute -bottom-[14px] left-0 right-0 h-0.5 bg-red-600 origin-left scale-x-0 transition-transform duration-200 group-hover:scale-x-100" />
+            </Link>
           </div>
         </div>
 

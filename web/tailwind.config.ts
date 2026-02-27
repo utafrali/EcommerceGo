@@ -9,12 +9,26 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: '#881337',
-          light: '#BE123C',
-          lighter: '#FECDD3',
-          accent: '#D97706',
-          'accent-light': '#FEF3C7',
+          DEFAULT: '#b5705b',   // warm rose-gold primary
+          light: '#c98a77',     // lighter rose-gold
+          lighter: '#f5e1da',   // very light rose-gold tint
+          dark: '#8f5443',      // deeper rose-gold for hover states
+          accent: '#c8873e',    // warm amber accent
+          'accent-light': '#fdf3e7', // light amber tint
         },
+      },
+      fontFamily: {
+        sans: [
+          'var(--font-inter)',
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'Helvetica Neue',
+          'Arial',
+          'sans-serif',
+        ],
       },
       keyframes: {
         shimmer: {

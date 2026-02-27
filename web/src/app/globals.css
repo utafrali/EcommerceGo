@@ -5,6 +5,11 @@
 :root {
   --foreground: #171717;
   --background: #ffffff;
+  --brand: hsl(12, 40%, 55%);
+  --brand-light: hsl(12, 50%, 65%);
+  --brand-lighter: hsl(12, 60%, 92%);
+  --accent: hsl(30, 65%, 50%);
+  --accent-light: hsl(38, 80%, 94%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,10 +30,11 @@ body {
     'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background-color: #881337;
+  background-color: hsl(12, 40%, 55%);
   color: white;
 }
 

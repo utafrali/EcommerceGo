@@ -5,6 +5,13 @@ import Link from 'next/link';
 import type { Banner } from '@/types';
 import { HERO_AUTOPLAY_INTERVAL } from '@/lib/constants';
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Zero-pad a number to 2 digits (e.g. 1 → "01"). */
+function pad(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 interface HeroSliderProps {
@@ -15,33 +22,48 @@ interface HeroSliderProps {
 
 function FallbackHero() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-brand via-rose-800 to-stone-900">
-      {/* Decorative elements */}
+    <section className="relative overflow-hidden bg-gradient-to-br from-brand via-rose-800 to-stone-900 aspect-[4/3] md:aspect-[21/9]">
+      {/* Decorative radial accents */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,255,255,0.08)_0%,transparent_50%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.06)_0%,transparent_50%)]" />
 
-      <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-40">
-        <div className="mx-auto max-w-2xl text-center animate-fade-in">
-          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Discover Quality Products
-          </h1>
-          <p className="mt-6 text-lg leading-8 text-rose-100/80">
-            Shop the best deals across fashion, home essentials, and more.
-            Curated for style and quality.
-          </p>
-          <div className="mt-10 flex items-center justify-center gap-4">
-            <Link
-              href="/products"
-              className="rounded-lg bg-white px-7 py-3 text-sm font-semibold text-brand shadow-sm transition-all hover:bg-rose-50 hover:shadow-md"
-            >
-              Shop Now
-            </Link>
-            <Link
-              href="#categories"
-              className="rounded-lg border border-white/30 px-7 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              View Categories
-            </Link>
+      {/* Left-to-right gradient for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+
+      {/* Content — left-aligned */}
+      <div className="relative flex h-full items-center">
+        <div className="mx-auto w-full max-w-7xl px-6 sm:px-10 lg:px-16">
+          <div className="max-w-xl animate-fade-in">
+            {/* Category label */}
+            <span className="inline-block text-xs font-medium uppercase tracking-[0.3em] text-white/70">
+              New Arrivals
+            </span>
+
+            {/* Main heading */}
+            <h1 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl md:text-7xl">
+              Discover Quality Products
+            </h1>
+
+            {/* Subtitle */}
+            <p className="mt-5 text-base font-light leading-relaxed text-white/70 sm:text-lg md:text-xl">
+              Shop the latest trends in fashion, home essentials, and more.
+            </p>
+
+            {/* CTA buttons */}
+            <div className="mt-8 flex items-center gap-4 sm:mt-10">
+              <Link
+                href="/products"
+                className="rounded-sm bg-white px-8 py-3.5 text-sm font-semibold text-stone-900 transition-all hover:bg-white/90 hover:shadow-lg"
+              >
+                Shop Now
+              </Link>
+              <Link
+                href="#categories"
+                className="rounded-sm border border-white/40 px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:border-white hover:bg-white/10"
+              >
+                Explore Collections
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -112,7 +134,7 @@ export function HeroSlider({ banners }: HeroSliderProps) {
     >
       {/* Slides container */}
       <div
-        className="flex transition-transform duration-500 ease-out"
+        className="flex transition-transform duration-700 ease-out"
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
       >
         {banners.map((banner) => (
@@ -126,39 +148,67 @@ export function HeroSlider({ banners }: HeroSliderProps) {
               style={{ backgroundImage: `url(${banner.image_url})` }}
             />
 
-            {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/25 to-transparent" />
+            {/* Left-to-right gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
 
-            {/* Content */}
+            {/* Content — left-aligned */}
             <div className="relative flex h-full items-center">
-              <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="max-w-lg animate-fade-in">
-                  <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+              <div className="mx-auto w-full max-w-7xl px-6 sm:px-10 lg:px-16">
+                <div className="max-w-xl animate-fade-in">
+                  {/* Category label */}
+                  <span className="inline-block text-xs font-medium uppercase tracking-[0.3em] text-white/70">
+                    New Collection
+                  </span>
+
+                  {/* Main heading */}
+                  <h2 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl md:text-7xl">
                     {banner.title}
                   </h2>
+
+                  {/* Subtitle */}
                   {banner.subtitle && (
-                    <p className="mt-4 text-base text-white/80 sm:text-lg">
+                    <p className="mt-5 text-base font-light leading-relaxed text-white/70 sm:text-lg md:text-xl">
                       {banner.subtitle}
                     </p>
                   )}
+
+                  {/* CTA buttons */}
                   {banner.link_url && (
-                    <div className="mt-8">
+                    <div className="mt-8 flex items-center gap-4 sm:mt-10">
                       {banner.link_type === 'external' ? (
-                        <a
-                          href={banner.link_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-block rounded-lg bg-white px-7 py-3 text-sm font-semibold text-brand shadow-sm transition-all hover:bg-rose-50 hover:shadow-md"
-                        >
-                          Shop Now
-                        </a>
+                        <>
+                          <a
+                            href={banner.link_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-sm bg-white px-8 py-3.5 text-sm font-semibold text-stone-900 transition-all hover:bg-white/90 hover:shadow-lg"
+                          >
+                            Shop Now
+                          </a>
+                          <a
+                            href={banner.link_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-sm border border-white/40 px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:border-white hover:bg-white/10"
+                          >
+                            Explore More
+                          </a>
+                        </>
                       ) : (
-                        <Link
-                          href={banner.link_url}
-                          className="inline-block rounded-lg bg-white px-7 py-3 text-sm font-semibold text-brand shadow-sm transition-all hover:bg-rose-50 hover:shadow-md"
-                        >
-                          Shop Now
-                        </Link>
+                        <>
+                          <Link
+                            href={banner.link_url}
+                            className="rounded-sm bg-white px-8 py-3.5 text-sm font-semibold text-stone-900 transition-all hover:bg-white/90 hover:shadow-lg"
+                          >
+                            Shop Now
+                          </Link>
+                          <Link
+                            href={banner.link_url}
+                            className="rounded-sm border border-white/40 px-8 py-3.5 text-sm font-semibold text-white transition-colors hover:border-white hover:bg-white/10"
+                          >
+                            Explore More
+                          </Link>
+                        </>
                       )}
                     </div>
                   )}
@@ -169,22 +219,22 @@ export function HeroSlider({ banners }: HeroSliderProps) {
         ))}
       </div>
 
-      {/* Arrow buttons (visible on hover) */}
+      {/* Arrow buttons — subtle semi-transparent circles with thin chevrons */}
       {slideCount > 1 && (
         <>
           <button
             type="button"
             onClick={goPrev}
-            className="absolute left-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-800 opacity-0 shadow-md backdrop-blur-sm transition-all hover:bg-white group-hover:opacity-100"
+            className="absolute left-4 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/20 text-white opacity-0 backdrop-blur-sm transition-all hover:bg-black/40 hover:border-white/40 group-hover:opacity-100"
             aria-label="Previous slide"
           >
             <svg
-              width={20}
-              height={20}
+              width={18}
+              height={18}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth={2}
+              strokeWidth={1.5}
               strokeLinecap="round"
               strokeLinejoin="round"
             >
@@ -194,16 +244,16 @@ export function HeroSlider({ banners }: HeroSliderProps) {
           <button
             type="button"
             onClick={goNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-800 opacity-0 shadow-md backdrop-blur-sm transition-all hover:bg-white group-hover:opacity-100"
+            className="absolute right-4 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/20 text-white opacity-0 backdrop-blur-sm transition-all hover:bg-black/40 hover:border-white/40 group-hover:opacity-100"
             aria-label="Next slide"
           >
             <svg
-              width={20}
-              height={20}
+              width={18}
+              height={18}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth={2}
+              strokeWidth={1.5}
               strokeLinecap="round"
               strokeLinejoin="round"
             >
@@ -213,18 +263,25 @@ export function HeroSlider({ banners }: HeroSliderProps) {
         </>
       )}
 
-      {/* Dot navigation */}
+      {/* Slide counter — bottom-right, mono font */}
       {slideCount > 1 && (
-        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2">
+        <div className="absolute bottom-5 right-6 font-mono text-xs tracking-wider text-white/60 sm:right-10 lg:right-16">
+          {pad(currentIndex + 1)} / {pad(slideCount)}
+        </div>
+      )}
+
+      {/* Dot navigation — horizontal lines, bottom-center */}
+      {slideCount > 1 && (
+        <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-2">
           {banners.map((_, i) => (
             <button
               key={i}
               type="button"
               onClick={() => goTo(i)}
-              className={`h-2 rounded-full transition-all ${
+              className={`h-0.5 w-8 rounded-full transition-all duration-300 ${
                 i === currentIndex
-                  ? 'w-6 bg-white'
-                  : 'w-2 bg-white/50 hover:bg-white/70'
+                  ? 'bg-white'
+                  : 'bg-white/30 hover:bg-white/50'
               }`}
               aria-label={`Go to slide ${i + 1}`}
             />
