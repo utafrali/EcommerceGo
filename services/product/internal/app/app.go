@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -137,22 +138,26 @@ func (a *App) Run(ctx context.Context) error {
 func (a *App) Shutdown() error {
 	a.logger.Info("shutting down application...")
 
+	var errs []error
+
 	// Graceful HTTP server shutdown with a 10-second deadline.
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := a.httpServer.Shutdown(shutdownCtx); err != nil {
 		a.logger.Error("http server shutdown error", slog.String("error", err.Error()))
+		errs = append(errs, err)
 	}
 
 	// Close Kafka producer.
 	if err := a.producer.Close(); err != nil {
 		a.logger.Error("kafka producer close error", slog.String("error", err.Error()))
+		errs = append(errs, err)
 	}
 
 	// Close PostgreSQL pool.
 	a.pool.Close()
 
 	a.logger.Info("application shutdown complete")
-	return nil
+	return errors.Join(errs...)
 }

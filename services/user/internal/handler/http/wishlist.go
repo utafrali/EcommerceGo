@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -12,12 +13,13 @@ import (
 
 // WishlistHandler handles HTTP requests for wishlist endpoints.
 type WishlistHandler struct {
-	repo domain.WishlistRepository
+	repo   domain.WishlistRepository
+	logger *slog.Logger
 }
 
 // NewWishlistHandler creates a new wishlist HTTP handler.
-func NewWishlistHandler(repo domain.WishlistRepository) *WishlistHandler {
-	return &WishlistHandler{repo: repo}
+func NewWishlistHandler(repo domain.WishlistRepository, logger *slog.Logger) *WishlistHandler {
+	return &WishlistHandler{repo: repo, logger: logger}
 }
 
 // --- Response DTOs ---
@@ -56,7 +58,7 @@ func (h *WishlistHandler) Add(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.Add(r.Context(), userID, productID); err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -84,7 +86,7 @@ func (h *WishlistHandler) Remove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.Remove(r.Context(), userID, productID); err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -120,7 +122,7 @@ func (h *WishlistHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := h.repo.List(r.Context(), userID, page, perPage)
 	if err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -154,7 +156,7 @@ func (h *WishlistHandler) Exists(w http.ResponseWriter, r *http.Request) {
 
 	exists, err := h.repo.Exists(r.Context(), userID, productID)
 	if err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 

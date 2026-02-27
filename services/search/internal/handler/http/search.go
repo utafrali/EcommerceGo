@@ -1,8 +1,10 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -186,7 +188,7 @@ func (h *SearchHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 
 // BulkIndex handles POST /api/v1/search/bulk
 func (h *SearchHandler) BulkIndex(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // 10MB limit for bulk endpoint
 
 	var req BulkIndexRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -199,6 +201,17 @@ func (h *SearchHandler) BulkIndex(w http.ResponseWriter, r *http.Request) {
 	if len(req.Products) == 0 {
 		writeJSON(w, http.StatusBadRequest, response{
 			Error: &errorResponse{Code: "INVALID_INPUT", Message: "products array must not be empty"},
+		})
+		return
+	}
+
+	const maxBulkSize = 500
+	if len(req.Products) > maxBulkSize {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{
+				Code:    "VALIDATION_ERROR",
+				Message: fmt.Sprintf("bulk index limited to %d products per request", maxBulkSize),
+			},
 		})
 		return
 	}
@@ -233,14 +246,16 @@ func (h *SearchHandler) BulkIndex(w http.ResponseWriter, r *http.Request) {
 
 // Reindex handles POST /api/v1/search/reindex
 func (h *SearchHandler) Reindex(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	go func() {
+		ctx := context.Background()
+		if err := h.service.Reindex(ctx); err != nil {
+			h.logger.ErrorContext(ctx, "background reindex failed", "error", err)
+		}
+	}()
 
-	if err := h.service.Reindex(r.Context()); err != nil {
-		h.writeError(w, r, err)
-		return
-	}
-
-	writeJSON(w, http.StatusOK, response{Data: map[string]string{"status": "reindex_started"}})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(map[string]string{"status": "reindex started"})
 }
 
 // Suggest handles GET /api/v1/search/suggest

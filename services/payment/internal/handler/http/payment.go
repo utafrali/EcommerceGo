@@ -71,6 +71,8 @@ type listResponse struct {
 
 // CreatePayment handles POST /api/v1/payments
 func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
+
 	var req CreatePaymentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{

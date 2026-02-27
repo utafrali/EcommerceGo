@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/utafrali/EcommerceGo/pkg/validator"
@@ -11,11 +12,12 @@ import (
 // AuthHandler handles HTTP requests for auth endpoints.
 type AuthHandler struct {
 	service *service.UserService
+	logger  *slog.Logger
 }
 
 // NewAuthHandler creates a new auth HTTP handler.
-func NewAuthHandler(svc *service.UserService) *AuthHandler {
-	return &AuthHandler{service: svc}
+func NewAuthHandler(svc *service.UserService, logger *slog.Logger) *AuthHandler {
+	return &AuthHandler{service: svc, logger: logger}
 }
 
 // --- Request DTOs ---
@@ -86,7 +88,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, tokens, err := h.service.Register(r.Context(), input)
 	if err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -122,7 +124,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	user, tokens, err := h.service.Login(r.Context(), input)
 	if err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -153,7 +155,7 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 
 	tokens, err := h.service.RefreshToken(r.Context(), req.RefreshToken)
 	if err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -178,7 +180,7 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.ForgotPassword(r.Context(), req.Email); err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -205,7 +207,7 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.ResetPassword(r.Context(), req.Token, req.NewPassword); err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 

@@ -34,7 +34,7 @@ func NewRouter(
 	r.Get("/health/ready", healthHandler.ReadinessHandler())
 
 	// Auth endpoints (public)
-	authHandler := NewAuthHandler(userService)
+	authHandler := NewAuthHandler(userService, logger)
 	r.Route("/api/v1/auth", func(r chi.Router) {
 		r.Use(ContentTypeJSON)
 
@@ -46,8 +46,8 @@ func NewRouter(
 	})
 
 	// User profile, address, and wishlist endpoints (auth required)
-	userHandler := NewUserHandler(userService)
-	wishlistHandler := NewWishlistHandler(wishlistRepo)
+	userHandler := NewUserHandler(userService, logger)
+	wishlistHandler := NewWishlistHandler(wishlistRepo, logger)
 
 	// Token validator that bridges to our internal JWTManager.
 	tokenValidator := func(token string) (*middleware.Claims, error) {

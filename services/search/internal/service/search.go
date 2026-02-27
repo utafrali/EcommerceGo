@@ -19,6 +19,7 @@ type SearchService struct {
 	reindexing        atomic.Bool
 	logger            *slog.Logger
 	productServiceURL string
+	httpClient        *http.Client
 }
 
 // NewSearchService creates a new search service.
@@ -27,6 +28,7 @@ func NewSearchService(eng engine.SearchEngine, logger *slog.Logger, productServi
 		engine:            eng,
 		logger:            logger,
 		productServiceURL: productServiceURL,
+		httpClient:        &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -214,8 +216,7 @@ func (s *SearchService) Reindex(ctx context.Context) error {
 			return fmt.Errorf("reindex: create request: %w", err)
 		}
 
-		client := &http.Client{Timeout: 30 * time.Second}
-		resp, err := client.Do(req)
+		resp, err := s.httpClient.Do(req)
 		if err != nil {
 			return fmt.Errorf("reindex: fetch products page %d: %w", page, err)
 		}

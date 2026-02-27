@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -16,11 +17,12 @@ import (
 // UserHandler handles HTTP requests for user profile and address endpoints.
 type UserHandler struct {
 	service *service.UserService
+	logger  *slog.Logger
 }
 
 // NewUserHandler creates a new user HTTP handler.
-func NewUserHandler(svc *service.UserService) *UserHandler {
-	return &UserHandler{service: svc}
+func NewUserHandler(svc *service.UserService, logger *slog.Logger) *UserHandler {
+	return &UserHandler{service: svc, logger: logger}
 }
 
 // --- Request DTOs ---
@@ -75,7 +77,7 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.service.GetProfile(r.Context(), userID)
 	if err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -115,7 +117,7 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.service.UpdateProfile(r.Context(), userID, input)
 	if err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -134,7 +136,7 @@ func (h *UserHandler) ListAddresses(w http.ResponseWriter, r *http.Request) {
 
 	addresses, err := h.service.ListAddresses(r.Context(), userID)
 	if err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -182,7 +184,7 @@ func (h *UserHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 
 	address, err := h.service.CreateAddress(r.Context(), userID, input)
 	if err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -237,7 +239,7 @@ func (h *UserHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 
 	address, err := h.service.UpdateAddress(r.Context(), userID, addressID, input)
 	if err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -263,7 +265,7 @@ func (h *UserHandler) DeleteAddress(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.DeleteAddress(r.Context(), userID, addressID); err != nil {
-		writeAppError(w, r, err)
+		writeAppError(w, r, err, h.logger)
 		return
 	}
 
@@ -290,9 +292,16 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func writeAppError(w http.ResponseWriter, _ *http.Request, err error) {
+func writeAppError(w http.ResponseWriter, r *http.Request, err error, logger *slog.Logger) {
 	var appErr *apperrors.AppError
 	if errors.As(err, &appErr) {
+		if appErr.Status >= 500 {
+			logger.ErrorContext(r.Context(), "internal error",
+				slog.String("error", appErr.Error()),
+				slog.String("method", r.Method),
+				slog.String("path", r.URL.Path),
+			)
+		}
 		writeJSON(w, appErr.Status, response{
 			Error: &errorResponse{Code: appErr.Code, Message: appErr.Message},
 		})
@@ -320,6 +329,14 @@ func writeAppError(w http.ResponseWriter, _ *http.Request, err error) {
 		code = "UNAUTHORIZED"
 		message = err.Error()
 		status = http.StatusUnauthorized
+	}
+
+	if status == http.StatusInternalServerError {
+		logger.ErrorContext(r.Context(), "internal error",
+			slog.String("error", err.Error()),
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+		)
 	}
 
 	writeJSON(w, status, response{

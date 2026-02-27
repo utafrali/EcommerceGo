@@ -73,10 +73,12 @@ func (a *App) Shutdown() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	var shutdownErr error
 	if err := a.httpServer.Shutdown(shutdownCtx); err != nil {
 		a.logger.Error("http server shutdown error", slog.String("error", err.Error()))
+		shutdownErr = err
 	}
 
 	a.logger.Info("application shutdown complete")
-	return nil
+	return shutdownErr
 }

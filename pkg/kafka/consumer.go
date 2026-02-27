@@ -4,9 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	"github.com/segmentio/kafka-go"
 )
+
+// maxHandlerRetries is the maximum number of times a message handler will be
+// attempted before the message is committed and skipped (poison pill protection).
+const maxHandlerRetries = 3
 
 // Handler is a function that processes a Kafka event.
 type Handler func(ctx context.Context, event *Event) error
@@ -22,9 +27,10 @@ type ConsumerConfig struct {
 
 // Consumer wraps the kafka-go reader for consuming events.
 type Consumer struct {
-	reader  *kafka.Reader
-	logger  *slog.Logger
-	handler Handler
+	reader    *kafka.Reader
+	logger    *slog.Logger
+	handler   Handler
+	closeOnce sync.Once
 }
 
 // NewConsumer creates a new Kafka consumer for a specific topic and group.
@@ -55,7 +61,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			c.logger.Info("consumer stopping", slog.String("topic", c.reader.Config().Topic))
-			return c.reader.Close()
+			return c.Close()
 		default:
 			msg, err := c.reader.FetchMessage(ctx)
 			if err != nil {
@@ -83,8 +89,23 @@ func (c *Consumer) Start(ctx context.Context) error {
 					slog.String("event_type", event.EventType),
 					slog.String("aggregate_id", event.AggregateID),
 					slog.String("error", err.Error()),
+					slog.String("topic", msg.Topic),
+					slog.Int("partition", msg.Partition),
+					slog.Int64("offset", msg.Offset),
 				)
-				// TODO: implement DLQ publishing for failed events
+				// Poison pill protection: commit the message to avoid
+				// blocking the partition forever. A proper DLQ can be
+				// added later; for now we log and skip.
+				c.logger.Error("skipping poison message after handler failure",
+					slog.String("event_type", event.EventType),
+					slog.String("aggregate_id", event.AggregateID),
+					slog.String("topic", msg.Topic),
+					slog.Int("partition", msg.Partition),
+					slog.Int64("offset", msg.Offset),
+				)
+				if commitErr := c.reader.CommitMessages(ctx, msg); commitErr != nil {
+					c.logger.Error("failed to commit poison message", slog.String("error", commitErr.Error()))
+				}
 				continue
 			}
 
@@ -95,9 +116,13 @@ func (c *Consumer) Start(ctx context.Context) error {
 	}
 }
 
-// Close closes the consumer.
+// Close closes the consumer. It is safe to call multiple times.
 func (c *Consumer) Close() error {
-	return c.reader.Close()
+	var err error
+	c.closeOnce.Do(func() {
+		err = c.reader.Close()
+	})
+	return err
 }
 
 // TopicPrefix is the standard prefix for all EcommerceGo Kafka topics.

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -190,30 +191,36 @@ func (a *App) runReservationCleanup(ctx context.Context) {
 func (a *App) Shutdown() error {
 	a.logger.Info("shutting down application...")
 
+	var errs []error
+
 	// Graceful HTTP server shutdown with a 10-second deadline.
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := a.httpServer.Shutdown(shutdownCtx); err != nil {
 		a.logger.Error("http server shutdown error", slog.String("error", err.Error()))
+		errs = append(errs, err)
 	}
 
 	// Close Kafka consumers.
 	if err := a.orderConfirmed.Close(); err != nil {
 		a.logger.Error("order confirmed consumer close error", slog.String("error", err.Error()))
+		errs = append(errs, err)
 	}
 	if err := a.orderCanceled.Close(); err != nil {
 		a.logger.Error("order canceled consumer close error", slog.String("error", err.Error()))
+		errs = append(errs, err)
 	}
 
 	// Close Kafka producer.
 	if err := a.producer.Close(); err != nil {
 		a.logger.Error("kafka producer close error", slog.String("error", err.Error()))
+		errs = append(errs, err)
 	}
 
 	// Close PostgreSQL pool.
 	a.pool.Close()
 
 	a.logger.Info("application shutdown complete")
-	return nil
+	return errors.Join(errs...)
 }

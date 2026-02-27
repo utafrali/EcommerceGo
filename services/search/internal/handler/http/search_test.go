@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -63,11 +64,11 @@ func TestIndexProduct_RejectsBodyOver1MB(t *testing.T) {
 	assert.Equal(t, "INVALID_INPUT", resp.Error.Code)
 }
 
-func TestBulkIndex_RejectsBodyOver1MB(t *testing.T) {
+func TestBulkIndex_RejectsBodyOver10MB(t *testing.T) {
 	router := newTestRouter()
 
-	// Build a large products array that exceeds 1MB.
-	largeDesc := strings.Repeat("y", 1<<20)
+	// Build a large products array that exceeds 10MB (10<<20 = 10,485,760 bytes).
+	largeDesc := strings.Repeat("y", 10<<20)
 	body := `{"products":[{"id":"big","name":"Product","description":"` + largeDesc + `"}]}`
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/search/bulk", strings.NewReader(body))
@@ -83,6 +84,61 @@ func TestBulkIndex_RejectsBodyOver1MB(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, resp.Error)
 	assert.Equal(t, "INVALID_INPUT", resp.Error.Code)
+}
+
+func TestBulkIndex_RejectsTooManyProducts(t *testing.T) {
+	router := newTestRouter()
+
+	// Build an array with 501 products (exceeds maxBulkSize of 500).
+	var products []IndexProductRequest
+	for i := 0; i < 501; i++ {
+		products = append(products, IndexProductRequest{
+			ID:   fmt.Sprintf("prod-%d", i),
+			Name: fmt.Sprintf("Product %d", i),
+		})
+	}
+	reqBody := BulkIndexRequest{Products: products}
+	body, err := json.Marshal(reqBody)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/search/bulk", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp response
+	err = json.NewDecoder(w.Body).Decode(&resp)
+	require.NoError(t, err)
+	assert.NotNil(t, resp.Error)
+	assert.Equal(t, "VALIDATION_ERROR", resp.Error.Code)
+	assert.Contains(t, resp.Error.Message, "500")
+}
+
+func TestBulkIndex_Accepts500Products(t *testing.T) {
+	router := newTestRouter()
+
+	// Build an array with exactly 500 products (at the limit).
+	var products []IndexProductRequest
+	for i := 0; i < 500; i++ {
+		products = append(products, IndexProductRequest{
+			ID:   fmt.Sprintf("prod-%d", i),
+			Name: fmt.Sprintf("Product %d", i),
+		})
+	}
+	reqBody := BulkIndexRequest{Products: products}
+	body, err := json.Marshal(reqBody)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/search/bulk", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 func TestReindex_RejectsBodyOver1MB(t *testing.T) {

@@ -2,10 +2,13 @@ package proxy
 
 import (
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"time"
 
+	pkglogger "github.com/utafrali/EcommerceGo/pkg/logger"
 	"github.com/utafrali/EcommerceGo/services/gateway/internal/config"
 )
 
@@ -49,6 +52,19 @@ func NewServiceProxy(cfg *config.Config, logger *slog.Logger) *ServiceProxy {
 
 		proxy := httputil.NewSingleHostReverseProxy(target)
 
+		// Use a custom transport with sensible dial/idle/response timeouts
+		// to prevent a single slow backend from exhausting gateway resources.
+		proxy.Transport = &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   5 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			ResponseHeaderTimeout: 30 * time.Second,
+			MaxIdleConns:          100,
+			MaxIdleConnsPerHost:   10,
+			IdleConnTimeout:       90 * time.Second,
+		}
+
 		// Wrap the default Director to ensure gateway-injected headers
 		// (X-User-ID, X-User-Email, X-User-Role, Authorization) are
 		// explicitly forwarded to backend services, and standard proxy
@@ -71,6 +87,16 @@ func NewServiceProxy(cfg *config.Config, logger *slog.Logger) *ServiceProxy {
 					proto = "https"
 				}
 				req.Header.Set("X-Forwarded-Proto", proto)
+			}
+
+			// Forward X-Correlation-ID to backend services. If the header
+			// is not already set (e.g. by an upstream load balancer), pull
+			// the ID that the gateway's RequestLogging middleware generated
+			// and stored in the request context.
+			if req.Header.Get("X-Correlation-ID") == "" {
+				if corrID := pkglogger.CorrelationIDFromContext(req.Context()); corrID != "" {
+					req.Header.Set("X-Correlation-ID", corrID)
+				}
 			}
 		}
 

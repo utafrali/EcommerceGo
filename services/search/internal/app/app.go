@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -138,21 +139,25 @@ func (a *App) Run(ctx context.Context) error {
 func (a *App) Shutdown() error {
 	a.logger.Info("shutting down application...")
 
+	var errs []error
+
 	// Graceful HTTP server shutdown with a 10-second deadline.
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := a.httpServer.Shutdown(shutdownCtx); err != nil {
 		a.logger.Error("http server shutdown error", slog.String("error", err.Error()))
+		errs = append(errs, err)
 	}
 
 	// Close Kafka consumers.
 	for _, c := range a.consumers {
 		if err := c.Close(); err != nil {
 			a.logger.Error("kafka consumer close error", slog.String("error", err.Error()))
+			errs = append(errs, err)
 		}
 	}
 
 	a.logger.Info("application shutdown complete")
-	return nil
+	return errors.Join(errs...)
 }
