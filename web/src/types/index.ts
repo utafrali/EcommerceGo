@@ -63,6 +63,7 @@ export interface ProductVariant {
   sku: string;
   name: string;
   price: number | null;
+  stock_quantity: number;
   attributes: Record<string, string>;
   weight_grams: number | null;
   is_active: boolean;

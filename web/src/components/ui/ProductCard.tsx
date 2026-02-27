@@ -83,6 +83,21 @@ export function ProductCard({ product }: ProductCardProps) {
           </button>
         </div>
 
+        {/* Stock Badge (top-left) */}
+        {product.variants && product.variants.length > 0 && (
+          <>
+            {product.variants[0].stock_quantity === 0 ? (
+              <div className="absolute left-3 top-3 z-10 rounded-full bg-red-500 px-3 py-1 text-xs font-semibold text-white shadow-md">
+                Out of Stock
+              </div>
+            ) : product.variants[0].stock_quantity <= 5 ? (
+              <div className="absolute left-3 top-3 z-10 rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white shadow-md">
+                Only {product.variants[0].stock_quantity} left
+              </div>
+            ) : null}
+          </>
+        )}
+
         {/* Wishlist heart — always visible (top-right) */}
         <button
           type="button"
