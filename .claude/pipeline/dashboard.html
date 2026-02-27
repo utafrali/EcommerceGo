@@ -7,35 +7,46 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}
+
 header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
 header h1{font-size:20px;font-weight:600;color:#f0f6fc}
 header h1 span{color:#58a6ff}
-.header-right{display:flex;gap:20px;align-items:center;font-size:13px}
-.header-right .round{background:#1f6feb;padding:4px 12px;border-radius:12px;font-weight:600;color:#fff}
-.header-right .timer{color:#8b949e}
+.header-right{display:flex;gap:16px;align-items:center;font-size:13px}
+.header-right .round{background:#1f6feb;padding:4px 14px;border-radius:12px;font-weight:600;color:#fff;font-size:14px}
+.header-right .live-dot{width:8px;height:8px;border-radius:50%;background:#3fb950;animation:blink 1.5s ease-in-out infinite;display:inline-block;margin-right:4px}
+.header-right .live{color:#3fb950;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px}
+.header-right .timer{color:#8b949e;font-family:'SF Mono',SFMono-Regular,Consolas,monospace}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
 
-.stats{display:flex;gap:16px;padding:16px 24px;flex-wrap:wrap}
-.stat-card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px 20px;flex:1;min-width:140px}
-.stat-card .label{font-size:12px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
-.stat-card .value{font-size:28px;font-weight:700}
+.stats{display:flex;gap:12px;padding:16px 24px;flex-wrap:wrap}
+.stat-card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px 18px;flex:1;min-width:120px}
+.stat-card .label{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.stat-card .value{font-size:26px;font-weight:700}
 .stat-card.total .value{color:#f0f6fc}
 .stat-card.completed .value{color:#3fb950}
 .stat-card.running .value{color:#58a6ff}
 .stat-card.failed .value{color:#f85149}
 .stat-card.pending .value{color:#d29922}
+.stat-card.services .value{color:#bc8cff}
 
-.main{display:grid;grid-template-columns:1fr 380px;gap:16px;padding:0 24px 24px}
-@media(max-width:1200px){.main{grid-template-columns:1fr}}
+/* Tabs */
+.tabs{display:flex;gap:0;padding:0 24px;border-bottom:1px solid #30363d;background:#161b22}
+.tab{padding:10px 20px;cursor:pointer;color:#8b949e;font-size:13px;font-weight:500;border-bottom:2px solid transparent;transition:all .2s}
+.tab:hover{color:#c9d1d9}
+.tab.active{color:#58a6ff;border-bottom-color:#58a6ff}
+.tab-content{display:none}
+.tab-content.active{display:block}
 
-.pipeline-section{background:#161b22;border:1px solid #30363d;border-radius:8px;overflow:hidden}
+/* Pipeline table */
+.main{padding:0 24px 24px}
+.pipeline-section{background:#161b22;border:1px solid #30363d;border-radius:8px;overflow:hidden;margin-top:16px}
 .pipeline-section h2{padding:12px 16px;font-size:14px;border-bottom:1px solid #30363d;color:#f0f6fc}
 .pipeline-grid{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;padding:10px 12px;color:#8b949e;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #30363d;background:#0d1117}
+th{text-align:left;padding:10px 12px;color:#8b949e;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #30363d;background:#0d1117;position:sticky;top:0}
 td{padding:10px 12px;border-bottom:1px solid #21262d}
 tr:hover td{background:#1c2128}
 .domain-name{font-weight:600;color:#f0f6fc;white-space:nowrap}
-
 .status-cell{display:flex;align-items:center;gap:6px}
 .status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .status-dot.idle{background:#484f58}
@@ -45,19 +56,47 @@ tr:hover td{background:#1c2128}
 .status-dot.failed{background:#f85149}
 .status-text{color:#8b949e;font-size:12px}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
+.progress-bar{height:3px;background:#21262d;border-radius:2px;margin-top:6px;overflow:hidden}
+.progress-bar .fill{height:100%;background:linear-gradient(90deg,#3fb950,#58a6ff);border-radius:2px;transition:width 0.5s ease}
+.items-count{font-size:11px;color:#8b949e;margin-top:2px}
 
-.right-panel{display:flex;flex-direction:column;gap:16px}
+/* Agent Orchestration */
+.orchestration{margin-top:16px;display:grid;grid-template-columns:280px 1fr;gap:16px}
+@media(max-width:1200px){.orchestration{grid-template-columns:1fr}}
 
-.agents-section{background:#161b22;border:1px solid #30363d;border-radius:8px;max-height:240px;overflow:hidden;display:flex;flex-direction:column}
-.agents-section h2{padding:12px 16px;font-size:14px;border-bottom:1px solid #30363d;color:#f0f6fc;flex-shrink:0}
-.agents-list{overflow-y:auto;padding:8px;flex:1}
-.agent-item{padding:8px 10px;border-radius:6px;margin-bottom:4px;background:#0d1117;border:1px solid #21262d;font-size:12px}
-.agent-item .agent-domain{color:#58a6ff;font-weight:600}
-.agent-item .agent-stage{color:#d29922;margin-left:6px}
-.agent-item .agent-desc{color:#8b949e;margin-top:4px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.agent-item .agent-time{color:#484f58;float:right;font-size:11px}
+.master-agent{background:#161b22;border:1px solid #30363d;border-radius:8px;overflow:hidden}
+.master-agent h2{padding:12px 16px;font-size:14px;border-bottom:1px solid #30363d;color:#f0f6fc}
+.master-info{padding:16px}
+.master-info .master-label{font-size:11px;color:#8b949e;text-transform:uppercase;margin-bottom:4px}
+.master-info .master-value{font-size:14px;color:#f0f6fc;margin-bottom:12px}
+.master-info .master-flow{margin-top:12px}
+.flow-step{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;color:#8b949e}
+.flow-step .flow-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.flow-step.done .flow-icon{background:#0f2d1a;color:#3fb950;border:1px solid #238636}
+.flow-step.active .flow-icon{background:#0d2547;color:#58a6ff;border:1px solid #1f6feb;animation:pulse 1.5s ease-in-out infinite}
+.flow-step.pending .flow-icon{background:#21262d;color:#484f58;border:1px solid #30363d}
+.flow-connector{width:2px;height:12px;background:#30363d;margin-left:11px}
+.flow-connector.done{background:#238636}
 
-.log-section{background:#161b22;border:1px solid #30363d;border-radius:8px;flex:1;min-height:300px;max-height:500px;overflow:hidden;display:flex;flex-direction:column}
+.agent-graph{background:#161b22;border:1px solid #30363d;border-radius:8px;overflow:hidden}
+.agent-graph h2{padding:12px 16px;font-size:14px;border-bottom:1px solid #30363d;color:#f0f6fc}
+.round-agents{padding:16px;display:flex;flex-wrap:wrap;gap:10px}
+.agent-card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px;width:calc(50% - 5px);min-width:260px}
+.agent-card .agent-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.agent-card .agent-type{font-size:11px;color:#bc8cff;background:#1c0f30;padding:2px 8px;border-radius:10px;font-weight:600}
+.agent-card .agent-status{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
+.agent-card .agent-status.done{color:#3fb950;background:#0f2d1a}
+.agent-card .agent-status.running{color:#58a6ff;background:#0d2547}
+.agent-card .agent-title{font-size:13px;color:#f0f6fc;font-weight:600;margin-bottom:6px}
+.agent-card .agent-files{font-size:11px;color:#8b949e;line-height:1.6}
+.agent-card .agent-files .file{color:#58a6ff}
+.agent-arrow{display:flex;align-items:center;color:#30363d;font-size:20px;padding:0 4px}
+
+/* Log section */
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media(max-width:1200px){.panels{grid-template-columns:1fr}}
+
+.log-section{background:#161b22;border:1px solid #30363d;border-radius:8px;max-height:400px;overflow:hidden;display:flex;flex-direction:column}
 .log-section h2{padding:12px 16px;font-size:14px;border-bottom:1px solid #30363d;color:#f0f6fc;flex-shrink:0}
 .log-list{overflow-y:auto;padding:8px;flex:1;font-family:'SF Mono',SFMono-Regular,Consolas,monospace;font-size:12px;line-height:1.6}
 .log-entry{padding:2px 8px;border-radius:3px}
@@ -70,10 +109,65 @@ tr:hover td{background:#1c2128}
 .log-entry.warning .log-domain{color:#d29922}
 .log-entry .log-msg{color:#c9d1d9}
 
-.empty-state{color:#484f58;text-align:center;padding:32px;font-size:13px}
+/* Round timeline */
+.timeline-section{background:#161b22;border:1px solid #30363d;border-radius:8px;max-height:400px;overflow:hidden;display:flex;flex-direction:column}
+.timeline-section h2{padding:12px 16px;font-size:14px;border-bottom:1px solid #30363d;color:#f0f6fc;flex-shrink:0}
+.timeline{overflow-y:auto;padding:16px;flex:1}
+.round-item{display:flex;gap:12px;margin-bottom:16px}
+.round-marker{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.round-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.round-dot.r1{background:#1f6feb}
+.round-dot.r2{background:#bc8cff}
+.round-dot.r3{background:#f0883e}
+.round-dot.r4{background:#3fb950}
+.round-dot.r5{background:#f85149}
+.round-dot.r6{background:#58a6ff}
+.round-dot.r7{background:#d29922}
+.round-line{width:2px;flex:1;background:#30363d;margin-top:4px}
+.round-body{flex:1;padding-bottom:8px}
+.round-body .round-title{font-size:13px;font-weight:600;color:#f0f6fc;margin-bottom:4px}
+.round-body .round-commit{font-size:11px;color:#58a6ff;font-family:'SF Mono',SFMono-Regular,Consolas,monospace;margin-bottom:4px}
+.round-body .round-desc{font-size:12px;color:#8b949e;line-height:1.5}
+.round-body .round-stats{display:flex;gap:12px;margin-top:6px;font-size:11px}
+.round-body .round-stats span{padding:2px 8px;border-radius:10px}
+.round-body .round-stats .files{background:#0d2547;color:#58a6ff}
+.round-body .round-stats .tests{background:#0f2d1a;color:#3fb950}
 
-.progress-bar{height:3px;background:#21262d;border-radius:2px;margin-top:6px;overflow:hidden}
-.progress-bar .fill{height:100%;background:linear-gradient(90deg,#3fb950,#58a6ff);border-radius:2px;transition:width 0.5s ease}
+/* Feature History */
+.history-section{margin-top:16px}
+.history-round{background:#161b22;border:1px solid #30363d;border-radius:8px;overflow:hidden;margin-bottom:16px}
+.history-round-header{padding:14px 16px;border-bottom:1px solid #30363d;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.history-round-header:hover{background:#1c2128}
+.history-round-header h3{font-size:14px;color:#f0f6fc;display:flex;align-items:center;gap:10px}
+.history-round-header h3 .round-badge{display:inline-block;width:26px;height:26px;border-radius:50%;text-align:center;line-height:26px;font-size:12px;font-weight:700;color:#fff}
+.history-round-header .commit-hash{font-size:12px;font-family:'SF Mono',SFMono-Regular,Consolas,monospace;color:#58a6ff}
+.history-round-header .file-count{font-size:12px;color:#8b949e}
+.history-round-header .chevron{color:#8b949e;transition:transform .2s}
+.history-round-header.collapsed .chevron{transform:rotate(-90deg)}
+.history-features{padding:0}
+.history-features.collapsed{display:none}
+.feature-group{border-bottom:1px solid #21262d}
+.feature-group:last-child{border-bottom:none}
+.feature-group-header{padding:10px 16px;font-size:12px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px;background:#0d1117}
+.feature-item{padding:8px 16px 8px 28px;font-size:13px;display:flex;align-items:flex-start;gap:8px;border-bottom:1px solid #161b22}
+.feature-item:hover{background:#1c2128}
+.feature-item .feature-icon{flex-shrink:0;font-size:14px;margin-top:1px}
+.feature-item .feature-text{color:#c9d1d9;line-height:1.4}
+.feature-item .feature-service{color:#bc8cff;font-weight:600;font-size:12px;display:inline-block;margin-right:4px}
+.feature-item .feature-tag{font-size:10px;padding:1px 6px;border-radius:8px;font-weight:600;display:inline-block;margin-left:4px}
+.feature-item .tag-security{background:#3d1e20;color:#f85149}
+.feature-item .tag-perf{background:#1c3a1a;color:#3fb950}
+.feature-item .tag-validation{background:#2d2006;color:#d29922}
+.feature-item .tag-test{background:#0d2547;color:#58a6ff}
+.feature-item .tag-refactor{background:#1c0f30;color:#bc8cff}
+.feature-item .tag-bug{background:#3d1e20;color:#f85149}
+.feature-item .tag-resilience{background:#1c3a1a;color:#3fb950}
+.feature-item .tag-observability{background:#0d2547;color:#58a6ff}
+.feature-item .tag-frontend{background:#2d2006;color:#d29922}
+.feature-item .tag-config{background:#21262d;color:#c9d1d9}
+.feature-item .tag-feature{background:#0d2547;color:#58a6ff}
+
+.empty-state{color:#484f58;text-align:center;padding:32px;font-size:13px}
 
 footer{text-align:center;padding:16px;color:#484f58;font-size:12px;border-top:1px solid #21262d;margin-top:16px}
 </style>
@@ -83,6 +177,7 @@ footer{text-align:center;padding:16px;color:#484f58;font-size:12px;border-top:1p
 <header>
   <h1><span>&#9889;</span> EcommerceGo Pipeline Dashboard</h1>
   <div class="header-right">
+    <div class="live"><div class="live-dot"></div>REALTIME</div>
     <span class="round" id="roundBadge">Round 0</span>
     <span class="timer" id="timer">00:00:00</span>
   </div>
@@ -94,113 +189,404 @@ footer{text-align:center;padding:16px;color:#484f58;font-size:12px;border-top:1p
   <div class="stat-card running"><div class="label">Running</div><div class="value" id="statRunning">0</div></div>
   <div class="stat-card failed"><div class="label">Failed</div><div class="value" id="statFailed">0</div></div>
   <div class="stat-card pending"><div class="label">Pending</div><div class="value" id="statPending">0</div></div>
+  <div class="stat-card services"><div class="label">Services</div><div class="value" id="statServices">0</div></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="pipeline">Pipeline Status</div>
+  <div class="tab" data-tab="agents">Agent Orchestration</div>
+  <div class="tab" data-tab="history">Feature History</div>
+  <div class="tab" data-tab="logs">Logs & Timeline</div>
 </div>
 
 <div class="main">
-  <div class="pipeline-section">
-    <h2>Pipeline Status</h2>
-    <div class="pipeline-grid">
-      <table>
-        <thead>
-          <tr>
-            <th>Service</th>
-            <th>Analysis</th>
-            <th>Development</th>
-            <th>Review</th>
-            <th>Unit Test</th>
-            <th>UI Test</th>
-            <th>Progress</th>
-          </tr>
-        </thead>
-        <tbody id="pipelineBody"></tbody>
-      </table>
+  <!-- TAB 1: Pipeline Status -->
+  <div class="tab-content active" id="tab-pipeline">
+    <div class="pipeline-section">
+      <h2>Service Pipeline — All Rounds</h2>
+      <div class="pipeline-grid">
+        <table>
+          <thead>
+            <tr>
+              <th>Service</th>
+              <th>Analysis</th>
+              <th>Development</th>
+              <th>Review</th>
+              <th>Unit Test</th>
+              <th>UI Test</th>
+              <th>Items</th>
+              <th>Progress</th>
+            </tr>
+          </thead>
+          <tbody id="pipelineBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
-  <div class="right-panel">
-    <div class="agents-section">
-      <h2>Active Agents (<span id="agentCount">0</span>)</h2>
-      <div class="agents-list" id="agentsList">
-        <div class="empty-state">No active agents</div>
+  <!-- TAB 2: Agent Orchestration -->
+  <div class="tab-content" id="tab-agents">
+    <div class="orchestration">
+      <div class="master-agent">
+        <h2>Master Agent</h2>
+        <div class="master-info">
+          <div class="master-label">Role</div>
+          <div class="master-value">Pipeline Orchestrator</div>
+          <div class="master-label">Strategy</div>
+          <div class="master-value">Analyze -> Develop -> Build -> Test -> Deploy</div>
+          <div class="master-label">Round Flow</div>
+          <div class="master-flow" id="masterFlow"></div>
+        </div>
+      </div>
+      <div class="agent-graph">
+        <h2>Sub-Agent Delegation — <span id="agentRoundLabel">Round 6</span></h2>
+        <div class="round-agents" id="agentCards"></div>
       </div>
     </div>
+  </div>
 
-    <div class="log-section">
-      <h2>Activity Log</h2>
-      <div class="log-list" id="logList">
-        <div class="empty-state">Waiting for pipeline to start...</div>
+  <!-- TAB 3: Feature History -->
+  <div class="tab-content" id="tab-history">
+    <div class="history-section" id="historySection"></div>
+  </div>
+
+  <!-- TAB 4: Logs & Timeline -->
+  <div class="tab-content" id="tab-logs">
+    <div class="panels">
+      <div class="timeline-section">
+        <h2>Round History</h2>
+        <div class="timeline" id="timeline"></div>
+      </div>
+      <div class="log-section">
+        <h2>Activity Log</h2>
+        <div class="log-list" id="logList">
+          <div class="empty-state">Waiting for pipeline to start...</div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<footer>EcommerceGo Continuous Pipeline &mdash; Master Agent orchestrating sub-agents</footer>
+<footer>EcommerceGo Continuous Pipeline &mdash; Master Agent orchestrating sub-agents &mdash; Realtime SSE</footer>
 
 <script>
 const STAGES = ['analysis','development','review','unitTest','uiTest'];
 const STAGE_LABELS = {analysis:'Analysis',development:'Development',review:'Review',unitTest:'Unit Test',uiTest:'UI Test'};
-const STATUS_ICONS = {idle:'\u25CB',pending:'\u25D4',running:'\u25CF',completed:'\u2713',failed:'\u2717'};
 let startedAt = null;
+let currentData = null;
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
 
 function formatTime(ms) {
   const s = Math.floor(ms/1000);
-  const h = Math.floor(s/3600);
-  const m = Math.floor((s%3600)/60);
-  const sec = s%60;
+  const h = Math.floor(s/3600); const m = Math.floor((s%3600)/60); const sec = s%60;
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-}
-
-function timeAgo(ts) {
-  if (!ts) return '';
-  const diff = Date.now() - new Date(ts).getTime();
-  if (diff < 60000) return Math.floor(diff/1000)+'s';
-  if (diff < 3600000) return Math.floor(diff/60000)+'m';
-  return Math.floor(diff/3600000)+'h';
 }
 
 function renderPipeline(domains) {
   const body = document.getElementById('pipelineBody');
   let html = '';
+  let serviceCount = 0;
   for (const [name, data] of Object.entries(domains)) {
+    serviceCount++;
     const stages = data.stages || {};
+    const items = data.items || [];
     let completed = 0;
-    let total = STAGES.length;
+    STAGES.forEach(s => { if ((stages[s]||{}).status === 'completed') completed++; });
+    const pct = Math.round((completed/STAGES.length)*100);
     html += '<tr>';
     html += `<td class="domain-name">${name}</td>`;
     for (const stage of STAGES) {
-      const st = (stages[stage] || {}).status || 'idle';
-      if (st === 'completed') completed++;
-      const label = (stages[stage] || {}).label || st;
-      html += `<td><div class="status-cell"><span class="status-dot ${st}"></span><span class="status-text">${label}</span></div></td>`;
+      const st = (stages[stage]||{}).status || 'idle';
+      const label = (stages[stage]||{}).label || st;
+      html += `<td><div class="status-cell"><span class="status-dot ${st}"></span><span class="status-text" title="${label}">${label.length > 30 ? label.slice(0,28)+'..' : label}</span></div></td>`;
     }
-    const pct = Math.round((completed/total)*100);
+    html += `<td><span class="items-count">${items.length} items</span></td>`;
     html += `<td><div style="min-width:80px"><span style="font-size:12px;color:#8b949e">${pct}%</span><div class="progress-bar"><div class="fill" style="width:${pct}%"></div></div></div></td>`;
     html += '</tr>';
   }
   body.innerHTML = html;
+  document.getElementById('statServices').textContent = serviceCount;
 }
 
-function renderAgents(agents) {
-  const el = document.getElementById('agentsList');
-  const countEl = document.getElementById('agentCount');
-  countEl.textContent = agents.length;
+const ROUND_DATA = [
+  { round: 1, commit: 'd6a166e', title: 'Security hardening + performance', desc: 'JWT secret validation, rate limiter memory fix, N+1 query fixes, atomic coupon, path traversal fix, Kafka consumers', files: 47, tests: 143 },
+  { round: 2, commit: '34477ca', title: 'Concurrency safety + robustness', desc: 'Race condition fixes, mutex guards, shutdown handlers, error propagation improvements', files: 32, tests: 52 },
+  { round: 3, commit: 'e976325', title: 'MaxBytesReader + JWT context + ILIKE', desc: 'Body limits on all POST/PUT, JWT context auth for cart, ILIKE escape helper, ES health check', files: 18, tests: 20 },
+  { round: 4, commit: 'ad9f586', title: 'Kafka resilience + correlation ID', desc: 'Poison pill handling, X-Correlation-ID forwarding, async reindex, slog.Logger, shutdown errors.Join', files: 22, tests: 15 },
+  { round: 5, commit: '7013309', title: 'Suspense boundaries + E2E fixes', desc: 'Next.js 15 useSearchParams Suspense wrapping, E2E test stability (benefit bar scroll, strict mode, hydration)', files: 8, tests: 0 },
+  { round: 6, commit: 'a37e4ab', title: 'Input validation + semantic errors + JSON', desc: 'Query param validation (7 services), 410 Gone for expired sessions, channel validation, campaign date/code, TrimSpace search, empty slice JSON fix, Content-Type fallback, configurable gateway timeouts', files: 20, tests: 1 },
+];
+
+const FEATURE_HISTORY = [
+  {
+    round: 6, commit: 'a37e4ab', title: 'Input Validation, Semantic Errors & JSON Consistency', files: 20,
+    colors: { badge: '#58a6ff' },
+    groups: [
+      { name: 'Validation & Input Safety', features: [
+        { service: 'Product/Order/Campaign/Notification/Media/Inventory/Payment', text: 'Query param validation (page, per_page, price) — returns 400 on invalid', tag: 'validation' },
+        { service: 'Campaign', text: 'Date range validation: end_date must be after start_date', tag: 'validation' },
+        { service: 'Campaign', text: 'Campaign code format regex: ^[A-Z0-9-]{2,50}$', tag: 'validation' },
+        { service: 'Notification', text: 'Channel domain constants (email/sms/push/in_app) + IsValidChannel() guard', tag: 'validation' },
+        { service: 'Search', text: 'TrimSpace() on search and suggest query params', tag: 'validation' },
+      ]},
+      { name: 'Semantic HTTP Errors', features: [
+        { service: 'Checkout', text: 'Expired session returns 410 Gone instead of 400 Bad Request', tag: 'feature' },
+        { service: 'pkg/errors', text: 'New ErrGone sentinel + Gone() constructor mapping to HTTP 410', tag: 'feature' },
+      ]},
+      { name: 'JSON & API Consistency', features: [
+        { service: 'Product/Order/Campaign/Notification', text: 'nil slice -> make([]T, 0) — returns [] not null in JSON', tag: 'bug' },
+        { service: 'Media', text: 'Content-Type fallback to application/octet-stream on missing header', tag: 'bug' },
+      ]},
+      { name: 'Infrastructure', features: [
+        { service: 'Gateway', text: 'Configurable proxy timeouts: PROXY_DIAL_TIMEOUT, PROXY_RESPONSE_TIMEOUT, PROXY_IDLE_TIMEOUT, PROXY_MAX_IDLE_CONNS', tag: 'config' },
+      ]},
+    ]
+  },
+  {
+    round: 5, commit: '7013309', title: 'Next.js 15 Suspense Boundaries & E2E Test Fixes', files: 8,
+    colors: { badge: '#f85149' },
+    groups: [
+      { name: 'Frontend (Next.js 15)', features: [
+        { service: 'Web/Login', text: 'Suspense boundary wrapping useSearchParams() — fixes hydration error', tag: 'frontend' },
+        { service: 'Web/Register', text: 'Same Suspense boundary fix for registration page', tag: 'frontend' },
+        { service: 'Web/Checkout', text: 'Same Suspense boundary fix for checkout page', tag: 'frontend' },
+      ]},
+      { name: 'E2E Test Stability', features: [
+        { service: 'E2E/Smoke', text: 'Benefit bar test: scoped to section + scrollIntoViewIfNeeded()', tag: 'test' },
+        { service: 'E2E/Products', text: 'Search bar: added waitForLoadState(networkidle) + .first()', tag: 'test' },
+        { service: 'E2E/Products', text: 'Result count: removed .or() causing strict mode violation', tag: 'test' },
+        { service: 'E2E/Products', text: 'Sort dropdown: added .first() for mobile/desktop dual elements', tag: 'test' },
+        { service: 'E2E/Wishlist', text: 'Sign-in link scoped to page.getByRole(main) avoiding header duplicate', tag: 'test' },
+      ]},
+    ]
+  },
+  {
+    round: 4, commit: 'ad9f586', title: 'Kafka Resilience, Correlation ID, Shutdown & Observability', files: 22,
+    colors: { badge: '#3fb950' },
+    groups: [
+      { name: 'Kafka & Messaging', features: [
+        { service: 'pkg/kafka', text: 'Poison pill handler: commit offset after 3 failed retries', tag: 'resilience' },
+        { service: 'pkg/kafka', text: 'sync.Once close guard preventing double-close panics', tag: 'resilience' },
+        { service: 'Notification', text: 'Consumer error propagation to main errCh channel', tag: 'resilience' },
+      ]},
+      { name: 'Gateway & Networking', features: [
+        { service: 'Gateway', text: 'X-Correlation-ID forwarding through proxy to backend services', tag: 'observability' },
+        { service: 'Gateway', text: 'Custom Transport: 5s dial, 30s response, 100 idle connections', tag: 'perf' },
+      ]},
+      { name: 'Search Engine', features: [
+        { service: 'Search', text: 'Reusable http.Client with 30s timeout (replaces http.DefaultClient)', tag: 'perf' },
+        { service: 'Search', text: 'Async reindex: returns 202 Accepted, processes in background', tag: 'perf' },
+        { service: 'Search', text: '10MB BulkIndex cap preventing memory exhaustion', tag: 'perf' },
+      ]},
+      { name: 'Infrastructure', features: [
+        { service: 'All 12 Services', text: 'Shutdown() returns errors.Join(errs...) instead of silent failures', tag: 'resilience' },
+        { service: 'User', text: 'slog.Logger injected into all HTTP handlers for 500 error logging', tag: 'observability' },
+        { service: 'Payment', text: 'MaxBytesReader on CreatePayment handler (missed in R1-R3)', tag: 'security' },
+      ]},
+    ]
+  },
+  {
+    round: 3, commit: 'e976325', title: 'MaxBytesReader, JWT Context Auth, ILIKE Escaping, ES Health', files: 18,
+    colors: { badge: '#f0883e' },
+    groups: [
+      { name: 'Security — Body Size Limits', features: [
+        { service: 'Product', text: 'MaxBytesReader on 5 POST/PUT handlers (1MB limit)', tag: 'security' },
+        { service: 'Order', text: 'MaxBytesReader on 3 handlers', tag: 'security' },
+        { service: 'Inventory', text: 'MaxBytesReader on 6 handlers (adjust, reserve, release)', tag: 'security' },
+        { service: 'User', text: 'MaxBytesReader on 8 handlers + CORS configurable origins', tag: 'security' },
+        { service: 'Checkout', text: 'MaxBytesReader on 3 handlers', tag: 'security' },
+        { service: 'Media', text: 'MaxBytesReader on upload handler', tag: 'security' },
+      ]},
+      { name: 'Authentication', features: [
+        { service: 'Cart', text: 'JWT context-based auth replaces X-User-ID header trust', tag: 'security' },
+        { service: 'Gateway', text: 'JSON error envelope for auth middleware (was plain text)', tag: 'security' },
+      ]},
+      { name: 'Data Safety', features: [
+        { service: 'Product', text: 'ILIKE escape helper: prevents SQL-like wildcard injection in search', tag: 'security' },
+        { service: 'Search', text: 'Elasticsearch Ping() health checker registered at startup', tag: 'resilience' },
+      ]},
+    ]
+  },
+  {
+    round: 2, commit: '34477ca', title: 'Concurrency Safety, Robustness & Code Quality', files: 32,
+    colors: { badge: '#bc8cff' },
+    groups: [
+      { name: 'Concurrency Fixes', features: [
+        { service: 'Campaign', text: 'Atomic UPDATE for coupon usage increment (was read-then-write race)', tag: 'security' },
+        { service: 'Gateway', text: 'Rate limiter visitor map mutex + cleanup goroutine (3min TTL)', tag: 'perf' },
+        { service: 'Inventory', text: 'Race-free stock adjustment with row-level locking', tag: 'security' },
+      ]},
+      { name: 'Error Handling', features: [
+        { service: 'Payment', text: 'Silent payment failure -> proper error propagation', tag: 'bug' },
+        { service: 'Order', text: 'Negative total guard: discount cannot exceed subtotal', tag: 'validation' },
+        { service: 'Checkout', text: 'Auth check: X-User-ID verified on all 5 handler methods', tag: 'security' },
+      ]},
+      { name: 'Testing', features: [
+        { service: 'Campaign', text: 'TestApplyCoupon_UsageLimitExhaustedAtomicCheck for race safety', tag: 'test' },
+        { service: 'Notification', text: '17 new Kafka consumer handler tests', tag: 'test' },
+        { service: 'Payment', text: 'Fixed ErrPaymentFailed HTTPStatus mapping in tests', tag: 'test' },
+      ]},
+    ]
+  },
+  {
+    round: 1, commit: 'd6a166e', title: 'Security Hardening, Performance & 143 New Tests', files: 47,
+    colors: { badge: '#1f6feb' },
+    groups: [
+      { name: 'Security', features: [
+        { service: 'User', text: 'Hardcoded JWT secret -> env variable with validation', tag: 'security' },
+        { service: 'Gateway', text: 'Hardcoded JWT secret -> configurable with env override', tag: 'security' },
+        { service: 'Media', text: 'Path traversal fix: ownerType allowlist + ID sanitization', tag: 'security' },
+        { service: 'User', text: 'CORS wildcard -> configurable allowed origins', tag: 'security' },
+      ]},
+      { name: 'Performance', features: [
+        { service: 'Order', text: 'N+1 query fix: batch loadOrderItems replaces sequential queries', tag: 'perf' },
+        { service: 'Inventory', text: 'N sequential stock checks -> batch BulkCheck query', tag: 'perf' },
+        { service: 'Product', text: 'Review repo: concrete type -> ReviewRepository interface', tag: 'refactor' },
+      ]},
+      { name: 'Testing (+143 new tests)', features: [
+        { service: 'Product', text: '13 new HTTP handler tests (was zero)', tag: 'test' },
+        { service: 'User', text: '28 new handler + auth tests', tag: 'test' },
+        { service: 'Search', text: '29 new search engine + handler tests', tag: 'test' },
+        { service: 'Notification', text: '17 new Kafka consumer tests', tag: 'test' },
+        { service: 'Gateway', text: '15 new rate limiter + proxy tests', tag: 'test' },
+        { service: 'Checkout', text: '27 new saga orchestration tests', tag: 'test' },
+        { service: 'Cart', text: '5 new limit/validation tests', tag: 'test' },
+        { service: 'Media', text: '4 new path traversal tests', tag: 'test' },
+      ]},
+      { name: 'Kafka & Event System', features: [
+        { service: 'Notification', text: 'Stub Kafka consumers -> functional event consumers', tag: 'feature' },
+        { service: 'Cart', text: 'Business limits: qty<=100, items<=50, price<=100K cents', tag: 'validation' },
+      ]},
+    ]
+  },
+];
+
+const AGENT_ROUNDS = {
+  6: [
+    { type: 'Explore', title: 'Deep Analysis Agent', status: 'done', desc: 'Scanned all 12 services for issues. Found 20 findings (6 HIGH, 8 MED, 6 LOW). Verified 2/6 HIGH were real.', files: [] },
+    { type: 'Bash', title: 'Agent 1: Query Param Validation', status: 'done', desc: 'Added page/per_page/price validation returning 400 on invalid values.', files: ['product/handler', 'order/handler', 'campaign/handler', 'notification/handler', 'media/handler', 'inventory/handler', 'payment/handler'] },
+    { type: 'Bash', title: 'Agent 2: Gateway Timeouts + Campaign', status: 'done', desc: 'Configurable proxy dial/response/idle timeouts. Campaign date range + code regex.', files: ['gateway/config', 'gateway/proxy', 'campaign/handler'] },
+    { type: 'Bash', title: 'Agent 3: Checkout Expiry + Notification', status: 'done', desc: 'ErrGone sentinel (410) for expired checkout sessions. Channel domain constants + validation.', files: ['pkg/errors', 'checkout/service', 'notification/domain', 'notification/service'] },
+    { type: 'Bash', title: 'Agent 4: Search + JSON + Media', status: 'done', desc: 'TrimSpace on search queries. nil slice -> make() in 4 repos. Content-Type fallback.', files: ['search/handler', 'product/repo', 'order/repo', 'campaign/repo', 'notification/repo', 'media/handler'] },
+    { type: 'Bash', title: 'Build & Test Verification', status: 'done', desc: 'make build-all OK. Fixed checkout_test.go (ErrInvalidInput -> ErrGone). make test-all PASS.', files: ['checkout/service/checkout_test.go'] },
+    { type: 'Bash', title: 'Docker Rebuild + E2E', status: 'done', desc: '14 images rebuilt. 18 containers up. E2E: 44/44 PASS, 7 skipped.', files: [] },
+  ],
+  5: [
+    { type: 'Bash', title: 'Suspense Boundary Fix Agent', status: 'done', desc: 'Wrapped useSearchParams in Suspense boundaries for login, register, checkout pages.', files: ['web/auth/login', 'web/auth/register', 'web/checkout'] },
+    { type: 'Bash', title: 'E2E Test Fix Agent', status: 'done', desc: 'Fixed benefit bar (scroll), search bar (networkidle), result count (strict mode), wishlist (scope to main), sort (first()).', files: ['e2e/smoke.spec.ts', 'e2e/products.spec.ts', 'e2e/wishlist.spec.ts'] },
+  ],
+  4: [
+    { type: 'Bash', title: 'Kafka Resilience Agent', status: 'done', desc: 'Poison pill handler (commit after 3 retries), sync.Once close guard on all consumers.', files: ['pkg/kafka', 'notification/event'] },
+    { type: 'Bash', title: 'Gateway Observability Agent', status: 'done', desc: 'X-Correlation-ID forwarding, custom Transport with timeouts.', files: ['gateway/proxy'] },
+    { type: 'Bash', title: 'Search Async Agent', status: 'done', desc: 'Reusable http.Client, async reindex (202 Accepted), 10MB BulkIndex cap.', files: ['search/handler', 'search/service'] },
+    { type: 'Bash', title: 'Shutdown & Logging Agent', status: 'done', desc: 'errors.Join for Shutdown() in all 12 services. slog.Logger on user handlers.', files: ['all services/app.go', 'user/handler'] },
+  ],
+};
+
+function renderTimeline() {
+  const el = document.getElementById('timeline');
+  let html = '';
+  for (let i = ROUND_DATA.length - 1; i >= 0; i--) {
+    const r = ROUND_DATA[i];
+    const isLast = i === 0;
+    html += `<div class="round-item">
+      <div class="round-marker">
+        <div class="round-dot r${r.round}">${r.round}</div>
+        ${!isLast ? '<div class="round-line"></div>' : ''}
+      </div>
+      <div class="round-body">
+        <div class="round-title">Round ${r.round}: ${r.title}</div>
+        <div class="round-commit">${r.commit}</div>
+        <div class="round-desc">${r.desc}</div>
+        <div class="round-stats">
+          <span class="files">${r.files} files</span>
+          ${r.tests > 0 ? `<span class="tests">+${r.tests} tests</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderAgentOrchestration(round) {
+  document.getElementById('agentRoundLabel').textContent = 'Round ' + round;
+  const agents = AGENT_ROUNDS[round] || [];
+  const el = document.getElementById('agentCards');
   if (!agents.length) {
-    el.innerHTML = '<div class="empty-state">No active agents</div>';
+    el.innerHTML = '<div class="empty-state">No agent data for this round</div>';
     return;
   }
   el.innerHTML = agents.map(a => `
-    <div class="agent-item">
-      <span class="agent-domain">[${a.domain}]</span>
-      <span class="agent-stage">${STAGE_LABELS[a.stage]||a.stage}</span>
-      <span class="agent-time">${timeAgo(a.startedAt)}</span>
-      <span class="agent-desc">${a.description||''}</span>
+    <div class="agent-card">
+      <div class="agent-header">
+        <span class="agent-type">${a.type}</span>
+        <span class="agent-status ${a.status}">${a.status === 'done' ? 'Completed' : 'Running'}</span>
+      </div>
+      <div class="agent-title">${a.title}</div>
+      <div class="agent-files">${a.desc}</div>
+      ${a.files.length ? `<div class="agent-files" style="margin-top:6px">${a.files.map(f => `<span class="file">${f}</span>`).join(' &middot; ')}</div>` : ''}
     </div>
   `).join('');
+
+  // Master flow
+  const flowSteps = [
+    { label: 'Analysis (Explore Agent)', done: true },
+    { label: 'Verification Agent', done: true },
+    { label: 'Development (4 parallel agents)', done: true },
+    { label: 'Build Verification', done: true },
+    { label: 'Test Verification', done: true },
+    { label: 'Docker Rebuild', done: true },
+    { label: 'E2E Tests', done: true },
+    { label: 'Commit & Push', done: true },
+    { label: 'Dashboard Update', done: true },
+    { label: 'Next Round', done: false, active: true },
+  ];
+  const flowEl = document.getElementById('masterFlow');
+  flowEl.innerHTML = flowSteps.map((s, i) => {
+    const cls = s.active ? 'active' : (s.done ? 'done' : 'pending');
+    const icon = s.done ? '&#10003;' : (s.active ? '&#9654;' : '&#9675;');
+    return `<div class="flow-step ${cls}"><div class="flow-icon">${icon}</div><span>${s.label}</span></div>` +
+           (i < flowSteps.length - 1 ? `<div class="flow-connector ${s.done ? 'done' : ''}"></div>` : '');
+  }).join('');
+}
+
+function renderFeatureHistory() {
+  const el = document.getElementById('historySection');
+  const TAG_ICONS = { security: '&#128274;', perf: '&#9889;', validation: '&#9989;', test: '&#128300;', refactor: '&#128260;', bug: '&#128027;', resilience: '&#128170;', observability: '&#128065;', frontend: '&#127912;', config: '&#9881;', feature: '&#10024;' };
+  el.innerHTML = FEATURE_HISTORY.map(r => {
+    const groupsHtml = r.groups.map(g => {
+      const featHtml = g.features.map(f => {
+        const icon = TAG_ICONS[f.tag] || '&#8226;';
+        return `<div class="feature-item"><span class="feature-icon">${icon}</span><span class="feature-text"><span class="feature-service">${f.service}</span> ${f.text} <span class="feature-tag tag-${f.tag}">${f.tag}</span></span></div>`;
+      }).join('');
+      return `<div class="feature-group"><div class="feature-group-header">${g.name}</div>${featHtml}</div>`;
+    }).join('');
+    return `<div class="history-round">
+      <div class="history-round-header" onclick="this.classList.toggle('collapsed');this.nextElementSibling.classList.toggle('collapsed')">
+        <h3><span class="round-badge" style="background:${r.colors.badge}">${r.round}</span> Round ${r.round}: ${r.title}</h3>
+        <div style="display:flex;gap:16px;align-items:center">
+          <span class="file-count">${r.files} files</span>
+          <span class="commit-hash">${r.commit}</span>
+          <span class="chevron">&#9660;</span>
+        </div>
+      </div>
+      <div class="history-features">${groupsHtml}</div>
+    </div>`;
+  }).join('');
 }
 
 function renderLog(log) {
   const el = document.getElementById('logList');
-  if (!log.length) {
+  if (!log || !log.length) {
     el.innerHTML = '<div class="empty-state">Waiting for pipeline to start...</div>';
     return;
   }
@@ -213,24 +599,21 @@ function renderLog(log) {
   el.scrollTop = el.scrollHeight;
 }
 
-async function fetchStatus() {
-  try {
-    const res = await fetch('/api/status?t='+Date.now());
-    if (!res.ok) return;
-    const data = await res.json();
-
-    if (data.startedAt && !startedAt) startedAt = new Date(data.startedAt);
-    document.getElementById('roundBadge').textContent = 'Round ' + (data.round||0);
-    document.getElementById('statTotal').textContent = data.stats?.totalTasks||0;
-    document.getElementById('statCompleted').textContent = data.stats?.completed||0;
-    document.getElementById('statRunning').textContent = data.stats?.running||0;
-    document.getElementById('statFailed').textContent = data.stats?.failed||0;
-    document.getElementById('statPending').textContent = data.stats?.pending||0;
-
-    if (data.domains) renderPipeline(data.domains);
-    if (data.activeAgents) renderAgents(data.activeAgents);
-    if (data.log) renderLog(data.log);
-  } catch(e) {}
+function updateDashboard(data) {
+  if (!data) return;
+  currentData = data;
+  if (data.startedAt && !startedAt) startedAt = new Date(data.startedAt);
+  document.getElementById('roundBadge').textContent = 'Round ' + (data.round||0);
+  document.getElementById('statTotal').textContent = data.stats?.totalTasks||0;
+  document.getElementById('statCompleted').textContent = data.stats?.completed||0;
+  document.getElementById('statRunning').textContent = data.stats?.running||0;
+  document.getElementById('statFailed').textContent = data.stats?.failed||0;
+  document.getElementById('statPending').textContent = data.stats?.pending||0;
+  if (data.domains) renderPipeline(data.domains);
+  if (data.log) renderLog(data.log);
+  renderAgentOrchestration(data.round || 6);
+  renderTimeline();
+  renderFeatureHistory();
 }
 
 function updateTimer() {
@@ -239,7 +622,35 @@ function updateTimer() {
   }
 }
 
-setInterval(fetchStatus, 2000);
+// SSE Realtime connection
+function connectSSE() {
+  const evtSource = new EventSource('/api/stream');
+  evtSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      updateDashboard(data);
+    } catch (e) {}
+  };
+  evtSource.onerror = () => {
+    evtSource.close();
+    // Reconnect after 3s
+    setTimeout(connectSSE, 3000);
+  };
+}
+
+// Fallback polling (in case SSE fails)
+async function fetchStatus() {
+  try {
+    const res = await fetch('/api/status?t='+Date.now());
+    if (!res.ok) return;
+    const data = await res.json();
+    updateDashboard(data);
+  } catch(e) {}
+}
+
+// Start SSE, fallback poll every 5s
+connectSSE();
+setInterval(fetchStatus, 5000);
 setInterval(updateTimer, 1000);
 fetchStatus();
 </script>
