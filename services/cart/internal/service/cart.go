@@ -15,6 +15,16 @@ import (
 	"github.com/utafrali/EcommerceGo/services/cart/internal/repository"
 )
 
+// Cart operation upper-bound limits to prevent abuse.
+const (
+	// MaxQuantityPerItem is the maximum quantity allowed for a single cart item.
+	MaxQuantityPerItem = 100
+	// MaxItemsPerCart is the maximum number of distinct items allowed in a cart.
+	MaxItemsPerCart = 50
+	// MaxPriceCents is the maximum price in cents (100,000.00) allowed per item.
+	MaxPriceCents = 100_000_00
+)
+
 // AddItemInput holds the parameters for adding an item to the cart.
 type AddItemInput struct {
 	ProductID string `json:"product_id" validate:"required"`
@@ -83,6 +93,12 @@ func (s *CartService) AddItem(ctx context.Context, userID string, input AddItemI
 	if input.Price < 0 {
 		return nil, apperrors.InvalidInput("price must not be negative")
 	}
+	if input.Quantity > MaxQuantityPerItem {
+		return nil, apperrors.InvalidInput(fmt.Sprintf("quantity must not exceed %d", MaxQuantityPerItem))
+	}
+	if input.Price > MaxPriceCents {
+		return nil, apperrors.InvalidInput(fmt.Sprintf("price must not exceed %d cents", MaxPriceCents))
+	}
 
 	cart, err := s.getOrCreateCart(ctx, userID)
 	if err != nil {
@@ -93,7 +109,11 @@ func (s *CartService) AddItem(ctx context.Context, userID string, input AddItemI
 	found := false
 	for i := range cart.Items {
 		if cart.Items[i].ProductID == input.ProductID && cart.Items[i].VariantID == input.VariantID {
-			cart.Items[i].Quantity += input.Quantity
+			newQty := cart.Items[i].Quantity + input.Quantity
+			if newQty > MaxQuantityPerItem {
+				return nil, apperrors.InvalidInput(fmt.Sprintf("combined quantity must not exceed %d", MaxQuantityPerItem))
+			}
+			cart.Items[i].Quantity = newQty
 			// Update price and other fields in case they changed.
 			cart.Items[i].Price = input.Price
 			cart.Items[i].Name = input.Name
@@ -105,6 +125,9 @@ func (s *CartService) AddItem(ctx context.Context, userID string, input AddItemI
 	}
 
 	if !found {
+		if len(cart.Items) >= MaxItemsPerCart {
+			return nil, apperrors.InvalidInput(fmt.Sprintf("cart must not contain more than %d items", MaxItemsPerCart))
+		}
 		cart.Items = append(cart.Items, domain.CartItem{
 			ProductID: input.ProductID,
 			VariantID: input.VariantID,
@@ -154,6 +177,9 @@ func (s *CartService) UpdateItemQuantity(ctx context.Context, userID, productID,
 	}
 	if quantity < 0 {
 		return nil, apperrors.InvalidInput("quantity must not be negative")
+	}
+	if quantity > MaxQuantityPerItem {
+		return nil, apperrors.InvalidInput(fmt.Sprintf("quantity must not exceed %d", MaxQuantityPerItem))
 	}
 
 	cart, err := s.repo.Get(ctx, userID)

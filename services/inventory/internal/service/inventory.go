@@ -104,6 +104,12 @@ func (s *InventoryService) GetStock(ctx context.Context, productID, variantID st
 
 // AdjustStock modifies the stock quantity by delta and publishes events.
 func (s *InventoryService) AdjustStock(ctx context.Context, productID, variantID string, delta int, reason string) (*domain.Stock, error) {
+	if productID == "" {
+		return nil, apperrors.InvalidInput("product_id is required")
+	}
+	if variantID == "" {
+		return nil, apperrors.InvalidInput("variant_id is required")
+	}
 	if !domain.IsValidMovementReason(reason) {
 		return nil, apperrors.InvalidInput(fmt.Sprintf("invalid movement reason %q", reason))
 	}

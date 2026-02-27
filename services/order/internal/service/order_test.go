@@ -503,6 +503,76 @@ func TestCanTransitionTo(t *testing.T) {
 	}
 }
 
+func TestCreateOrder_NegativeTotalClampedToZero(t *testing.T) {
+	repo := new(mockOrderRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	repo.On("Create", ctx, mock.AnythingOfType("*domain.Order")).Return(nil)
+
+	input := CreateOrderInput{
+		UserID: "user-456",
+		Items: []CreateOrderItemInput{
+			{
+				ProductID: "prod-1",
+				VariantID: "var-1",
+				Name:      "Widget",
+				SKU:       "WDG-001",
+				Price:     1000,
+				Quantity:  1,
+			},
+		},
+		DiscountAmount: 5000, // discount (5000) > subtotal (1000) + shipping (200) = 1200
+		ShippingAmount: 200,
+		Currency:       "USD",
+	}
+
+	order, err := svc.CreateOrder(ctx, input)
+
+	require.NoError(t, err)
+	assert.Equal(t, int64(1000), order.SubtotalAmount)
+	assert.Equal(t, int64(5000), order.DiscountAmount)
+	assert.Equal(t, int64(200), order.ShippingAmount)
+	assert.Equal(t, int64(0), order.TotalAmount) // 1000 - 5000 + 200 = -3800, clamped to 0
+
+	repo.AssertExpectations(t)
+}
+
+func TestCreateOrder_ExactZeroTotal(t *testing.T) {
+	repo := new(mockOrderRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	repo.On("Create", ctx, mock.AnythingOfType("*domain.Order")).Return(nil)
+
+	input := CreateOrderInput{
+		UserID: "user-789",
+		Items: []CreateOrderItemInput{
+			{
+				ProductID: "prod-1",
+				VariantID: "var-1",
+				Name:      "Widget",
+				SKU:       "WDG-001",
+				Price:     1000,
+				Quantity:  2,
+			},
+		},
+		DiscountAmount: 2500, // discount (2500) == subtotal (2000) + shipping (500)
+		ShippingAmount: 500,
+		Currency:       "USD",
+	}
+
+	order, err := svc.CreateOrder(ctx, input)
+
+	require.NoError(t, err)
+	assert.Equal(t, int64(2000), order.SubtotalAmount)  // 1000 * 2
+	assert.Equal(t, int64(2500), order.DiscountAmount)
+	assert.Equal(t, int64(500), order.ShippingAmount)
+	assert.Equal(t, int64(0), order.TotalAmount) // 2000 - 2500 + 500 = 0
+
+	repo.AssertExpectations(t)
+}
+
 func TestLineTotal(t *testing.T) {
 	item := domain.OrderItem{
 		Price:    1500,

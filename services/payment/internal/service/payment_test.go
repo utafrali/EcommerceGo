@@ -375,9 +375,9 @@ func TestProcessPayment_ProviderFailure(t *testing.T) {
 
 	result, err := svc.ProcessPayment(context.Background(), payment.ID)
 
-	require.NoError(t, err)
-	assert.Equal(t, domain.PaymentStatusFailed, result.Status)
-	assert.Equal(t, "card declined", result.FailureReason)
+	assert.Nil(t, result)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, apperrors.ErrPaymentFailed))
 }
 
 func TestProcessPayment_ChargeReturnsFailed(t *testing.T) {
@@ -397,9 +397,9 @@ func TestProcessPayment_ChargeReturnsFailed(t *testing.T) {
 
 	result, err := svc.ProcessPayment(context.Background(), payment.ID)
 
-	require.NoError(t, err)
-	assert.Equal(t, domain.PaymentStatusFailed, result.Status)
-	assert.Equal(t, "insufficient funds", result.FailureReason)
+	assert.Nil(t, result)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, apperrors.ErrPaymentFailed))
 }
 
 func TestProcessPayment_NotPending(t *testing.T) {

@@ -152,7 +152,7 @@ func (s *PaymentService) ProcessPayment(ctx context.Context, paymentID string) (
 			}
 		}
 
-		return payment, nil
+		return nil, apperrors.PaymentFailed(fmt.Sprintf("provider charge failed: %s", err.Error()))
 	}
 
 	// Update payment based on charge result.
@@ -192,6 +192,10 @@ func (s *PaymentService) ProcessPayment(ctx context.Context, paymentID string) (
 		slog.String("payment_id", payment.ID),
 		slog.String("status", payment.Status),
 	)
+
+	if payment.Status == domain.PaymentStatusFailed {
+		return nil, apperrors.PaymentFailed(fmt.Sprintf("charge declined: %s", payment.FailureReason))
+	}
 
 	return payment, nil
 }

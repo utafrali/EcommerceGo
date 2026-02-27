@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EcommerceGo Pipeline Dashboard</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}
+header{background:#161b22;border-bottom:1px solid #30363d;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:20px;font-weight:600;color:#f0f6fc}
+header h1 span{color:#58a6ff}
+.header-right{display:flex;gap:20px;align-items:center;font-size:13px}
+.header-right .round{background:#1f6feb;padding:4px 12px;border-radius:12px;font-weight:600;color:#fff}
+.header-right .timer{color:#8b949e}
+
+.stats{display:flex;gap:16px;padding:16px 24px;flex-wrap:wrap}
+.stat-card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px 20px;flex:1;min-width:140px}
+.stat-card .label{font-size:12px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.stat-card .value{font-size:28px;font-weight:700}
+.stat-card.total .value{color:#f0f6fc}
+.stat-card.completed .value{color:#3fb950}
+.stat-card.running .value{color:#58a6ff}
+.stat-card.failed .value{color:#f85149}
+.stat-card.pending .value{color:#d29922}
+
+.main{display:grid;grid-template-columns:1fr 380px;gap:16px;padding:0 24px 24px}
+@media(max-width:1200px){.main{grid-template-columns:1fr}}
+
+.pipeline-section{background:#161b22;border:1px solid #30363d;border-radius:8px;overflow:hidden}
+.pipeline-section h2{padding:12px 16px;font-size:14px;border-bottom:1px solid #30363d;color:#f0f6fc}
+.pipeline-grid{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 12px;color:#8b949e;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #30363d;background:#0d1117}
+td{padding:10px 12px;border-bottom:1px solid #21262d}
+tr:hover td{background:#1c2128}
+.domain-name{font-weight:600;color:#f0f6fc;white-space:nowrap}
+
+.status-cell{display:flex;align-items:center;gap:6px}
+.status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.status-dot.idle{background:#484f58}
+.status-dot.pending{background:#d29922}
+.status-dot.running{background:#58a6ff;animation:pulse 1.5s ease-in-out infinite}
+.status-dot.completed{background:#3fb950}
+.status-dot.failed{background:#f85149}
+.status-text{color:#8b949e;font-size:12px}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
+
+.right-panel{display:flex;flex-direction:column;gap:16px}
+
+.agents-section{background:#161b22;border:1px solid #30363d;border-radius:8px;max-height:240px;overflow:hidden;display:flex;flex-direction:column}
+.agents-section h2{padding:12px 16px;font-size:14px;border-bottom:1px solid #30363d;color:#f0f6fc;flex-shrink:0}
+.agents-list{overflow-y:auto;padding:8px;flex:1}
+.agent-item{padding:8px 10px;border-radius:6px;margin-bottom:4px;background:#0d1117;border:1px solid #21262d;font-size:12px}
+.agent-item .agent-domain{color:#58a6ff;font-weight:600}
+.agent-item .agent-stage{color:#d29922;margin-left:6px}
+.agent-item .agent-desc{color:#8b949e;margin-top:4px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agent-item .agent-time{color:#484f58;float:right;font-size:11px}
+
+.log-section{background:#161b22;border:1px solid #30363d;border-radius:8px;flex:1;min-height:300px;max-height:500px;overflow:hidden;display:flex;flex-direction:column}
+.log-section h2{padding:12px 16px;font-size:14px;border-bottom:1px solid #30363d;color:#f0f6fc;flex-shrink:0}
+.log-list{overflow-y:auto;padding:8px;flex:1;font-family:'SF Mono',SFMono-Regular,Consolas,monospace;font-size:12px;line-height:1.6}
+.log-entry{padding:2px 8px;border-radius:3px}
+.log-entry:hover{background:#1c2128}
+.log-entry .log-time{color:#484f58;margin-right:8px}
+.log-entry .log-domain{font-weight:600;margin-right:6px}
+.log-entry.info .log-domain{color:#58a6ff}
+.log-entry.success .log-domain{color:#3fb950}
+.log-entry.error .log-domain{color:#f85149}
+.log-entry.warning .log-domain{color:#d29922}
+.log-entry .log-msg{color:#c9d1d9}
+
+.empty-state{color:#484f58;text-align:center;padding:32px;font-size:13px}
+
+.progress-bar{height:3px;background:#21262d;border-radius:2px;margin-top:6px;overflow:hidden}
+.progress-bar .fill{height:100%;background:linear-gradient(90deg,#3fb950,#58a6ff);border-radius:2px;transition:width 0.5s ease}
+
+footer{text-align:center;padding:16px;color:#484f58;font-size:12px;border-top:1px solid #21262d;margin-top:16px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span>&#9889;</span> EcommerceGo Pipeline Dashboard</h1>
+  <div class="header-right">
+    <span class="round" id="roundBadge">Round 0</span>
+    <span class="timer" id="timer">00:00:00</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat-card total"><div class="label">Total Tasks</div><div class="value" id="statTotal">0</div></div>
+  <div class="stat-card completed"><div class="label">Completed</div><div class="value" id="statCompleted">0</div></div>
+  <div class="stat-card running"><div class="label">Running</div><div class="value" id="statRunning">0</div></div>
+  <div class="stat-card failed"><div class="label">Failed</div><div class="value" id="statFailed">0</div></div>
+  <div class="stat-card pending"><div class="label">Pending</div><div class="value" id="statPending">0</div></div>
+</div>
+
+<div class="main">
+  <div class="pipeline-section">
+    <h2>Pipeline Status</h2>
+    <div class="pipeline-grid">
+      <table>
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Analysis</th>
+            <th>Development</th>
+            <th>Review</th>
+            <th>Unit Test</th>
+            <th>UI Test</th>
+            <th>Progress</th>
+          </tr>
+        </thead>
+        <tbody id="pipelineBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="agents-section">
+      <h2>Active Agents (<span id="agentCount">0</span>)</h2>
+      <div class="agents-list" id="agentsList">
+        <div class="empty-state">No active agents</div>
+      </div>
+    </div>
+
+    <div class="log-section">
+      <h2>Activity Log</h2>
+      <div class="log-list" id="logList">
+        <div class="empty-state">Waiting for pipeline to start...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>EcommerceGo Continuous Pipeline &mdash; Master Agent orchestrating sub-agents</footer>
+
+<script>
+const STAGES = ['analysis','development','review','unitTest','uiTest'];
+const STAGE_LABELS = {analysis:'Analysis',development:'Development',review:'Review',unitTest:'Unit Test',uiTest:'UI Test'};
+const STATUS_ICONS = {idle:'\u25CB',pending:'\u25D4',running:'\u25CF',completed:'\u2713',failed:'\u2717'};
+let startedAt = null;
+
+function formatTime(ms) {
+  const s = Math.floor(ms/1000);
+  const h = Math.floor(s/3600);
+  const m = Math.floor((s%3600)/60);
+  const sec = s%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - new Date(ts).getTime();
+  if (diff < 60000) return Math.floor(diff/1000)+'s';
+  if (diff < 3600000) return Math.floor(diff/60000)+'m';
+  return Math.floor(diff/3600000)+'h';
+}
+
+function renderPipeline(domains) {
+  const body = document.getElementById('pipelineBody');
+  let html = '';
+  for (const [name, data] of Object.entries(domains)) {
+    const stages = data.stages || {};
+    let completed = 0;
+    let total = STAGES.length;
+    html += '<tr>';
+    html += `<td class="domain-name">${name}</td>`;
+    for (const stage of STAGES) {
+      const st = (stages[stage] || {}).status || 'idle';
+      if (st === 'completed') completed++;
+      const label = (stages[stage] || {}).label || st;
+      html += `<td><div class="status-cell"><span class="status-dot ${st}"></span><span class="status-text">${label}</span></div></td>`;
+    }
+    const pct = Math.round((completed/total)*100);
+    html += `<td><div style="min-width:80px"><span style="font-size:12px;color:#8b949e">${pct}%</span><div class="progress-bar"><div class="fill" style="width:${pct}%"></div></div></div></td>`;
+    html += '</tr>';
+  }
+  body.innerHTML = html;
+}
+
+function renderAgents(agents) {
+  const el = document.getElementById('agentsList');
+  const countEl = document.getElementById('agentCount');
+  countEl.textContent = agents.length;
+  if (!agents.length) {
+    el.innerHTML = '<div class="empty-state">No active agents</div>';
+    return;
+  }
+  el.innerHTML = agents.map(a => `
+    <div class="agent-item">
+      <span class="agent-domain">[${a.domain}]</span>
+      <span class="agent-stage">${STAGE_LABELS[a.stage]||a.stage}</span>
+      <span class="agent-time">${timeAgo(a.startedAt)}</span>
+      <span class="agent-desc">${a.description||''}</span>
+    </div>
+  `).join('');
+}
+
+function renderLog(log) {
+  const el = document.getElementById('logList');
+  if (!log.length) {
+    el.innerHTML = '<div class="empty-state">Waiting for pipeline to start...</div>';
+    return;
+  }
+  const recent = log.slice(-100);
+  el.innerHTML = recent.map(l => {
+    const t = new Date(l.time);
+    const ts = t.toLocaleTimeString('en-US',{hour12:false});
+    return `<div class="log-entry ${l.type||'info'}"><span class="log-time">${ts}</span><span class="log-domain">[${l.domain||'system'}]</span><span class="log-msg">${l.message}</span></div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function fetchStatus() {
+  try {
+    const res = await fetch('/api/status?t='+Date.now());
+    if (!res.ok) return;
+    const data = await res.json();
+
+    if (data.startedAt && !startedAt) startedAt = new Date(data.startedAt);
+    document.getElementById('roundBadge').textContent = 'Round ' + (data.round||0);
+    document.getElementById('statTotal').textContent = data.stats?.totalTasks||0;
+    document.getElementById('statCompleted').textContent = data.stats?.completed||0;
+    document.getElementById('statRunning').textContent = data.stats?.running||0;
+    document.getElementById('statFailed').textContent = data.stats?.failed||0;
+    document.getElementById('statPending').textContent = data.stats?.pending||0;
+
+    if (data.domains) renderPipeline(data.domains);
+    if (data.activeAgents) renderAgents(data.activeAgents);
+    if (data.log) renderLog(data.log);
+  } catch(e) {}
+}
+
+function updateTimer() {
+  if (startedAt) {
+    document.getElementById('timer').textContent = formatTime(Date.now()-startedAt.getTime());
+  }
+}
+
+setInterval(fetchStatus, 2000);
+setInterval(updateTimer, 1000);
+fetchStatus();
+</script>
+</body>
+</html>

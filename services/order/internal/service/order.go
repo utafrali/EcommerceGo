@@ -87,6 +87,9 @@ func (s *OrderService) CreateOrder(ctx context.Context, input CreateOrderInput) 
 	}
 
 	totalAmount := subtotal - input.DiscountAmount + input.ShippingAmount
+	if totalAmount < 0 {
+		totalAmount = 0
+	}
 
 	order := &domain.Order{
 		ID:              orderID,

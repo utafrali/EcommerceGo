@@ -16,6 +16,7 @@ var (
 	ErrInternal       = errors.New("internal error")
 	ErrConflict       = errors.New("conflict")
 	ErrServiceUnavail = errors.New("service unavailable")
+	ErrPaymentFailed  = errors.New("payment failed")
 )
 
 // AppError represents a structured application error with HTTP status mapping.
@@ -97,6 +98,16 @@ func Internal(err error) *AppError {
 	}
 }
 
+// PaymentFailed creates a 422 error for a payment charge failure.
+func PaymentFailed(message string) *AppError {
+	return &AppError{
+		Code:    "PAYMENT_FAILED",
+		Message: message,
+		Status:  http.StatusUnprocessableEntity,
+		Err:     ErrPaymentFailed,
+	}
+}
+
 // Wrap wraps an error with additional context.
 func Wrap(err error, message string) error {
 	return fmt.Errorf("%s: %w", message, err)
@@ -120,6 +131,8 @@ func HTTPStatus(err error) int {
 		return http.StatusUnauthorized
 	case errors.Is(err, ErrForbidden):
 		return http.StatusForbidden
+	case errors.Is(err, ErrPaymentFailed):
+		return http.StatusUnprocessableEntity
 	default:
 		return http.StatusInternalServerError
 	}

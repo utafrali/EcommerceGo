@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,6 +16,9 @@ import (
 	"github.com/utafrali/EcommerceGo/services/media/internal/repository"
 	"github.com/utafrali/EcommerceGo/services/media/internal/storage"
 )
+
+// safeIDPattern matches only alphanumeric characters, hyphens, and underscores.
+var safeIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 // MediaService implements the business logic for media operations.
 type MediaService struct {
@@ -82,6 +86,16 @@ func (s *MediaService) UploadMedia(ctx context.Context, input *UploadMediaInput)
 
 	if input.OwnerType == "" {
 		return nil, apperrors.InvalidInput("owner type is required")
+	}
+
+	// Validate owner type against allowed set to prevent path traversal.
+	if !domain.IsValidOwnerType(input.OwnerType) {
+		return nil, apperrors.InvalidInput(fmt.Sprintf("owner type %q is not allowed", input.OwnerType))
+	}
+
+	// Sanitize owner ID: only allow alphanumeric, hyphens, underscores.
+	if !safeIDPattern.MatchString(input.OwnerID) {
+		return nil, apperrors.InvalidInput("owner id contains invalid characters")
 	}
 
 	// Generate a unique file key.

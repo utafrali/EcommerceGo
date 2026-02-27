@@ -266,13 +266,55 @@ func (r *OrderRepository) List(ctx context.Context, filter repository.OrderFilte
 		return nil, 0, fmt.Errorf("iterate order rows: %w", err)
 	}
 
-	// Eagerly load items for each order.
-	for i := range orders {
-		items, err := r.loadOrderItems(ctx, orders[i].ID)
-		if err != nil {
-			return nil, 0, fmt.Errorf("load items for order %s: %w", orders[i].ID, err)
+	// Batch-load items for all orders in a single query to avoid N+1.
+	if len(orders) > 0 {
+		orderIDs := make([]string, len(orders))
+		for i := range orders {
+			orderIDs[i] = orders[i].ID
 		}
-		orders[i].Items = items
+
+		itemsQuery := `
+			SELECT id, order_id, product_id, variant_id, name, sku, price, quantity
+			FROM order_items
+			WHERE order_id = ANY($1)
+			ORDER BY id`
+
+		itemRows, err := r.pool.Query(ctx, itemsQuery, orderIDs)
+		if err != nil {
+			return nil, 0, fmt.Errorf("batch load order items: %w", err)
+		}
+		defer itemRows.Close()
+
+		// Group items by order_id.
+		itemsByOrderID := make(map[string][]domain.OrderItem, len(orders))
+		for itemRows.Next() {
+			var item domain.OrderItem
+			if err := itemRows.Scan(
+				&item.ID,
+				&item.OrderID,
+				&item.ProductID,
+				&item.VariantID,
+				&item.Name,
+				&item.SKU,
+				&item.Price,
+				&item.Quantity,
+			); err != nil {
+				return nil, 0, fmt.Errorf("scan order item: %w", err)
+			}
+			itemsByOrderID[item.OrderID] = append(itemsByOrderID[item.OrderID], item)
+		}
+		if err := itemRows.Err(); err != nil {
+			return nil, 0, fmt.Errorf("iterate batch order item rows: %w", err)
+		}
+
+		// Assign items to their respective orders.
+		for i := range orders {
+			if items, ok := itemsByOrderID[orders[i].ID]; ok {
+				orders[i].Items = items
+			} else {
+				orders[i].Items = []domain.OrderItem{}
+			}
+		}
 	}
 
 	if orders == nil {

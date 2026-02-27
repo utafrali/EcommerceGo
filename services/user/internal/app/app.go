@@ -97,7 +97,11 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	})
 
 	// HTTP router.
-	router := handler.NewRouter(userService, wishlistRepo, jwtManager, healthHandler, logger)
+	corsConfig := handler.CORSConfig{
+		AllowedOrigins: cfg.CORSAllowedOrigins,
+		Environment:    cfg.Environment,
+	}
+	router := handler.NewRouter(userService, wishlistRepo, jwtManager, healthHandler, logger, corsConfig)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.HTTPPort),

@@ -288,23 +288,40 @@ func (r *CampaignRepository) Update(ctx context.Context, c *domain.Campaign) err
 	return nil
 }
 
-// IncrementUsage atomically increments the current_usage_count of a campaign.
-func (r *CampaignRepository) IncrementUsage(ctx context.Context, id string) error {
+// IncrementUsage atomically increments the current_usage_count of a campaign
+// only if the usage limit has not been reached. When max_usage_count is 0 the
+// coupon has unlimited uses. Returns true if the row was updated (slot claimed),
+// false if the coupon is exhausted.
+func (r *CampaignRepository) IncrementUsage(ctx context.Context, id string) (bool, error) {
 	query := `
 		UPDATE campaigns
 		SET current_usage_count = current_usage_count + 1, updated_at = NOW()
-		WHERE id = $1`
+		WHERE id = $1
+		  AND (max_usage_count = 0 OR current_usage_count < max_usage_count)`
 
 	ct, err := r.pool.Exec(ctx, query, id)
 	if err != nil {
-		return fmt.Errorf("increment campaign usage: %w", err)
+		return false, fmt.Errorf("increment campaign usage: %w", err)
 	}
 
+	// No rows affected means either the campaign does not exist or the usage
+	// limit has been reached. We distinguish by attempting a plain existence
+	// check only when necessary to keep the happy path fast.
 	if ct.RowsAffected() == 0 {
-		return apperrors.NotFound("campaign", id)
+		// Check whether the campaign exists at all.
+		var exists bool
+		err = r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM campaigns WHERE id = $1)`, id).Scan(&exists)
+		if err != nil {
+			return false, fmt.Errorf("check campaign existence: %w", err)
+		}
+		if !exists {
+			return false, apperrors.NotFound("campaign", id)
+		}
+		// Campaign exists but usage limit reached.
+		return false, nil
 	}
 
-	return nil
+	return true, nil
 }
 
 // RecordUsage records a campaign usage entry.

@@ -118,6 +118,8 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 // IndexProduct handles POST /api/v1/search/index
 func (h *SearchHandler) IndexProduct(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req IndexProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -184,6 +186,8 @@ func (h *SearchHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 
 // BulkIndex handles POST /api/v1/search/bulk
 func (h *SearchHandler) BulkIndex(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req BulkIndexRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -229,6 +233,8 @@ func (h *SearchHandler) BulkIndex(w http.ResponseWriter, r *http.Request) {
 
 // Reindex handles POST /api/v1/search/reindex
 func (h *SearchHandler) Reindex(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	if err := h.service.Reindex(r.Context()); err != nil {
 		h.writeError(w, r, err)
 		return

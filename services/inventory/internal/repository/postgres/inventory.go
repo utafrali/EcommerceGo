@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -223,40 +225,77 @@ func (r *InventoryRepository) ListLowStock(ctx context.Context, page, perPage in
 	return stocks, totalCount, nil
 }
 
-// BulkCheck checks availability for multiple items at once.
+// BulkCheck checks availability for multiple items at once using a single batch query.
 func (r *InventoryRepository) BulkCheck(ctx context.Context, items []domain.StockCheckItem) ([]domain.StockCheckResult, error) {
-	results := make([]domain.StockCheckResult, 0, len(items))
+	if len(items) == 0 {
+		return []domain.StockCheckResult{}, nil
+	}
 
-	for _, item := range items {
-		query := `
-			SELECT quantity, reserved
-			FROM stock
-			WHERE product_id = $1 AND variant_id = $2`
+	// Build a single query using VALUES list for all product_id/variant_id pairs.
+	// Query: SELECT product_id, variant_id, quantity, reserved FROM stock
+	//        WHERE (product_id, variant_id) IN (VALUES ($1,$2), ($3,$4), ...)
+	args := make([]interface{}, 0, len(items)*2)
+	valueClauses := make([]string, 0, len(items))
+	for i, item := range items {
+		p1 := strconv.Itoa(i*2 + 1)
+		p2 := strconv.Itoa(i*2 + 2)
+		valueClauses = append(valueClauses, "($"+p1+",$"+p2+")")
+		args = append(args, item.ProductID, item.VariantID)
+	}
 
+	query := `
+		SELECT product_id, variant_id, quantity, reserved
+		FROM stock
+		WHERE (product_id, variant_id) IN (VALUES ` + strings.Join(valueClauses, ", ") + `)`
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("bulk check stock: %w", err)
+	}
+	defer rows.Close()
+
+	// Collect DB results into a map keyed by "product_id|variant_id".
+	type stockRow struct {
+		quantity int
+		reserved int
+	}
+	stockMap := make(map[string]stockRow, len(items))
+
+	for rows.Next() {
+		var productID, variantID string
 		var quantity, reserved int
-		err := r.pool.QueryRow(ctx, query, item.ProductID, item.VariantID).Scan(&quantity, &reserved)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				results = append(results, domain.StockCheckResult{
-					ProductID: item.ProductID,
-					VariantID: item.VariantID,
-					Requested: item.Quantity,
-					Available: 0,
-					InStock:   false,
-				})
-				continue
-			}
-			return nil, fmt.Errorf("bulk check stock for %s/%s: %w", item.ProductID, item.VariantID, err)
+		if err := rows.Scan(&productID, &variantID, &quantity, &reserved); err != nil {
+			return nil, fmt.Errorf("scan bulk check row: %w", err)
 		}
+		stockMap[productID+"|"+variantID] = stockRow{quantity: quantity, reserved: reserved}
+	}
 
-		available := quantity - reserved
-		results = append(results, domain.StockCheckResult{
-			ProductID: item.ProductID,
-			VariantID: item.VariantID,
-			Requested: item.Quantity,
-			Available: available,
-			InStock:   available >= item.Quantity,
-		})
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate bulk check rows: %w", err)
+	}
+
+	// Build results in the same order as the input items.
+	results := make([]domain.StockCheckResult, 0, len(items))
+	for _, item := range items {
+		key := item.ProductID + "|" + item.VariantID
+		if row, ok := stockMap[key]; ok {
+			available := row.quantity - row.reserved
+			results = append(results, domain.StockCheckResult{
+				ProductID: item.ProductID,
+				VariantID: item.VariantID,
+				Requested: item.Quantity,
+				Available: available,
+				InStock:   available >= item.Quantity,
+			})
+		} else {
+			results = append(results, domain.StockCheckResult{
+				ProductID: item.ProductID,
+				VariantID: item.VariantID,
+				Requested: item.Quantity,
+				Available: 0,
+				InStock:   false,
+			})
+		}
 	}
 
 	return results, nil

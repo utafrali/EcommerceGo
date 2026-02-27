@@ -39,5 +39,16 @@ func Load() (*Config, error) {
 	if err := pkgconfig.Load(cfg); err != nil {
 		return nil, fmt.Errorf("load gateway config: %w", err)
 	}
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
 	return cfg, nil
+}
+
+// validate checks configuration invariants.
+func (c *Config) validate() error {
+	if c.Environment != "development" && c.JWTSecret == "your-secret-key-change-in-production" {
+		return fmt.Errorf("JWT_SECRET must be changed from default value in %s environment", c.Environment)
+	}
+	return nil
 }

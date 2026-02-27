@@ -55,9 +55,9 @@ func (m *mockCampaignRepository) Update(ctx context.Context, campaign *domain.Ca
 	return args.Error(0)
 }
 
-func (m *mockCampaignRepository) IncrementUsage(ctx context.Context, id string) error {
+func (m *mockCampaignRepository) IncrementUsage(ctx context.Context, id string) (bool, error) {
 	args := m.Called(ctx, id)
-	return args.Error(0)
+	return args.Bool(0), args.Error(1)
 }
 
 func (m *mockCampaignRepository) RecordUsage(ctx context.Context, usage *domain.CampaignUsage) error {
@@ -690,7 +690,7 @@ func TestApplyCoupon_Success(t *testing.T) {
 	// ValidateCoupon calls GetByCode
 	repo.On("GetByCode", ctx, "APPLY10").Return(campaign, nil)
 	repo.On("RecordUsage", ctx, mock.AnythingOfType("*domain.CampaignUsage")).Return(nil)
-	repo.On("IncrementUsage", ctx, "camp-apply").Return(nil)
+	repo.On("IncrementUsage", ctx, "camp-apply").Return(true, nil)
 
 	input := &ApplyCouponInput{
 		OrderAmount: 5000,
@@ -1654,4 +1654,54 @@ func TestGenerateCampaignCode(t *testing.T) {
 	code1 := generateCampaignCode("Test Campaign")
 	code2 := generateCampaignCode("Test Campaign")
 	assert.NotEqual(t, code1, code2, "codes should differ due to random suffix")
+}
+
+func TestApplyCoupon_UsageLimitExhaustedAtomicCheck(t *testing.T) {
+	// This test covers the TOCTOU race-condition path: ValidateCoupon
+	// passes the optimistic usage-limit check (CurrentUsageCount < MaxUsageCount),
+	// but by the time we call IncrementUsage the atomic conditional UPDATE
+	// returns (false, nil), meaning a concurrent request already claimed the
+	// last available slot.
+	repo := new(mockCampaignRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	campaign := &domain.Campaign{
+		ID:                "camp-race",
+		Type:              domain.CampaignTypeFixedAmount,
+		Status:            domain.CampaignStatusActive,
+		DiscountValue:     500,
+		Code:              "LASTSLOT",
+		MaxUsageCount:     10,
+		CurrentUsageCount: 9, // Optimistic check sees 9 < 10 → passes
+		StartDate:         activeStart,
+		EndDate:           activeEnd,
+	}
+
+	// ValidateCoupon calls GetByCode (first call).
+	// ApplyCoupon calls GetByCode again after validation (second call).
+	repo.On("GetByCode", ctx, "LASTSLOT").Return(campaign, nil)
+
+	// The atomic IncrementUsage returns false: another request grabbed the
+	// last slot between our ValidateCoupon and IncrementUsage calls.
+	repo.On("IncrementUsage", ctx, "camp-race").Return(false, nil)
+
+	input := &ApplyCouponInput{
+		OrderAmount: 5000,
+		Currency:    "USD",
+		UserID:      "user-race",
+		OrderID:     "order-race",
+	}
+
+	usage, err := svc.ApplyCoupon(ctx, "LASTSLOT", input)
+
+	// Should fail with an invalid-input error about exhausted usage.
+	assert.Nil(t, usage)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+	assert.Contains(t, err.Error(), "coupon usage limit reached")
+
+	// RecordUsage should NOT have been called since IncrementUsage denied the claim.
+	repo.AssertNotCalled(t, "RecordUsage", mock.Anything, mock.Anything)
+	repo.AssertExpectations(t)
 }

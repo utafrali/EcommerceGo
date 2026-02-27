@@ -845,3 +845,78 @@ func TestIsValidReservationStatus(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// AdjustStock input-validation guard tests (empty productID / variantID)
+// ---------------------------------------------------------------------------
+
+func TestAdjustStock_EmptyProductID(t *testing.T) {
+	stockRepo := new(mockStockRepository)
+	reservationRepo := new(mockReservationRepository)
+	svc := newTestService(stockRepo, reservationRepo)
+	ctx := context.Background()
+
+	stock, err := svc.AdjustStock(ctx, "", "var-1", 10, "adjustment")
+
+	assert.Nil(t, stock)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+	assert.Contains(t, err.Error(), "product_id")
+
+	// Repository must never be called when productID is empty.
+	stockRepo.AssertNotCalled(t, "AdjustQuantity")
+	stockRepo.AssertNotCalled(t, "GetByProductVariant")
+}
+
+func TestAdjustStock_EmptyVariantID(t *testing.T) {
+	stockRepo := new(mockStockRepository)
+	reservationRepo := new(mockReservationRepository)
+	svc := newTestService(stockRepo, reservationRepo)
+	ctx := context.Background()
+
+	stock, err := svc.AdjustStock(ctx, "prod-1", "", 10, "adjustment")
+
+	assert.Nil(t, stock)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+	assert.Contains(t, err.Error(), "variant_id")
+
+	// Repository must never be called when variantID is empty.
+	stockRepo.AssertNotCalled(t, "AdjustQuantity")
+	stockRepo.AssertNotCalled(t, "GetByProductVariant")
+}
+
+func TestAdjustStock_ValidInputsPassThrough(t *testing.T) {
+	// Verifies that valid productID, variantID, and reason are accepted and
+	// the call reaches the repository layer (i.e., guards do not block).
+	stockRepo := new(mockStockRepository)
+	reservationRepo := new(mockReservationRepository)
+	svc := newTestService(stockRepo, reservationRepo)
+	ctx := context.Background()
+
+	stockRepo.On("AdjustQuantity", ctx, "prod-99", "var-99", 25, "return", (*string)(nil)).Return(nil)
+
+	updatedStock := &domain.Stock{
+		ID:                "stock-99",
+		ProductID:         "prod-99",
+		VariantID:         "var-99",
+		WarehouseID:       domain.DefaultWarehouseID,
+		Quantity:          125,
+		Reserved:          0,
+		LowStockThreshold: 10,
+		UpdatedAt:         time.Now().UTC(),
+	}
+	stockRepo.On("GetByProductVariant", ctx, "prod-99", "var-99").Return(updatedStock, nil)
+
+	stock, err := svc.AdjustStock(ctx, "prod-99", "var-99", 25, "return")
+
+	require.NoError(t, err)
+	assert.Equal(t, 125, stock.Quantity)
+	assert.Equal(t, "prod-99", stock.ProductID)
+	assert.Equal(t, "var-99", stock.VariantID)
+
+	// Confirm that both repository methods were called exactly once.
+	stockRepo.AssertCalled(t, "AdjustQuantity", ctx, "prod-99", "var-99", 25, "return", (*string)(nil))
+	stockRepo.AssertCalled(t, "GetByProductVariant", ctx, "prod-99", "var-99")
+	stockRepo.AssertExpectations(t)
+}

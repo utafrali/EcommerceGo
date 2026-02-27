@@ -717,3 +717,185 @@ func TestUpdateMediaMetadata_RepositoryUpdateError(t *testing.T) {
 
 	repo.AssertExpectations(t)
 }
+
+// --- Tests for ownerType validation and ownerID sanitization (path traversal prevention) ---
+
+func TestUploadMedia_InvalidOwnerType(t *testing.T) {
+	tests := []struct {
+		name      string
+		ownerType string
+	}{
+		{"random string", "malicious_type"},
+		{"sql injection attempt", "product; DROP TABLE"},
+		{"numeric only", "12345"},
+		{"close but wrong", "products"},
+		{"uppercase variant", "Product"},
+		{"path segment", "../../etc"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := new(mockMediaRepository)
+			store := new(mockStorage)
+			svc := newTestService(repo, store)
+			ctx := context.Background()
+
+			input := &UploadMediaInput{
+				OwnerID:     "owner-123",
+				OwnerType:   tt.ownerType,
+				FileName:    "photo.jpg",
+				ContentType: "image/jpeg",
+				Size:        1024,
+				Data:        strings.NewReader("fake image data"),
+			}
+
+			media, err := svc.UploadMedia(ctx, input)
+
+			assert.Nil(t, media)
+			assert.Error(t, err)
+			assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+			assert.Contains(t, err.Error(), "owner type")
+
+			// Storage and repo should never be called for invalid owner type.
+			store.AssertNotCalled(t, "Upload")
+			repo.AssertNotCalled(t, "Create")
+		})
+	}
+}
+
+func TestUploadMedia_PathTraversalInOwnerID(t *testing.T) {
+	tests := []struct {
+		name    string
+		ownerID string
+	}{
+		{"dot-dot-slash", "../etc/passwd"},
+		{"double traversal", "../../secret"},
+		{"slash prefix", "/etc/passwd"},
+		{"backslash traversal", `..\\windows\\system32`},
+		{"url encoded dots", "%2e%2e/etc/passwd"},
+		{"space in id", "owner 123"},
+		{"semicolon", "owner;rm -rf /"},
+		{"null byte", "owner\x00id"},
+		{"at sign", "owner@domain"},
+		{"dot only", ".."},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := new(mockMediaRepository)
+			store := new(mockStorage)
+			svc := newTestService(repo, store)
+			ctx := context.Background()
+
+			input := &UploadMediaInput{
+				OwnerID:     tt.ownerID,
+				OwnerType:   "product",
+				FileName:    "photo.jpg",
+				ContentType: "image/jpeg",
+				Size:        1024,
+				Data:        strings.NewReader("fake image data"),
+			}
+
+			media, err := svc.UploadMedia(ctx, input)
+
+			assert.Nil(t, media, "should not return media for ownerID %q", tt.ownerID)
+			assert.Error(t, err)
+			assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+			assert.Contains(t, err.Error(), "owner id contains invalid characters")
+
+			// Storage and repo should never be called for unsafe ownerID.
+			store.AssertNotCalled(t, "Upload")
+			repo.AssertNotCalled(t, "Create")
+		})
+	}
+}
+
+func TestUploadMedia_ValidOwnerTypes(t *testing.T) {
+	validTypes := []string{"product", "user", "category"}
+
+	for _, ownerType := range validTypes {
+		t.Run(ownerType, func(t *testing.T) {
+			repo := new(mockMediaRepository)
+			store := new(mockStorage)
+			svc := newTestService(repo, store)
+			ctx := context.Background()
+
+			store.On("Upload", ctx, mock.AnythingOfType("*storage.UploadInput")).
+				Return(&storage.UploadResult{
+					Key: ownerType + "/owner-123/some-uuid",
+					URL: "http://localhost:8011/media/" + ownerType + "/owner-123/some-uuid",
+				}, nil)
+
+			repo.On("Create", ctx, mock.AnythingOfType("*domain.MediaFile")).Return(nil)
+
+			input := &UploadMediaInput{
+				OwnerID:     "owner-123",
+				OwnerType:   ownerType,
+				FileName:    "photo.jpg",
+				ContentType: "image/jpeg",
+				Size:        1024,
+				Data:        strings.NewReader("fake image data"),
+			}
+
+			media, err := svc.UploadMedia(ctx, input)
+
+			require.NoError(t, err)
+			assert.NotNil(t, media)
+			assert.Equal(t, ownerType, media.OwnerType)
+			assert.Equal(t, "owner-123", media.OwnerID)
+
+			repo.AssertExpectations(t)
+			store.AssertExpectations(t)
+		})
+	}
+}
+
+func TestUploadMedia_ValidOwnerIDPatterns(t *testing.T) {
+	validIDs := []struct {
+		name    string
+		ownerID string
+	}{
+		{"uuid-like", "550e8400-e29b-41d4-a716-446655440000"},
+		{"alphanumeric", "abc123"},
+		{"with hyphens", "my-owner-id"},
+		{"with underscores", "my_owner_id"},
+		{"numeric only", "12345"},
+		{"single char", "a"},
+		{"mixed case", "Owner-ID_123"},
+	}
+
+	for _, tt := range validIDs {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := new(mockMediaRepository)
+			store := new(mockStorage)
+			svc := newTestService(repo, store)
+			ctx := context.Background()
+
+			store.On("Upload", ctx, mock.AnythingOfType("*storage.UploadInput")).
+				Return(&storage.UploadResult{
+					Key: "product/" + tt.ownerID + "/some-uuid",
+					URL: "http://localhost:8011/media/product/" + tt.ownerID + "/some-uuid",
+				}, nil)
+
+			repo.On("Create", ctx, mock.AnythingOfType("*domain.MediaFile")).Return(nil)
+
+			input := &UploadMediaInput{
+				OwnerID:     tt.ownerID,
+				OwnerType:   "product",
+				FileName:    "photo.jpg",
+				ContentType: "image/jpeg",
+				Size:        1024,
+				Data:        strings.NewReader("fake image data"),
+			}
+
+			media, err := svc.UploadMedia(ctx, input)
+
+			require.NoError(t, err)
+			assert.NotNil(t, media)
+			assert.Equal(t, tt.ownerID, media.OwnerID)
+
+			repo.AssertExpectations(t)
+			store.AssertExpectations(t)
+		})
+	}
+}

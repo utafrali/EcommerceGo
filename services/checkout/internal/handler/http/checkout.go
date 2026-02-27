@@ -142,6 +142,10 @@ func (h *CheckoutHandler) GetCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !authorizeSession(w, r, session) {
+		return
+	}
+
 	writeJSON(w, http.StatusOK, response{Data: session})
 }
 
@@ -165,6 +169,16 @@ func (h *CheckoutHandler) SetShippingAddress(w http.ResponseWriter, r *http.Requ
 
 	if err := validator.Validate(req); err != nil {
 		h.writeValidationError(w, err)
+		return
+	}
+
+	// Authorization: verify the caller owns this checkout session.
+	existing, err := h.service.GetCheckout(r.Context(), id)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	if !authorizeSession(w, r, existing) {
 		return
 	}
 
@@ -210,6 +224,16 @@ func (h *CheckoutHandler) SetPaymentMethod(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Authorization: verify the caller owns this checkout session.
+	existing, err := h.service.GetCheckout(r.Context(), id)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	if !authorizeSession(w, r, existing) {
+		return
+	}
+
 	session, err := h.service.SetPaymentMethod(r.Context(), id, req.PaymentMethod)
 	if err != nil {
 		h.writeError(w, r, err)
@@ -226,6 +250,16 @@ func (h *CheckoutHandler) ProcessCheckout(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusBadRequest, response{
 			Error: &errorResponse{Code: "INVALID_INPUT", Message: "checkout id is required"},
 		})
+		return
+	}
+
+	// Authorization: verify the caller owns this checkout session.
+	existing, err := h.service.GetCheckout(r.Context(), id)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	if !authorizeSession(w, r, existing) {
 		return
 	}
 
@@ -248,6 +282,16 @@ func (h *CheckoutHandler) CancelCheckout(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Authorization: verify the caller owns this checkout session.
+	existing, err := h.service.GetCheckout(r.Context(), id)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	if !authorizeSession(w, r, existing) {
+		return
+	}
+
 	session, err := h.service.CancelCheckout(r.Context(), id)
 	if err != nil {
 		h.writeError(w, r, err)
@@ -258,6 +302,30 @@ func (h *CheckoutHandler) CancelCheckout(w http.ResponseWriter, r *http.Request)
 }
 
 // --- Helpers ---
+
+// getUserID extracts the X-User-ID header from the request.
+func getUserID(r *http.Request) string {
+	return r.Header.Get("X-User-ID")
+}
+
+// authorizeSession checks that the requesting user owns the checkout session.
+// Returns true if authorized, false if it wrote an error response.
+func authorizeSession(w http.ResponseWriter, r *http.Request, session *domain.CheckoutSession) bool {
+	userID := getUserID(r)
+	if userID == "" {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "X-User-ID header is required"},
+		})
+		return false
+	}
+	if session.UserID != userID {
+		writeJSON(w, http.StatusForbidden, response{
+			Error: &errorResponse{Code: "FORBIDDEN", Message: "you do not have access to this checkout session"},
+		})
+		return false
+	}
+	return true
+}
 
 func (h *CheckoutHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {
 	var appErr *apperrors.AppError

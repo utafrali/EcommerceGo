@@ -123,6 +123,8 @@ func (h *PaymentHandler) GetPayment(w http.ResponseWriter, r *http.Request) {
 
 // ProcessPayment handles POST /api/v1/payments/{id}/process
 func (h *PaymentHandler) ProcessPayment(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	id := chi.URLParam(r, "id")
 	if id == "" {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -142,6 +144,8 @@ func (h *PaymentHandler) ProcessPayment(w http.ResponseWriter, r *http.Request) 
 
 // RefundPayment handles POST /api/v1/payments/{id}/refund
 func (h *PaymentHandler) RefundPayment(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	id := chi.URLParam(r, "id")
 	if id == "" {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -268,6 +272,10 @@ func (h *PaymentHandler) writeError(w http.ResponseWriter, r *http.Request, err 
 		code = "INVALID_INPUT"
 		message = err.Error()
 		status = http.StatusBadRequest
+	case errors.Is(err, apperrors.ErrPaymentFailed):
+		code = "PAYMENT_FAILED"
+		message = err.Error()
+		status = http.StatusUnprocessableEntity
 	}
 
 	if status == http.StatusInternalServerError {

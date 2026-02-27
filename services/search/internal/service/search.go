@@ -207,9 +207,15 @@ func (s *SearchService) Reindex(ctx context.Context) error {
 			return fmt.Errorf("reindex: create request: %w", err)
 		}
 
-		resp, err := http.DefaultClient.Do(req)
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Do(req)
 		if err != nil {
 			return fmt.Errorf("reindex: fetch products page %d: %w", page, err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return fmt.Errorf("reindex: fetch products page %d: unexpected status %d", page, resp.StatusCode)
 		}
 
 		var result struct {

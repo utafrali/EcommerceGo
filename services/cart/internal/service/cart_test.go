@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"testing"
@@ -516,4 +517,161 @@ func TestGetCart_EmptyUserID(t *testing.T) {
 	assert.Nil(t, cart)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+}
+
+// --- Validation limit tests ---
+
+func TestAddItem_ExceedsMaxQuantity(t *testing.T) {
+	repo := new(mockCartRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	input := AddItemInput{
+		ProductID: "prod-1",
+		VariantID: "var-1",
+		Name:      "Test Product",
+		SKU:       "TP-001",
+		Price:     1999,
+		Quantity:  101, // exceeds MaxQuantityPerItem (100)
+	}
+
+	cart, err := svc.AddItem(ctx, "user-1", input)
+
+	assert.Nil(t, cart)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+	assert.Contains(t, err.Error(), "quantity must not exceed 100")
+}
+
+func TestAddItem_ExceedsMaxPrice(t *testing.T) {
+	repo := new(mockCartRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	input := AddItemInput{
+		ProductID: "prod-1",
+		VariantID: "var-1",
+		Name:      "Expensive Product",
+		SKU:       "EP-001",
+		Price:     MaxPriceCents + 1, // exceeds MaxPriceCents (10_000_000)
+		Quantity:  1,
+	}
+
+	cart, err := svc.AddItem(ctx, "user-1", input)
+
+	assert.Nil(t, cart)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+	assert.Contains(t, err.Error(), "price must not exceed")
+}
+
+func TestAddItem_ExceedsMaxItemsPerCart(t *testing.T) {
+	repo := new(mockCartRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	// Build a cart that already has MaxItemsPerCart (50) distinct items.
+	now := time.Now().UTC()
+	fullCart := &domain.Cart{
+		ID:        "cart-full",
+		UserID:    "user-1",
+		Items:     make([]domain.CartItem, MaxItemsPerCart),
+		Currency:  "USD",
+		CreatedAt: now,
+		UpdatedAt: now,
+		ExpiresAt: now.Add(7 * 24 * time.Hour),
+	}
+	for i := 0; i < MaxItemsPerCart; i++ {
+		fullCart.Items[i] = domain.CartItem{
+			ProductID: fmt.Sprintf("prod-%d", i),
+			VariantID: fmt.Sprintf("var-%d", i),
+			Name:      fmt.Sprintf("Product %d", i),
+			SKU:       fmt.Sprintf("SKU-%d", i),
+			Price:     999,
+			Quantity:  1,
+		}
+	}
+
+	repo.On("Get", ctx, "user-1").Return(fullCart, nil)
+
+	// Try to add the 51st distinct item.
+	input := AddItemInput{
+		ProductID: "prod-new",
+		VariantID: "var-new",
+		Name:      "New Product",
+		SKU:       "NP-001",
+		Price:     999,
+		Quantity:  1,
+	}
+
+	cart, err := svc.AddItem(ctx, "user-1", input)
+
+	assert.Nil(t, cart)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+	assert.Contains(t, err.Error(), "cart must not contain more than 50 items")
+
+	repo.AssertExpectations(t)
+}
+
+func TestAddItem_MergeExceedsMaxQuantity(t *testing.T) {
+	repo := new(mockCartRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	// Existing cart with an item at quantity 60.
+	now := time.Now().UTC()
+	existing := &domain.Cart{
+		ID:     "cart-123",
+		UserID: "user-1",
+		Items: []domain.CartItem{
+			{
+				ProductID: "prod-1",
+				VariantID: "var-1",
+				Name:      "Test Product",
+				SKU:       "TP-001",
+				Price:     1999,
+				Quantity:  60,
+			},
+		},
+		Currency:  "USD",
+		CreatedAt: now,
+		UpdatedAt: now,
+		ExpiresAt: now.Add(7 * 24 * time.Hour),
+	}
+
+	repo.On("Get", ctx, "user-1").Return(existing, nil)
+
+	// Adding 50 more to the same product+variant: 60 + 50 = 110 > MaxQuantityPerItem (100).
+	input := AddItemInput{
+		ProductID: "prod-1",
+		VariantID: "var-1",
+		Name:      "Test Product",
+		SKU:       "TP-001",
+		Price:     1999,
+		Quantity:  50,
+	}
+
+	cart, err := svc.AddItem(ctx, "user-1", input)
+
+	assert.Nil(t, cart)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+	assert.Contains(t, err.Error(), "combined quantity must not exceed 100")
+
+	repo.AssertExpectations(t)
+}
+
+func TestUpdateItemQuantity_ExceedsMaxQuantity(t *testing.T) {
+	repo := new(mockCartRepository)
+	svc := newTestService(repo)
+	ctx := context.Background()
+
+	// quantity=101 should be rejected before the repo is even consulted.
+	cart, err := svc.UpdateItemQuantity(ctx, "user-1", "prod-1", "var-1", 101)
+
+	assert.Nil(t, cart)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, apperrors.ErrInvalidInput)
+	assert.Contains(t, err.Error(), "quantity must not exceed 100")
 }

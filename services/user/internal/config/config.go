@@ -32,6 +32,9 @@ type Config struct {
 	JWTSecret        string `env:"JWT_SECRET" envDefault:"change-this-to-a-secure-secret"`
 	JWTAccessExpiry  string `env:"JWT_ACCESS_TOKEN_EXPIRY" envDefault:"15m"`
 	JWTRefreshExpiry string `env:"JWT_REFRESH_TOKEN_EXPIRY" envDefault:"168h"`
+
+	// CORS
+	CORSAllowedOrigins []string `env:"CORS_ALLOWED_ORIGINS" envDefault:"*" envSeparator:","`
 }
 
 // Load reads configuration from environment variables.
@@ -40,6 +43,17 @@ func Load() (*Config, error) {
 	if err := pkgconfig.Load(cfg); err != nil {
 		return nil, fmt.Errorf("load user config: %w", err)
 	}
+
+	// In non-development environments, require an explicitly set, strong JWT secret.
+	if cfg.Environment != "development" {
+		if cfg.JWTSecret == "change-this-to-a-secure-secret" {
+			return nil, fmt.Errorf("JWT_SECRET must be explicitly set via environment variable in %q mode", cfg.Environment)
+		}
+		if len(cfg.JWTSecret) < 32 {
+			return nil, fmt.Errorf("JWT_SECRET must be at least 32 characters long, got %d", len(cfg.JWTSecret))
+		}
+	}
+
 	return cfg, nil
 }
 

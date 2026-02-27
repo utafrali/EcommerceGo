@@ -10,7 +10,7 @@ import (
 
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
-	"github.com/utafrali/EcommerceGo/services/product/internal/repository/postgres"
+	"github.com/utafrali/EcommerceGo/services/product/internal/repository"
 )
 
 // CreateReviewInput holds the parameters for creating a review.
@@ -34,12 +34,12 @@ type ReviewListResult struct {
 
 // ReviewService implements the business logic for review operations.
 type ReviewService struct {
-	repo   *postgres.ReviewRepository
+	repo   repository.ReviewRepository
 	logger *slog.Logger
 }
 
 // NewReviewService creates a new review service.
-func NewReviewService(repo *postgres.ReviewRepository, logger *slog.Logger) *ReviewService {
+func NewReviewService(repo repository.ReviewRepository, logger *slog.Logger) *ReviewService {
 	return &ReviewService{
 		repo:   repo,
 		logger: logger,

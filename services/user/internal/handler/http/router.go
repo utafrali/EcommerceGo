@@ -20,11 +20,12 @@ func NewRouter(
 	jwtManager *auth.JWTManager,
 	healthHandler *health.Handler,
 	logger *slog.Logger,
+	corsConfig CORSConfig,
 ) http.Handler {
 	r := chi.NewRouter()
 
 	// Global middleware
-	r.Use(CORS)
+	r.Use(CORS(corsConfig))
 	r.Use(middleware.Recovery(logger))
 	r.Use(middleware.RequestLogging(logger))
 

@@ -133,6 +133,7 @@ type listResponse struct {
 
 // CreateCampaign handles POST /api/v1/campaigns
 func (h *CampaignHandler) CreateCampaign(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	var req CreateCampaignRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -254,6 +255,7 @@ func (h *CampaignHandler) GetCampaign(w http.ResponseWriter, r *http.Request) {
 
 // UpdateCampaign handles PUT /api/v1/campaigns/{id}
 func (h *CampaignHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	id := chi.URLParam(r, "id")
 	if id == "" {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -344,6 +346,7 @@ func (h *CampaignHandler) DeactivateCampaign(w http.ResponseWriter, r *http.Requ
 
 // ValidateCoupon handles POST /api/v1/coupons/validate
 func (h *CampaignHandler) ValidateCoupon(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	var req ValidateCouponRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -376,6 +379,7 @@ func (h *CampaignHandler) ValidateCoupon(w http.ResponseWriter, r *http.Request)
 
 // ApplyCoupon handles POST /api/v1/coupons/apply
 func (h *CampaignHandler) ApplyCoupon(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	var req ApplyCouponRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -409,6 +413,7 @@ func (h *CampaignHandler) ApplyCoupon(w http.ResponseWriter, r *http.Request) {
 
 // ValidateMultipleCoupons handles POST /api/v1/coupons/validate-multiple
 func (h *CampaignHandler) ValidateMultipleCoupons(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	var req ValidateMultipleCouponsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -442,6 +447,7 @@ func (h *CampaignHandler) ValidateMultipleCoupons(w http.ResponseWriter, r *http
 
 // CreateStackingRule handles POST /api/v1/campaigns/{id}/stacking-rules
 func (h *CampaignHandler) CreateStackingRule(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	campaignID := chi.URLParam(r, "id")
 	if campaignID == "" {
 		writeJSON(w, http.StatusBadRequest, response{

@@ -31,8 +31,10 @@ type CampaignRepository interface {
 	// Update modifies an existing campaign in the store.
 	Update(ctx context.Context, campaign *domain.Campaign) error
 
-	// IncrementUsage atomically increments the current_usage_count of a campaign.
-	IncrementUsage(ctx context.Context, id string) error
+	// IncrementUsage atomically increments the current_usage_count of a campaign
+	// only if current_usage_count < max_usage_count (or max_usage_count is 0, meaning unlimited).
+	// Returns true if the increment was applied, false if the coupon is exhausted.
+	IncrementUsage(ctx context.Context, id string) (bool, error)
 
 	// RecordUsage records a campaign usage entry.
 	RecordUsage(ctx context.Context, usage *domain.CampaignUsage) error

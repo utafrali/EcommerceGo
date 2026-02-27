@@ -66,6 +66,9 @@ type listResponse struct {
 
 // SendNotification handles POST /api/v1/notifications
 func (h *NotificationHandler) SendNotification(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1 MB to prevent abuse.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req SendNotificationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{

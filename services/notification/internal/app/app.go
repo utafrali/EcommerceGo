@@ -22,6 +22,26 @@ import (
 	"github.com/utafrali/EcommerceGo/services/notification/internal/service"
 )
 
+// notificationSenderAdapter adapts *service.NotificationService to the
+// event.NotificationSender interface, breaking the import cycle between
+// the event and service packages.
+type notificationSenderAdapter struct {
+	svc *service.NotificationService
+}
+
+func (a *notificationSenderAdapter) SendNotification(ctx context.Context, input *event.SendInput) error {
+	_, err := a.svc.SendNotification(ctx, &service.SendNotificationInput{
+		UserID:   input.UserID,
+		Type:     input.Type,
+		Channel:  input.Channel,
+		Subject:  input.Subject,
+		Body:     input.Body,
+		Priority: input.Priority,
+		Metadata: input.Metadata,
+	})
+	return err
+}
+
 // App wires together all dependencies and runs the notification service.
 type App struct {
 	cfg        *config.Config
@@ -87,7 +107,8 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	notificationService := service.NewNotificationService(repo, senders, eventProducer, logger)
 
 	// Kafka event consumers.
-	consumerHandler := event.NewConsumerHandler(logger)
+	senderAdapter := &notificationSenderAdapter{svc: notificationService}
+	consumerHandler := event.NewConsumerHandler(senderAdapter, logger)
 	consumers := event.NewConsumers(cfg.KafkaBrokers, consumerHandler, logger)
 
 	// Health checks.

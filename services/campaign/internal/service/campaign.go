@@ -404,8 +404,10 @@ func (s *CampaignService) ValidateCoupon(ctx context.Context, code string, input
 }
 
 // ApplyCoupon records the usage of a coupon and increments the usage counter.
+// The usage-limit check is performed atomically via IncrementUsage to prevent
+// a TOCTOU race where concurrent requests could exceed MaxUsageCount.
 func (s *CampaignService) ApplyCoupon(ctx context.Context, code string, input *ApplyCouponInput) (*domain.CampaignUsage, error) {
-	// Validate the coupon first.
+	// Validate the coupon first (checks status, dates, min order, etc.).
 	validation, err := s.ValidateCoupon(ctx, code, &ValidateCouponInput{
 		OrderAmount: input.OrderAmount,
 		Currency:    input.Currency,
@@ -425,6 +427,17 @@ func (s *CampaignService) ApplyCoupon(ctx context.Context, code string, input *A
 		return nil, fmt.Errorf("get campaign for apply: %w", err)
 	}
 
+	// Atomically claim a usage slot. This is the authoritative usage-limit
+	// check -- the earlier ValidateCoupon check is only an optimistic pre-
+	// screen and does not prevent races.
+	claimed, err := s.repo.IncrementUsage(ctx, campaign.ID)
+	if err != nil {
+		return nil, fmt.Errorf("increment campaign usage: %w", err)
+	}
+	if !claimed {
+		return nil, apperrors.InvalidInput("coupon usage limit reached")
+	}
+
 	now := time.Now().UTC()
 	usage := &domain.CampaignUsage{
 		ID:              uuid.New().String(),
@@ -438,14 +451,6 @@ func (s *CampaignService) ApplyCoupon(ctx context.Context, code string, input *A
 	// Record the usage.
 	if err := s.repo.RecordUsage(ctx, usage); err != nil {
 		return nil, fmt.Errorf("record campaign usage: %w", err)
-	}
-
-	// Increment the usage counter.
-	if err := s.repo.IncrementUsage(ctx, campaign.ID); err != nil {
-		s.logger.ErrorContext(ctx, "failed to increment campaign usage count",
-			slog.String("campaign_id", campaign.ID),
-			slog.String("error", err.Error()),
-		)
 	}
 
 	// Publish event.

@@ -54,3 +54,15 @@ type ProductRepository interface {
 	// The returned map is keyed by product ID.
 	GetPrimaryImages(ctx context.Context, productIDs []string) (map[string]domain.ProductImage, error)
 }
+
+// ReviewRepository defines the interface for review persistence operations.
+type ReviewRepository interface {
+	// Create inserts a new product review into the store.
+	Create(ctx context.Context, review *domain.Review) error
+
+	// ListByProductID returns paginated reviews for a given product along with the total count.
+	ListByProductID(ctx context.Context, productID string, page, perPage int) ([]domain.Review, int, error)
+
+	// GetSummary returns the average rating and total count of reviews for a product.
+	GetSummary(ctx context.Context, productID string) (*domain.ReviewSummary, error)
+}
