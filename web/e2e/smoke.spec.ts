@@ -9,7 +9,7 @@ test.describe('Smoke Tests', () => {
   test('homepage displays welcome heading', async ({ page }) => {
     await page.goto('/');
     const heading = page.getByRole('heading', {
-      name: 'Welcome to EcommerceGo',
+      name: 'Discover Quality Products',
     });
     await expect(heading).toBeVisible();
   });
@@ -18,23 +18,23 @@ test.describe('Smoke Tests', () => {
     await page.goto('/');
     await expect(
       page.getByText(
-        'An AI-driven, open-source microservices e-commerce platform',
+        'Shop the best deals across electronics, clothing, home essentials, and more.',
       ),
     ).toBeVisible();
   });
 
-  test('homepage has Browse Products link', async ({ page }) => {
+  test('homepage has Shop Now link', async ({ page }) => {
     await page.goto('/');
-    const link = page.getByRole('link', { name: 'Browse Products' });
+    const link = page.getByRole('link', { name: 'Shop Now' });
     await expect(link).toBeVisible();
     await expect(link).toHaveAttribute('href', '/products');
   });
 
   test('homepage has Sign In link', async ({ page }) => {
     await page.goto('/');
-    // The homepage body has a "Sign In" link (distinct from the nav)
-    const links = page.getByRole('link', { name: 'Sign In' });
-    await expect(links.first()).toBeVisible();
+    // The header has a "Sign In" link
+    const link = page.locator('header').getByRole('link', { name: 'Sign In' });
+    await expect(link).toBeVisible();
   });
 
   test('page has correct meta description', async ({ page }) => {
@@ -100,7 +100,7 @@ test.describe('Navigation', () => {
       .click();
     await expect(page).toHaveURL('/products');
     await expect(
-      page.getByRole('heading', { name: 'Products' }),
+      page.getByRole('heading', { name: 'All Products' }),
     ).toBeVisible();
   });
 
@@ -123,7 +123,7 @@ test.describe('Navigation', () => {
       .click();
     await expect(page).toHaveURL('/auth/login');
     await expect(
-      page.getByRole('heading', { name: 'Sign in to your account' }),
+      page.getByRole('heading', { name: 'Sign in to EcommerceGo' }),
     ).toBeVisible();
   });
 

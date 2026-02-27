@@ -4,13 +4,14 @@ test.describe('Auth Flow - Login Page', () => {
   test('login page loads with heading', async ({ page }) => {
     await page.goto('/auth/login');
     await expect(
-      page.getByRole('heading', { name: 'Sign in to your account' }),
+      page.getByRole('heading', { name: 'Sign in to EcommerceGo' }),
     ).toBeVisible();
   });
 
-  test('login page has create account link', async ({ page }) => {
+  test('login page has register link', async ({ page }) => {
     await page.goto('/auth/login');
-    await expect(page.getByText('create a new account')).toBeVisible();
+    await expect(page.getByText("Don't have an account?")).toBeVisible();
+    await expect(page.getByRole('main').getByRole('link', { name: 'Register' })).toBeVisible();
   });
 
   test('login form has email input', async ({ page }) => {
@@ -26,7 +27,7 @@ test.describe('Auth Flow - Login Page', () => {
 
   test('login form has password input', async ({ page }) => {
     await page.goto('/auth/login');
-    const passwordInput = page.getByLabel('Password');
+    const passwordInput = page.locator('input[name="password"]');
     await expect(passwordInput).toBeVisible();
     await expect(passwordInput).toHaveAttribute('type', 'password');
     await expect(passwordInput).toHaveAttribute(
@@ -37,7 +38,7 @@ test.describe('Auth Flow - Login Page', () => {
 
   test('login form has submit button', async ({ page }) => {
     await page.goto('/auth/login');
-    const submitButton = page.getByRole('button', { name: 'Sign in' });
+    const submitButton = page.getByRole('button', { name: 'Sign In' });
     await expect(submitButton).toBeVisible();
     await expect(submitButton).toHaveAttribute('type', 'submit');
   });
@@ -45,7 +46,7 @@ test.describe('Auth Flow - Login Page', () => {
   test('email and password fields accept input', async ({ page }) => {
     await page.goto('/auth/login');
     const emailInput = page.getByLabel('Email address');
-    const passwordInput = page.getByLabel('Password');
+    const passwordInput = page.locator('input[name="password"]');
 
     await emailInput.fill('test@example.com');
     await passwordInput.fill('password123');
@@ -62,7 +63,7 @@ test.describe('Auth Flow - Login Page', () => {
 
   test('password field has required attribute', async ({ page }) => {
     await page.goto('/auth/login');
-    const passwordInput = page.getByLabel('Password');
+    const passwordInput = page.locator('input[name="password"]');
     await expect(passwordInput).toHaveAttribute('required', '');
   });
 
@@ -70,8 +71,8 @@ test.describe('Auth Flow - Login Page', () => {
   // test('submitting login form with valid credentials redirects to home', async ({ page }) => {
   //   await page.goto('/auth/login');
   //   await page.getByLabel('Email address').fill('test@example.com');
-  //   await page.getByLabel('Password').fill('password123');
-  //   await page.getByRole('button', { name: 'Sign in' }).click();
+  //   await page.locator('input[name="password"]').fill('password123');
+  //   await page.getByRole('button', { name: 'Sign In' }).click();
   //   await expect(page).toHaveURL('/');
   // });
 
@@ -79,8 +80,8 @@ test.describe('Auth Flow - Login Page', () => {
   // test('submitting login form with invalid credentials shows error', async ({ page }) => {
   //   await page.goto('/auth/login');
   //   await page.getByLabel('Email address').fill('wrong@example.com');
-  //   await page.getByLabel('Password').fill('wrongpassword');
-  //   await page.getByRole('button', { name: 'Sign in' }).click();
+  //   await page.locator('input[name="password"]').fill('wrongpassword');
+  //   await page.getByRole('button', { name: 'Sign In' }).click();
   //   await expect(page.getByText('Invalid credentials')).toBeVisible();
   // });
 });
@@ -93,21 +94,25 @@ test.describe('Auth Flow - Cart Page (requires auth)', () => {
     ).toBeVisible();
   });
 
-  test('cart page shows coming soon message', async ({ page }) => {
+  test('cart page shows empty cart message', async ({ page }) => {
     await page.goto('/cart');
-    await expect(page.getByText('coming soon')).toBeVisible();
+    await expect(page.getByText('Your cart is empty')).toBeVisible();
   });
 
-  test('cart page mentions BFF API endpoint', async ({ page }) => {
+  test('cart page shows continue shopping link', async ({ page }) => {
     await page.goto('/cart');
-    await expect(page.getByText('/api/cart')).toBeVisible();
+    const continueLink = page.getByRole('link', { name: 'Continue Shopping' });
+    await expect(continueLink).toBeVisible();
+    await expect(continueLink).toHaveAttribute('href', '/products');
   });
 
-  test('cart page displays placeholder skeleton items', async ({ page }) => {
+  test('cart page displays empty state with helpful message', async ({
+    page,
+  }) => {
     await page.goto('/cart');
-    // The scaffold renders 3 placeholder skeleton cart items
-    const skeletons = page.locator('.animate-pulse');
-    await expect(skeletons).toHaveCount(3);
+    await expect(
+      page.getByText("Looks like you haven't added anything to your cart yet"),
+    ).toBeVisible();
   });
 
   // TODO: Uncomment when cart requires authentication

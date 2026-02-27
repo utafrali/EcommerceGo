@@ -3,6 +3,7 @@ import { defineConfig } from '@playwright/test';
 const E2E_PORT = Number(process.env.E2E_PORT) || 3102;
 
 export default defineConfig({
+  globalSetup: './e2e/global-setup.ts',
   testDir: './e2e',
   timeout: 30000,
   retries: 1,

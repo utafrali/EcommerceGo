@@ -68,8 +68,8 @@ test.describe('CMS Campaigns', () => {
     const percentageCells = page.locator('td', { hasText: 'Percentage' });
     await expect(percentageCells.first()).toBeVisible();
 
-    // "Fixed Amount" appears for FREESHIP
-    await expect(page.locator('td', { hasText: 'Fixed Amount' })).toBeVisible();
+    // "Fixed Amount" appears for FREESHIP (use .first() since multiple campaigns may have this type)
+    await expect(page.locator('td', { hasText: 'Fixed Amount' }).first()).toBeVisible();
   });
 
   // ── 5. Status badges are color-coded per campaign status ─────────────────

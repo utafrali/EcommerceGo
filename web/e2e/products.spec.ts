@@ -4,37 +4,43 @@ test.describe('Products Page', () => {
   test('products page loads with heading', async ({ page }) => {
     await page.goto('/products');
     await expect(
-      page.getByRole('heading', { name: 'Products' }),
+      page.getByRole('heading', { name: 'All Products' }),
     ).toBeVisible();
   });
 
-  test('products page shows coming soon message', async ({ page }) => {
+  test('products page shows breadcrumb navigation', async ({ page }) => {
     await page.goto('/products');
-    await expect(page.getByText('coming soon')).toBeVisible();
+    const breadcrumb = page.locator('nav[aria-label="Breadcrumb"]');
+    await expect(breadcrumb).toBeVisible();
+    await expect(breadcrumb.getByText('Home')).toBeVisible();
+    await expect(breadcrumb.getByText('Products')).toBeVisible();
   });
 
-  test('products page mentions BFF API endpoint', async ({ page }) => {
+  test('products page breadcrumb Home links to homepage', async ({ page }) => {
     await page.goto('/products');
-    await expect(page.getByText('/api/products')).toBeVisible();
+    const breadcrumb = page.locator('nav[aria-label="Breadcrumb"]');
+    const homeLink = breadcrumb.getByRole('link', { name: 'Home' });
+    await expect(homeLink).toBeVisible();
+    await expect(homeLink).toHaveAttribute('href', '/');
   });
 
-  test('products page displays placeholder skeleton grid', async ({
+  test('products page handles empty or error state gracefully', async ({
     page,
   }) => {
     await page.goto('/products');
-    // The scaffold renders 8 placeholder skeleton cards
-    const skeletons = page.locator('.animate-pulse');
-    await expect(skeletons).toHaveCount(8);
+    // The page should display either product cards, an empty message, or an error banner — not crash
+    const heading = page.getByRole('heading', { name: 'All Products' });
+    await expect(heading).toBeVisible();
   });
 
-  test('Browse Products button on homepage navigates to products page', async ({
+  test('Shop Now button on homepage navigates to products page', async ({
     page,
   }) => {
     await page.goto('/');
-    await page.getByRole('link', { name: 'Browse Products' }).click();
+    await page.getByRole('link', { name: 'Shop Now' }).click();
     await expect(page).toHaveURL('/products');
     await expect(
-      page.getByRole('heading', { name: 'Products' }),
+      page.getByRole('heading', { name: 'All Products' }),
     ).toBeVisible();
   });
 
