@@ -293,8 +293,8 @@ export interface WishlistItem {
 export interface ProductListParams {
   page?: number;
   per_page?: number;
-  category_id?: string;
-  brand_id?: string;
+  category_id?: string | string[];  // Support multi-select via array or comma-separated string
+  brand_id?: string | string[];     // Support multi-select via array or comma-separated string
   search?: string;
   min_price?: number;
   max_price?: number;

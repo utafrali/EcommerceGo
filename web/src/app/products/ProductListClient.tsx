@@ -21,8 +21,8 @@ interface ProductListClientProps {
   totalPages: number;
   // Current filter values from URL
   searchQuery: string;
-  selectedCategoryId?: string;
-  selectedBrandId?: string;
+  selectedCategoryIds?: string[];  // Multi-select support
+  selectedBrandIds?: string[];     // Multi-select support
   selectedMinPrice?: number;
   selectedMaxPrice?: number;
   selectedSort: string;
@@ -57,8 +57,8 @@ export function ProductListClient({
   currentPage,
   totalPages,
   searchQuery,
-  selectedCategoryId,
-  selectedBrandId,
+  selectedCategoryIds,
+  selectedBrandIds,
   selectedMinPrice,
   selectedMaxPrice,
   selectedSort,
@@ -79,12 +79,12 @@ export function ProductListClient({
 
   const filters: FilterState = useMemo(
     () => ({
-      categoryIds: selectedCategoryId ? [selectedCategoryId] : [],
-      brandIds: selectedBrandId ? [selectedBrandId] : [],
+      categoryIds: selectedCategoryIds ?? [],
+      brandIds: selectedBrandIds ?? [],
       minPrice: selectedMinPrice,
       maxPrice: selectedMaxPrice,
     }),
-    [selectedCategoryId, selectedBrandId, selectedMinPrice, selectedMaxPrice],
+    [selectedCategoryIds, selectedBrandIds, selectedMinPrice, selectedMaxPrice],
   );
 
   // ── Build URL with updated params ─────────────────────────────────────
@@ -115,11 +115,11 @@ export function ProductListClient({
         buildUrl({
           category_id:
             newFilters.categoryIds.length > 0
-              ? newFilters.categoryIds[0]
+              ? newFilters.categoryIds.join(',')  // Multi-select: comma-separated
               : undefined,
           brand_id:
             newFilters.brandIds.length > 0
-              ? newFilters.brandIds[0]
+              ? newFilters.brandIds.join(',')     // Multi-select: comma-separated
               : undefined,
           min_price:
             newFilters.minPrice !== undefined
@@ -178,20 +178,25 @@ export function ProductListClient({
     const categories: { id: string; name: string }[] = [];
     const brands: { id: string; name: string }[] = [];
 
-    if (selectedCategoryId) {
-      const cat = categoryMap.get(selectedCategoryId);
-      categories.push({
-        id: selectedCategoryId,
-        name: cat?.name || 'Category',
-      });
+    // Multi-select: iterate over arrays
+    if (selectedCategoryIds && selectedCategoryIds.length > 0) {
+      for (const catId of selectedCategoryIds) {
+        const cat = categoryMap.get(catId);
+        categories.push({
+          id: catId,
+          name: cat?.name || 'Category',
+        });
+      }
     }
 
-    if (selectedBrandId) {
-      const brand = brandMap.get(selectedBrandId);
-      brands.push({
-        id: selectedBrandId,
-        name: brand?.name || 'Brand',
-      });
+    if (selectedBrandIds && selectedBrandIds.length > 0) {
+      for (const brandId of selectedBrandIds) {
+        const brand = brandMap.get(brandId);
+        brands.push({
+          id: brandId,
+          name: brand?.name || 'Brand',
+        });
+      }
     }
 
     const priceRange =
@@ -206,8 +211,8 @@ export function ProductListClient({
       searchQuery: searchQuery || undefined,
     };
   }, [
-    selectedCategoryId,
-    selectedBrandId,
+    selectedCategoryIds,
+    selectedBrandIds,
     selectedMinPrice,
     selectedMaxPrice,
     searchQuery,

@@ -22,6 +22,15 @@ function getString(
   return value;
 }
 
+function getStringArray(
+  value: string | string[] | undefined,
+): string[] | undefined {
+  if (Array.isArray(value)) return value;
+  if (!value) return undefined;
+  // Support comma-separated values in single string
+  return value.split(',').map(v => v.trim()).filter(Boolean);
+}
+
 function getNumber(
   value: string | string[] | undefined,
 ): number | undefined {
@@ -42,12 +51,16 @@ export default async function ProductsPage({
 
   // Parse URL search params
   const searchQuery = getString(params.q) ?? '';
-  const categoryId = getString(params.category_id);
-  const brandId = getString(params.brand_id);
+  const categoryIds = getStringArray(params.category_id);
+  const brandIds = getStringArray(params.brand_id);
   const minPrice = getNumber(params.min_price);
   const maxPrice = getNumber(params.max_price);
   const sort = getString(params.sort) ?? 'newest';
   const page = Math.max(1, getNumber(params.page) ?? 1);
+
+  // Convert arrays to comma-separated strings for API (backend expects single param)
+  const categoryParam = categoryIds?.join(',');
+  const brandParam = brandIds?.join(',');
 
   // Fetch data in parallel: products, category tree, brands
   const [productsResult, categoriesResult, brandsResult] = await Promise.allSettled([
@@ -56,8 +69,8 @@ export default async function ProductsPage({
           q: searchQuery,
           page,
           per_page: ITEMS_PER_PAGE,
-          category_id: categoryId,
-          brand_id: brandId,
+          category_id: categoryParam,
+          brand_id: brandParam,
           min_price: minPrice,
           max_price: maxPrice,
           sort,
@@ -66,8 +79,8 @@ export default async function ProductsPage({
       : api.getProducts({
           page,
           per_page: ITEMS_PER_PAGE,
-          category_id: categoryId,
-          brand_id: brandId,
+          category_id: categoryParam,
+          brand_id: brandParam,
           search: undefined,
           min_price: minPrice,
           max_price: maxPrice,
@@ -192,8 +205,8 @@ export default async function ProductsPage({
           currentPage={productsData.page}
           totalPages={productsData.total_pages}
           searchQuery={searchQuery}
-          selectedCategoryId={categoryId}
-          selectedBrandId={brandId}
+          selectedCategoryIds={categoryIds}
+          selectedBrandIds={brandIds}
           selectedMinPrice={minPrice}
           selectedMaxPrice={maxPrice}
           selectedSort={sort}
