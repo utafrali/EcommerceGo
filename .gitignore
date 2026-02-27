@@ -51,3 +51,6 @@ gen/
 # Temporary files
 tmp/
 *.tmp
+
+test-results/
+*.tsbuildinfo
