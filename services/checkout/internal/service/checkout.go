@@ -175,10 +175,6 @@ func (s *CheckoutService) SetShippingAddress(ctx context.Context, sessionID stri
 		return nil, fmt.Errorf("get checkout for shipping address: %w", err)
 	}
 
-	if session.IsTerminal() {
-		return nil, apperrors.InvalidInput("cannot modify a completed, failed, or expired checkout")
-	}
-
 	if session.IsExpired() {
 		session.Status = domain.StatusExpired
 		if err := s.repo.Update(ctx, session); err != nil {
@@ -189,6 +185,10 @@ func (s *CheckoutService) SetShippingAddress(ctx context.Context, sessionID stri
 			return nil, fmt.Errorf("update expired checkout session: %w", err)
 		}
 		return nil, apperrors.InvalidInput("checkout session has expired")
+	}
+
+	if session.Status != domain.StatusInitiated {
+		return nil, apperrors.InvalidInput("shipping address can only be set while checkout is in initiated state")
 	}
 
 	session.ShippingAddress = address
@@ -215,10 +215,6 @@ func (s *CheckoutService) SetPaymentMethod(ctx context.Context, sessionID, metho
 		return nil, fmt.Errorf("get checkout for payment method: %w", err)
 	}
 
-	if session.IsTerminal() {
-		return nil, apperrors.InvalidInput("cannot modify a completed, failed, or expired checkout")
-	}
-
 	if session.IsExpired() {
 		session.Status = domain.StatusExpired
 		if err := s.repo.Update(ctx, session); err != nil {
@@ -229,6 +225,10 @@ func (s *CheckoutService) SetPaymentMethod(ctx context.Context, sessionID, metho
 			return nil, fmt.Errorf("update expired checkout session: %w", err)
 		}
 		return nil, apperrors.InvalidInput("checkout session has expired")
+	}
+
+	if session.Status != domain.StatusInitiated {
+		return nil, apperrors.InvalidInput("payment method can only be set while checkout is in initiated state")
 	}
 
 	session.PaymentMethod = method

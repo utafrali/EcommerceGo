@@ -13,6 +13,7 @@ import (
 
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
+	"github.com/utafrali/EcommerceGo/services/campaign/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/repository"
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/service"
 )
@@ -236,6 +237,12 @@ func (h *CampaignHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 		filter.PerPage = perPage
 	}
 	if v := r.URL.Query().Get("status"); v != "" {
+		if !domain.IsValidStatus(v) {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "status must be one of: draft, active, paused, expired, archived"},
+			})
+			return
+		}
 		filter.Status = &v
 	}
 	if v := r.URL.Query().Get("type"); v != "" {

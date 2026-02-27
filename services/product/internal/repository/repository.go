@@ -14,6 +14,7 @@ type ProductFilter struct {
 	Search     *string
 	MinPrice   *int64
 	MaxPrice   *int64
+	SortBy     string
 	Page       int
 	PerPage    int
 }

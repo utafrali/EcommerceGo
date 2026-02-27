@@ -50,7 +50,7 @@ func (e *Engine) Search(_ context.Context, query *domain.SearchQuery) (*domain.S
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	var matched []domain.SearchableProduct
+	matched := make([]domain.SearchableProduct, 0)
 
 	queryLower := strings.ToLower(query.Query)
 

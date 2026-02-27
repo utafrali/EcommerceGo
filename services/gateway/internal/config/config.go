@@ -54,6 +54,9 @@ func Load() (*Config, error) {
 
 // validate checks configuration invariants.
 func (c *Config) validate() error {
+	if c.HTTPPort < 1 || c.HTTPPort > 65535 {
+		return fmt.Errorf("invalid HTTP port: %d", c.HTTPPort)
+	}
 	if c.Environment != "development" && c.JWTSecret == "your-secret-key-change-in-production" {
 		return fmt.Errorf("JWT_SECRET must be changed from default value in %s environment", c.Environment)
 	}

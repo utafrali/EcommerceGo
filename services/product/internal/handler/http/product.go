@@ -113,6 +113,12 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		filter.BrandID = &v
 	}
 	if v := r.URL.Query().Get("status"); v != "" {
+		if !domain.IsValidStatus(v) {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "status must be one of: draft, published, archived"},
+			})
+			return
+		}
 		filter.Status = &v
 	}
 	if v := r.URL.Query().Get("search"); v != "" {
@@ -137,6 +143,23 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		filter.MaxPrice = &price
+	}
+
+	if filter.MinPrice != nil && filter.MaxPrice != nil && *filter.MinPrice > *filter.MaxPrice {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "min_price must not exceed max_price"},
+		})
+		return
+	}
+
+	if v := r.URL.Query().Get("sort_by"); v != "" {
+		if !domain.IsValidSortBy(v) {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "sort_by must be one of: newest, price_asc, price_desc, name_asc, name_desc"},
+			})
+			return
+		}
+		filter.SortBy = v
 	}
 
 	products, total, err := h.service.ListProducts(r.Context(), filter)

@@ -130,15 +130,30 @@ func (r *ProductRepository) List(ctx context.Context, filter repository.ProductF
 		whereClause = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
+	// Determine sort clause based on filter.
+	orderClause := "created_at DESC"
+	switch filter.SortBy {
+	case domain.SortByNewest:
+		orderClause = "created_at DESC"
+	case domain.SortByPriceAsc:
+		orderClause = "base_price ASC"
+	case domain.SortByPriceDesc:
+		orderClause = "base_price DESC"
+	case domain.SortByNameAsc:
+		orderClause = "name ASC"
+	case domain.SortByNameDesc:
+		orderClause = "name DESC"
+	}
+
 	// Use count(*) OVER() for total count in a single query.
 	query := fmt.Sprintf(`
 		SELECT id, name, slug, description, brand_id, category_id, status, base_price, currency, metadata, created_at, updated_at,
 			   count(*) OVER() AS total_count
 		FROM products
 		%s
-		ORDER BY created_at DESC
+		ORDER BY %s
 		LIMIT $%d OFFSET $%d`,
-		whereClause, argIndex, argIndex+1,
+		whereClause, orderClause, argIndex, argIndex+1,
 	)
 
 	limit := filter.PerPage

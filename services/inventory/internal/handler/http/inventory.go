@@ -117,7 +117,7 @@ func (h *InventoryHandler) InitializeStock(w http.ResponseWriter, r *http.Reques
 	}
 
 	lowStockThreshold := req.LowStockThreshold
-	if lowStockThreshold == 0 && req.LowStockThreshold == 0 {
+	if lowStockThreshold == 0 {
 		lowStockThreshold = 10 // sensible default
 	}
 

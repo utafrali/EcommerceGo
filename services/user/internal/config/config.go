@@ -43,6 +43,9 @@ func Load() (*Config, error) {
 	if err := pkgconfig.Load(cfg); err != nil {
 		return nil, fmt.Errorf("load user config: %w", err)
 	}
+	if cfg.HTTPPort < 1 || cfg.HTTPPort > 65535 {
+		return nil, fmt.Errorf("invalid HTTP port: %d", cfg.HTTPPort)
+	}
 
 	// In non-development environments, require an explicitly set, strong JWT secret.
 	if cfg.Environment != "development" {

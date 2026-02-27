@@ -139,6 +139,9 @@ func (s *CampaignService) CreateCampaign(ctx context.Context, input *CreateCampa
 	if input.DiscountValue <= 0 {
 		return nil, apperrors.InvalidInput("discount value must be positive")
 	}
+	if input.Type == domain.CampaignTypePercentage && input.DiscountValue > 10000 {
+		return nil, apperrors.InvalidInput("percentage discount value must not exceed 10000 (100%)")
+	}
 	if input.MinOrderAmount < 0 {
 		return nil, apperrors.InvalidInput("min order amount must not be negative")
 	}

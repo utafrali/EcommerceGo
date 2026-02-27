@@ -76,9 +76,23 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 	rawQuery := r.URL.Query().Get("q")
 	trimmedQuery := strings.TrimSpace(rawQuery)
 
+	sortBy := r.URL.Query().Get("sort")
+	switch sortBy {
+	case "", "relevance", "price_asc", "price_desc", "newest", "name_asc", "name_desc":
+		// valid sort value
+	default:
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{
+				Code:    "INVALID_PARAMETER",
+				Message: "sort must be one of: relevance, price_asc, price_desc, newest, name_asc, name_desc",
+			},
+		})
+		return
+	}
+
 	query := &domain.SearchQuery{
 		Query:   trimmedQuery,
-		SortBy:  r.URL.Query().Get("sort"),
+		SortBy:  sortBy,
 		Page:    1,
 		PerPage: 20,
 	}
@@ -93,14 +107,42 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 		query.Status = &v
 	}
 	if v := r.URL.Query().Get("min_price"); v != "" {
-		if price, err := strconv.ParseInt(v, 10, 64); err == nil {
-			query.MinPrice = &price
+		price, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "min_price must be a valid number"},
+			})
+			return
 		}
+		if price < 0 {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "min_price must not be negative"},
+			})
+			return
+		}
+		query.MinPrice = &price
 	}
 	if v := r.URL.Query().Get("max_price"); v != "" {
-		if price, err := strconv.ParseInt(v, 10, 64); err == nil {
-			query.MaxPrice = &price
+		price, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "max_price must be a valid number"},
+			})
+			return
 		}
+		if price < 0 {
+			writeJSON(w, http.StatusBadRequest, response{
+				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "max_price must not be negative"},
+			})
+			return
+		}
+		query.MaxPrice = &price
+	}
+	if query.MinPrice != nil && query.MaxPrice != nil && *query.MinPrice > *query.MaxPrice {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "min_price must not exceed max_price"},
+		})
+		return
 	}
 	if v := r.URL.Query().Get("page"); v != "" {
 		if page, err := strconv.Atoi(v); err == nil && page > 0 {

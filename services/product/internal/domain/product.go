@@ -66,3 +66,31 @@ func IsValidStatus(status string) bool {
 	}
 	return false
 }
+
+// Product sort_by constants.
+const (
+	SortByNewest   = "newest"
+	SortByPriceAsc  = "price_asc"
+	SortByPriceDesc = "price_desc"
+	SortByNameAsc   = "name_asc"
+	SortByNameDesc  = "name_desc"
+)
+
+// ValidSortByValues returns the set of valid sort_by values.
+func ValidSortByValues() []string {
+	return []string{SortByNewest, SortByPriceAsc, SortByPriceDesc, SortByNameAsc, SortByNameDesc}
+}
+
+// IsValidSortBy checks whether the given sort_by string is valid.
+// An empty string is also valid (means default sort).
+func IsValidSortBy(sortBy string) bool {
+	if sortBy == "" {
+		return true
+	}
+	for _, s := range ValidSortByValues() {
+		if s == sortBy {
+			return true
+		}
+	}
+	return false
+}
