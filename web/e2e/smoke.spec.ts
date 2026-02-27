@@ -24,10 +24,13 @@ test.describe('Smoke Tests', () => {
 
   test('homepage displays benefit bar', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('Free Shipping')).toBeVisible();
-    await expect(page.getByText('Secure Payment')).toBeVisible();
-    await expect(page.getByText('Easy Returns')).toBeVisible();
-    await expect(page.getByText('24/7 Support')).toBeVisible();
+    // BenefitBar is a server component below the hero — scroll to it and check
+    const benefitSection = page.locator('section', { hasText: 'Secure Payment' });
+    await benefitSection.scrollIntoViewIfNeeded();
+    await expect(benefitSection.getByText('Free Shipping')).toBeVisible();
+    await expect(benefitSection.getByText('Secure Payment')).toBeVisible();
+    await expect(benefitSection.getByText('Easy Returns')).toBeVisible();
+    await expect(benefitSection.getByText('24/7 Support')).toBeVisible();
   });
 
   test('page has correct meta description', async ({ page }) => {

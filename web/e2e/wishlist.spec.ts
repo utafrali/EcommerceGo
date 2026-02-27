@@ -13,14 +13,15 @@ test.describe('Wishlist Page', () => {
     await expect(
       page.getByText('Sign in to view your wishlist'),
     ).toBeVisible();
-    const signInLink = page.getByRole('link', { name: 'Sign In' });
+    // Scope to main content to avoid header's Sign In link
+    const signInLink = page.getByRole('main').getByRole('link', { name: 'Sign In' });
     await expect(signInLink).toBeVisible();
     await expect(signInLink).toHaveAttribute('href', '/auth/login');
   });
 
   test('wishlist sign-in link navigates to login page', async ({ page }) => {
     await page.goto('/wishlist');
-    await page.getByRole('link', { name: 'Sign In' }).click();
+    await page.getByRole('main').getByRole('link', { name: 'Sign In' }).click();
     await expect(page).toHaveURL('/auth/login');
     await expect(
       page.getByRole('heading', { name: 'Sign in to EcommerceGo' }),

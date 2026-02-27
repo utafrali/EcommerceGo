@@ -26,14 +26,15 @@ test.describe('Products List Page (PLP)', () => {
 
   test('products page has sort dropdown', async ({ page }) => {
     await page.goto('/products');
-    const sortDropdown = page.getByLabel('Sort products');
+    const sortDropdown = page.getByLabel('Sort products').first();
     await expect(sortDropdown).toBeVisible();
   });
 
   test('products page has search bar', async ({ page }) => {
     await page.goto('/products');
+    await page.waitForLoadState('networkidle');
     const searchInput = page.getByPlaceholder('Search products...');
-    await expect(searchInput).toBeVisible();
+    await expect(searchInput.first()).toBeVisible();
   });
 
   test('products page handles empty or error state gracefully', async ({
@@ -47,10 +48,9 @@ test.describe('Products List Page (PLP)', () => {
 
   test('products page shows result count', async ({ page }) => {
     await page.goto('/products');
-    // Either "Showing X products" or "No products found"
-    const hasProductCount = page.getByText(/Showing \d+ products?/);
-    const hasEmptyState = page.getByText('No products found');
-    await expect(hasProductCount.or(hasEmptyState)).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    // "Showing X products" is always displayed regardless of product count
+    await expect(page.getByText(/Showing \d+ products?/)).toBeVisible();
   });
 
   test('Shop Now button on homepage navigates to products page', async ({
