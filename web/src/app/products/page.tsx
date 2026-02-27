@@ -51,17 +51,29 @@ export default async function ProductsPage({
 
   // Fetch data in parallel: products, categories, brands
   const [productsResult, categoriesResult, brandsResult] = await Promise.allSettled([
-    api.getProducts({
-      page,
-      per_page: ITEMS_PER_PAGE,
-      category_id: categoryId,
-      brand_id: brandId,
-      search: searchQuery || undefined,
-      min_price: minPrice,
-      max_price: maxPrice,
-      sort,
-      status: 'published',
-    }),
+    searchQuery
+      ? api.search({
+          q: searchQuery,
+          page,
+          per_page: ITEMS_PER_PAGE,
+          category_id: categoryId,
+          brand_id: brandId,
+          min_price: minPrice,
+          max_price: maxPrice,
+          sort,
+          status: 'published',
+        })
+      : api.getProducts({
+          page,
+          per_page: ITEMS_PER_PAGE,
+          category_id: categoryId,
+          brand_id: brandId,
+          search: undefined,
+          min_price: minPrice,
+          max_price: maxPrice,
+          sort,
+          status: 'published',
+        }),
     api.getCategories(),
     api.getBrands(),
   ]);

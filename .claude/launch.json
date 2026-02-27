@@ -10,7 +10,8 @@
     {
       "name": "web-dev",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["--yes", "next", "dev", "-p", "3003"],
+      "runtimeArgs": ["next", "dev", "--port", "3003"],
+      "cwd": "web",
       "port": 3003
     }
   ]

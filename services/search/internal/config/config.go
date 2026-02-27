@@ -17,8 +17,14 @@ type Config struct {
 	// gRPC server
 	GRPCPort int `env:"SEARCH_GRPC_PORT" envDefault:"9010"`
 
-	// Elasticsearch (not used yet, for future integration)
+	// Elasticsearch
 	ElasticsearchURL string `env:"ELASTICSEARCH_URL" envDefault:"http://localhost:9200"`
+
+	// Search engine selection (elasticsearch or memory)
+	SearchEngine string `env:"SEARCH_ENGINE" envDefault:"elasticsearch"`
+
+	// Product service URL for reindex fetching
+	ProductServiceURL string `env:"PRODUCT_SERVICE_URL" envDefault:"http://localhost:8080"`
 
 	// Kafka
 	KafkaBrokers []string `env:"KAFKA_BROKERS" envDefault:"localhost:9092" envSeparator:","`

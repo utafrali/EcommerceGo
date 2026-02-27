@@ -237,6 +237,30 @@ func (h *SearchHandler) Reindex(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, response{Data: map[string]string{"status": "reindex_started"}})
 }
 
+// Suggest handles GET /api/v1/search/suggest
+func (h *SearchHandler) Suggest(w http.ResponseWriter, r *http.Request) {
+	prefix := r.URL.Query().Get("q")
+	if prefix == "" {
+		writeJSON(w, http.StatusOK, response{Data: map[string]any{"suggestions": []string{}}})
+		return
+	}
+
+	limit := 5
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if l, err := strconv.Atoi(v); err == nil && l > 0 && l <= 20 {
+			limit = l
+		}
+	}
+
+	suggestions, err := h.service.Suggest(r.Context(), prefix, limit)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, response{Data: map[string]any{"suggestions": suggestions}})
+}
+
 // --- Helpers ---
 
 func (h *SearchHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {

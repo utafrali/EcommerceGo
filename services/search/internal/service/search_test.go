@@ -20,7 +20,7 @@ func newTestLogger() *slog.Logger {
 
 func newTestService() *SearchService {
 	eng := memory.New()
-	return NewSearchService(eng, newTestLogger())
+	return NewSearchService(eng, newTestLogger(), "http://localhost:8080")
 }
 
 func TestSearchService_IndexAndSearch(t *testing.T) {

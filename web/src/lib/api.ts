@@ -255,9 +255,56 @@ export class ApiClient {
 
   // ── Search ─────────────────────────────────────────────────────────────
 
-  async search(query: string, page = 1) {
-    return this.request<ApiListResponse<Product>>(
-      `/api/search?q=${encodeURIComponent(query)}&page=${page}`,
+  async search(params: {
+    q?: string;
+    page?: number;
+    per_page?: number;
+    category_id?: string;
+    brand_id?: string;
+    min_price?: number;
+    max_price?: number;
+    sort?: string;
+    status?: string;
+  }) {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        qs.set(key, String(value));
+      }
+    });
+    const query = qs.toString();
+
+    // Search API returns { data: { products: [], total, page, per_page } }
+    const raw = await this.request<any>(
+      `/api/search${query ? '?' + query : ''}`,
+    );
+
+    // Normalize to ApiListResponse<Product> format
+    const searchData = raw?.data || raw;
+    const rawProducts = searchData?.products || [];
+    const total = searchData?.total || 0;
+    const pg = searchData?.page || 1;
+    const perPage = searchData?.per_page || 20;
+
+    // Map search-specific fields to Product format
+    // Search results have `image_url` (flat string) but ProductCard expects `primary_image`
+    const products = rawProducts.map((p: any) => ({
+      ...p,
+      primary_image: p.image_url ? { url: p.image_url } : null,
+    }));
+
+    return {
+      data: products,
+      total_count: total,
+      page: pg,
+      per_page: perPage,
+      total_pages: Math.ceil(total / perPage),
+    } as ApiListResponse<Product>;
+  }
+
+  async searchSuggest(query: string, limit = 5) {
+    return this.request<{ data: { suggestions: string[] } }>(
+      `/api/search/suggest?q=${encodeURIComponent(query)}&limit=${limit}`,
     );
   }
 }

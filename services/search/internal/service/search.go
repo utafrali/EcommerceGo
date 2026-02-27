@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/utafrali/EcommerceGo/services/search/internal/domain"
@@ -12,15 +14,17 @@ import (
 
 // SearchService implements the business logic for search operations.
 type SearchService struct {
-	engine engine.SearchEngine
-	logger *slog.Logger
+	engine            engine.SearchEngine
+	logger            *slog.Logger
+	productServiceURL string
 }
 
 // NewSearchService creates a new search service.
-func NewSearchService(eng engine.SearchEngine, logger *slog.Logger) *SearchService {
+func NewSearchService(eng engine.SearchEngine, logger *slog.Logger, productServiceURL string) *SearchService {
 	return &SearchService{
-		engine: eng,
-		logger: logger,
+		engine:            eng,
+		logger:            logger,
+		productServiceURL: productServiceURL,
 	}
 }
 
@@ -186,9 +190,126 @@ func (s *SearchService) BulkIndex(ctx context.Context, inputs []IndexProductInpu
 	return nil
 }
 
-// Reindex is a placeholder for triggering a full reindex from the product service.
+// Reindex fetches all products from the product service and reindexes them.
 func (s *SearchService) Reindex(ctx context.Context) error {
-	s.logger.InfoContext(ctx, "reindex requested (placeholder)")
-	// TODO: Fetch all products from the product service and reindex.
+	s.logger.InfoContext(ctx, "reindex started")
+
+	page := 1
+	perPage := 100
+	totalIndexed := 0
+
+	for {
+		// Fetch products from Product Service via API Gateway
+		url := fmt.Sprintf("%s/api/v1/products?page=%d&per_page=%d&status=published", s.productServiceURL, page, perPage)
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return fmt.Errorf("reindex: create request: %w", err)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("reindex: fetch products page %d: %w", page, err)
+		}
+
+		var result struct {
+			Data       []json.RawMessage `json:"data"`
+			TotalCount int               `json:"total_count"`
+			Page       int               `json:"page"`
+			TotalPages int               `json:"total_pages"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			resp.Body.Close()
+			return fmt.Errorf("reindex: decode page %d: %w", page, err)
+		}
+		resp.Body.Close()
+
+		if len(result.Data) == 0 {
+			break
+		}
+
+		// Map raw products to IndexProductInput
+		var inputs []IndexProductInput
+		for _, raw := range result.Data {
+			var p struct {
+				ID          string `json:"id"`
+				Name        string `json:"name"`
+				Slug        string `json:"slug"`
+				Description string `json:"description"`
+				BasePrice   int64  `json:"base_price"`
+				Currency    string `json:"currency"`
+				Status      string `json:"status"`
+				Category    *struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"category"`
+				Brand *struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"brand"`
+				PrimaryImage *struct {
+					URL string `json:"url"`
+				} `json:"primary_image"`
+			}
+			if err := json.Unmarshal(raw, &p); err != nil {
+				s.logger.WarnContext(ctx, "reindex: skip product", slog.String("error", err.Error()))
+				continue
+			}
+
+			input := IndexProductInput{
+				ID:          p.ID,
+				Name:        p.Name,
+				Slug:        p.Slug,
+				Description: p.Description,
+				BasePrice:   p.BasePrice,
+				Currency:    p.Currency,
+				Status:      p.Status,
+			}
+			if p.Category != nil {
+				input.CategoryID = p.Category.ID
+				input.CategoryName = p.Category.Name
+			}
+			if p.Brand != nil {
+				input.BrandID = p.Brand.ID
+				input.BrandName = p.Brand.Name
+			}
+			if p.PrimaryImage != nil {
+				input.ImageURL = p.PrimaryImage.URL
+			}
+			inputs = append(inputs, input)
+		}
+
+		if err := s.BulkIndex(ctx, inputs); err != nil {
+			return fmt.Errorf("reindex: bulk index page %d: %w", page, err)
+		}
+		totalIndexed += len(inputs)
+
+		s.logger.InfoContext(ctx, "reindex: page indexed",
+			slog.Int("page", page),
+			slog.Int("count", len(inputs)),
+			slog.Int("total_indexed", totalIndexed),
+		)
+
+		if page >= result.TotalPages {
+			break
+		}
+		page++
+	}
+
+	s.logger.InfoContext(ctx, "reindex completed", slog.Int("total_indexed", totalIndexed))
 	return nil
+}
+
+// Suggester is an optional interface for engines that support autocomplete suggestions.
+type Suggester interface {
+	Suggest(ctx context.Context, prefix string, limit int) ([]string, error)
+}
+
+// Suggest returns autocomplete suggestions for a query prefix.
+func (s *SearchService) Suggest(ctx context.Context, prefix string, limit int) ([]string, error) {
+	if suggester, ok := s.engine.(Suggester); ok {
+		return suggester.Suggest(ctx, prefix, limit)
+	}
+	// Fallback: no suggestions for engines that don't support it
+	return []string{}, nil
 }

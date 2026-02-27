@@ -11,6 +11,8 @@ import (
 
 	"github.com/utafrali/EcommerceGo/pkg/health"
 	"github.com/utafrali/EcommerceGo/services/search/internal/config"
+	"github.com/utafrali/EcommerceGo/services/search/internal/engine"
+	esengine "github.com/utafrali/EcommerceGo/services/search/internal/engine/elasticsearch"
 	"github.com/utafrali/EcommerceGo/services/search/internal/engine/memory"
 	"github.com/utafrali/EcommerceGo/services/search/internal/event"
 	handler "github.com/utafrali/EcommerceGo/services/search/internal/handler/http"
@@ -27,12 +29,23 @@ type App struct {
 
 // NewApp creates a new application instance, initializing all dependencies.
 func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
-	// Initialize in-memory search engine.
-	eng := memory.New()
-	logger.Info("in-memory search engine initialized")
+	// Initialize search engine based on configuration.
+	var eng engine.SearchEngine
+	switch cfg.SearchEngine {
+	case "elasticsearch":
+		esEng, err := esengine.New(cfg.ElasticsearchURL, logger)
+		if err != nil {
+			return nil, fmt.Errorf("init elasticsearch engine: %w", err)
+		}
+		eng = esEng
+		logger.Info("elasticsearch search engine initialized", slog.String("url", cfg.ElasticsearchURL))
+	default:
+		eng = memory.New()
+		logger.Info("in-memory search engine initialized")
+	}
 
 	// Build the service layer.
-	searchService := service.NewSearchService(eng, logger)
+	searchService := service.NewSearchService(eng, logger, cfg.ProductServiceURL)
 
 	// Initialize Kafka consumers for product events.
 	eventConsumer := event.NewConsumer(searchService, logger)

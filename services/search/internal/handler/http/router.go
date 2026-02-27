@@ -32,6 +32,7 @@ func NewRouter(
 	searchHandler := NewSearchHandler(searchService, logger)
 
 	r.Route("/api/v1/search", func(r chi.Router) {
+		r.Get("/suggest", searchHandler.Suggest)
 		r.Get("/", searchHandler.Search)
 
 		r.Group(func(r chi.Router) {
