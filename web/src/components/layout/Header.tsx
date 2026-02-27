@@ -300,6 +300,29 @@ export default function Header() {
               </div>
             </div>
 
+            {/* Mobile: Search icon that opens drawer */}
+            <button
+              type="button"
+              className="rounded-lg p-2 text-stone-600 hover:bg-stone-50 transition-colors md:hidden"
+              onClick={() => setMobileDrawerOpen(true)}
+              aria-label="Open search"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="h-6 w-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                />
+              </svg>
+            </button>
+
             {/* Right actions */}
             <div className="flex items-center gap-1 sm:gap-3">
               {/* Wishlist (desktop) */}
@@ -338,6 +361,13 @@ export default function Header() {
                             {user.email}
                           </p>
                         </div>
+                        <Link
+                          href="/account"
+                          className="block px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 transition-colors"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          My Account
+                        </Link>
                         <Link
                           href="/orders"
                           className="block px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 transition-colors"
