@@ -62,10 +62,10 @@ type errorResponse struct {
 
 // GetCart handles GET /api/v1/cart
 func (h *CartHandler) GetCart(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("X-User-ID")
-	if userID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "X-User-ID header is required"},
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, response{
+			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
 		})
 		return
 	}
@@ -81,10 +81,10 @@ func (h *CartHandler) GetCart(w http.ResponseWriter, r *http.Request) {
 
 // AddItem handles POST /api/v1/cart/items
 func (h *CartHandler) AddItem(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("X-User-ID")
-	if userID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "X-User-ID header is required"},
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, response{
+			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
 		})
 		return
 	}
@@ -126,10 +126,10 @@ func (h *CartHandler) AddItem(w http.ResponseWriter, r *http.Request) {
 
 // UpdateItemQuantity handles PUT /api/v1/cart/items/{productId}/{variantId}
 func (h *CartHandler) UpdateItemQuantity(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("X-User-ID")
-	if userID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "X-User-ID header is required"},
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, response{
+			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
 		})
 		return
 	}
@@ -170,10 +170,10 @@ func (h *CartHandler) UpdateItemQuantity(w http.ResponseWriter, r *http.Request)
 
 // RemoveItem handles DELETE /api/v1/cart/items/{productId}/{variantId}
 func (h *CartHandler) RemoveItem(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("X-User-ID")
-	if userID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "X-User-ID header is required"},
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, response{
+			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
 		})
 		return
 	}
@@ -198,10 +198,10 @@ func (h *CartHandler) RemoveItem(w http.ResponseWriter, r *http.Request) {
 
 // ClearCart handles DELETE /api/v1/cart
 func (h *CartHandler) ClearCart(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("X-User-ID")
-	if userID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "X-User-ID header is required"},
+	userID, ok := userIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, response{
+			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
 		})
 		return
 	}

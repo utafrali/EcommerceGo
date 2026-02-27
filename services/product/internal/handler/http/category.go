@@ -136,6 +136,9 @@ func (h *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 
 // CreateCategory handles POST /api/v1/categories
 func (h *CategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req CreateCategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -209,6 +212,9 @@ func (h *CategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request)
 		})
 		return
 	}
+
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
 	var req UpdateCategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

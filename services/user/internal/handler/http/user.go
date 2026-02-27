@@ -92,6 +92,8 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
+
 	var req UpdateProfileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -149,6 +151,8 @@ func (h *UserHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
+
 	var req CreateAddressRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -202,6 +206,8 @@ func (h *UserHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
 
 	var req UpdateAddressRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

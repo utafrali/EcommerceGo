@@ -128,6 +128,9 @@ func (h *BannerHandler) GetBanner(w http.ResponseWriter, r *http.Request) {
 
 // CreateBanner handles POST /api/v1/banners
 func (h *BannerHandler) CreateBanner(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req CreateBannerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -185,6 +188,9 @@ func (h *BannerHandler) UpdateBanner(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
 	var req UpdateBannerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

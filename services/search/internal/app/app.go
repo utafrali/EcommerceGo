@@ -31,9 +31,11 @@ type App struct {
 func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	// Initialize search engine based on configuration.
 	var eng engine.SearchEngine
+	var esEng *esengine.Engine
 	switch cfg.SearchEngine {
 	case "elasticsearch":
-		esEng, err := esengine.New(cfg.ElasticsearchURL, logger)
+		var err error
+		esEng, err = esengine.New(cfg.ElasticsearchURL, logger)
 		if err != nil {
 			return nil, fmt.Errorf("init elasticsearch engine: %w", err)
 		}
@@ -75,7 +77,9 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 
 	// Health checks.
 	healthHandler := health.NewHandler()
-	// No database to check; the in-memory engine is always ready.
+	if esEng != nil {
+		healthHandler.Register("elasticsearch", esEng.Ping)
+	}
 
 	// HTTP router.
 	router := handler.NewRouter(searchService, healthHandler, logger)

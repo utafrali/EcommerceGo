@@ -87,6 +87,8 @@ func (h *CheckoutHandler) InitiateCheckout(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
+
 	var req InitiateCheckoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -159,6 +161,8 @@ func (h *CheckoutHandler) SetShippingAddress(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
+
 	var req SetShippingAddressRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -210,6 +214,8 @@ func (h *CheckoutHandler) SetPaymentMethod(w http.ResponseWriter, r *http.Reques
 		})
 		return
 	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
 
 	var req SetPaymentMethodRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

@@ -80,6 +80,20 @@ func New(esURL string, logger *slog.Logger) (*Engine, error) {
 	return e, nil
 }
 
+// Ping checks whether the Elasticsearch cluster is reachable.
+func (e *Engine) Ping(ctx context.Context) error {
+	res, err := e.client.Ping(e.client.Ping.WithContext(ctx))
+	if err != nil {
+		return fmt.Errorf("elasticsearch ping: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return fmt.Errorf("elasticsearch ping: unexpected status %s", res.Status())
+	}
+	return nil
+}
+
 // ensureIndex checks whether the products index exists and creates it if not.
 func (e *Engine) ensureIndex() error {
 	res, err := e.client.Indices.Exists([]string{IndexName})

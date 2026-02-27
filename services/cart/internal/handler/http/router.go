@@ -33,6 +33,7 @@ func NewRouter(
 
 	r.Route("/api/v1/cart", func(r chi.Router) {
 		r.Use(ContentTypeJSON)
+		r.Use(UserIDFromHeader)
 
 		r.Get("/", cartHandler.GetCart)
 		r.Delete("/", cartHandler.ClearCart)

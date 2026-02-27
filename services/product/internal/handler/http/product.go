@@ -191,6 +191,9 @@ func (h *ProductHandler) GetProductBySlug(w http.ResponseWriter, r *http.Request
 
 // CreateProduct handles POST /api/v1/products
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req CreateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -232,6 +235,9 @@ func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
 	var req UpdateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

@@ -90,6 +90,9 @@ type listResponse struct {
 
 // CreateOrder handles POST /api/v1/orders
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req CreateOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -208,6 +211,9 @@ func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req UpdateStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -239,6 +245,9 @@ func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
 	var req CancelOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

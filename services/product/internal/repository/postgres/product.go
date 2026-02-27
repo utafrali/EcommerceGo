@@ -109,7 +109,7 @@ func (r *ProductRepository) List(ctx context.Context, filter repository.ProductF
 
 	if filter.Search != nil {
 		conditions = append(conditions, fmt.Sprintf("(name ILIKE $%d OR description ILIKE $%d)", argIndex, argIndex))
-		args = append(args, "%"+*filter.Search+"%")
+		args = append(args, "%"+escapeILIKE(*filter.Search)+"%")
 		argIndex++
 	}
 
@@ -510,6 +510,15 @@ func (r *ProductRepository) GetPrimaryImages(ctx context.Context, productIDs []s
 	}
 
 	return result, nil
+}
+
+// escapeILIKE escapes special ILIKE pattern characters in user input
+// so that %, _, and \ are treated as literal characters.
+func escapeILIKE(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "%", "\\%")
+	s = strings.ReplaceAll(s, "_", "\\_")
+	return s
 }
 
 // isUniqueViolation checks if the error is a PostgreSQL unique constraint violation (SQLSTATE 23505).

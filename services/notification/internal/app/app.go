@@ -140,14 +140,14 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 
 // Run starts the HTTP server and Kafka consumers, then blocks until the context is canceled.
 func (a *App) Run(ctx context.Context) error {
-	errCh := make(chan error, 1)
+	errCh := make(chan error, 1+len(a.consumers))
 
 	// Start Kafka consumers.
 	for _, consumer := range a.consumers {
 		c := consumer
 		go func() {
 			if err := c.Start(ctx); err != nil {
-				a.logger.Error("kafka consumer error", slog.String("error", err.Error()))
+				errCh <- fmt.Errorf("kafka consumer: %w", err)
 			}
 		}()
 	}

@@ -95,6 +95,9 @@ func (h *ReviewHandler) CreateReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req CreateReviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{

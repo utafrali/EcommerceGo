@@ -100,6 +100,9 @@ type listResponse struct {
 
 // InitializeStock handles POST /api/v1/inventory
 func (h *InventoryHandler) InitializeStock(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req InitializeStockRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -168,6 +171,9 @@ func (h *InventoryHandler) AdjustStock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req AdjustStockRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -192,6 +198,9 @@ func (h *InventoryHandler) AdjustStock(w http.ResponseWriter, r *http.Request) {
 
 // CheckAvailability handles POST /api/v1/inventory/check
 func (h *InventoryHandler) CheckAvailability(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req CheckAvailabilityRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -228,6 +237,9 @@ func (h *InventoryHandler) CheckAvailability(w http.ResponseWriter, r *http.Requ
 
 // ReserveStock handles POST /api/v1/inventory/reserve
 func (h *InventoryHandler) ReserveStock(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req ReserveStockRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -264,6 +276,9 @@ func (h *InventoryHandler) ReserveStock(w http.ResponseWriter, r *http.Request) 
 
 // ReleaseReservation handles POST /api/v1/inventory/release
 func (h *InventoryHandler) ReleaseReservation(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req ReleaseReservationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
@@ -290,6 +305,9 @@ func (h *InventoryHandler) ReleaseReservation(w http.ResponseWriter, r *http.Req
 
 // ConfirmReservation handles POST /api/v1/inventory/confirm
 func (h *InventoryHandler) ConfirmReservation(w http.ResponseWriter, r *http.Request) {
+	// Limit request body to 1MB to prevent DoS via large payloads.
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var req ConfirmReservationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{
