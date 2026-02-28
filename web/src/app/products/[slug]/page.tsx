@@ -83,7 +83,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Breadcrumb */}
-      <nav className="mb-6 flex items-center gap-2 text-sm text-stone-500">
+      <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-2 text-sm text-stone-500">
         <Link href="/" className="hover:text-brand transition-colors">
           Ana Sayfa
         </Link>

@@ -178,17 +178,15 @@ test.describe('Product Detail Page (PDP)', () => {
     await page.waitForLoadState('networkidle');
 
     // Wishlist button has Turkish aria-label: "Favorilere ekle" / "Favorilerden çıkar"
-    const wishlistButton = page.locator('button[aria-label*="Favori"]').or(
-      page.getByRole('button', { name: /favori/i })
-    );
+    const wishlistButton = page.locator('button[aria-label*="Favori"]').first();
 
     // If wishlist button not implemented, skip test
-    if (!(await wishlistButton.isVisible().catch(() => false))) {
+    if (!(await wishlistButton.isVisible({ timeout: 3000 }).catch(() => false))) {
       test.skip();
       return;
     }
 
-    await expect(wishlistButton.first()).toBeVisible();
+    await expect(wishlistButton).toBeVisible();
   });
 
   test('PDP shows shipping and return info', async ({ page }) => {
