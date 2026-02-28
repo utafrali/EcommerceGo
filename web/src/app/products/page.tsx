@@ -112,6 +112,7 @@ export default async function ProductsPage({
     brandsResult.status === 'rejected';
 
   return (
+    <div className="min-h-screen bg-stone-50">
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* ── Breadcrumb ──────────────────────────────────────────────────── */}
       <nav aria-label="Breadcrumb" className="mb-6">
@@ -183,18 +184,20 @@ export default async function ProductsPage({
       {/* ── Product List (Client Component) ─────────────────────────────── */}
       <Suspense
         fallback={
-          <div className="flex gap-8">
-            <div className="hidden w-64 shrink-0 lg:block">
-              <div className="space-y-4">
-                <div className="h-6 w-24 animate-pulse rounded bg-stone-200" />
-                <div className="space-y-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="h-5 w-full animate-pulse rounded bg-stone-200" />
-                  ))}
-                </div>
+          <div className="flex items-start gap-6">
+            <div className="hidden w-56 shrink-0 lg:block">
+              <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm space-y-4">
+                <div className="h-5 w-20 animate-pulse rounded bg-stone-200" />
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="h-4 w-4 animate-pulse rounded bg-stone-200 shrink-0" />
+                    <div className="h-4 flex-1 animate-pulse rounded bg-stone-200" />
+                  </div>
+                ))}
               </div>
             </div>
             <div className="min-w-0 flex-1">
+              <div className="mb-5 h-12 animate-pulse rounded-xl bg-white border border-stone-200 shadow-sm" />
               <ProductGridSkeleton count={ITEMS_PER_PAGE} />
             </div>
           </div>
@@ -215,6 +218,7 @@ export default async function ProductsPage({
           selectedSort={sort}
         />
       </Suspense>
+    </div>
     </div>
   );
 }
