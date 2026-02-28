@@ -6,21 +6,17 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/slug"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/product/internal/repository/postgres"
 )
-
-// categorySlugRegexp matches characters not allowed in a slug.
-var categorySlugRegexp = regexp.MustCompile(`[^a-z0-9\-]+`)
 
 // CategoryHandler handles HTTP requests for category endpoints.
 type CategoryHandler struct {
@@ -178,7 +174,7 @@ func (h *CategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 	category := &domain.Category{
 		ID:          uuid.New().String(),
 		Name:        req.Name,
-		Slug:        generateCategorySlug(req.Name),
+		Slug:        slug.Generate(req.Name),
 		ParentID:    req.ParentID,
 		SortOrder:   req.SortOrder,
 		IsActive:    isActive,
@@ -245,7 +241,7 @@ func (h *CategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		category.Name = *req.Name
-		category.Slug = generateCategorySlug(*req.Name)
+		category.Slug = slug.Generate(*req.Name)
 	}
 
 	if req.ParentID != nil {
@@ -336,35 +332,3 @@ func (h *CategoryHandler) writeValidationError(w http.ResponseWriter, err error)
 	handleWriteValidationError(w, err)
 }
 
-// generateCategorySlug creates a URL-friendly slug from the given name.
-// Supports Turkish characters by transliterating them before slugifying.
-func generateCategorySlug(name string) string {
-	slug := strings.ToLower(strings.TrimSpace(name))
-
-	// Transliterate common Turkish characters.
-	replacer := strings.NewReplacer(
-		"\u00e7", "c", // c with cedilla
-		"\u011f", "g", // g with breve
-		"\u0131", "i", // dotless i
-		"\u00f6", "o", // o with umlaut
-		"\u015f", "s", // s with cedilla
-		"\u00fc", "u", // u with umlaut
-		"\u00c7", "c", // capital C with cedilla
-		"\u011e", "g", // capital G with breve
-		"\u0130", "i", // capital I with dot
-		"\u00d6", "o", // capital O with umlaut
-		"\u015e", "s", // capital S with cedilla
-		"\u00dc", "u", // capital U with umlaut
-	)
-	slug = replacer.Replace(slug)
-
-	slug = categorySlugRegexp.ReplaceAllString(slug, "-")
-	slug = strings.Trim(slug, "-")
-
-	// Collapse consecutive hyphens.
-	for strings.Contains(slug, "--") {
-		slug = strings.ReplaceAll(slug, "--", "-")
-	}
-
-	return slug
-}

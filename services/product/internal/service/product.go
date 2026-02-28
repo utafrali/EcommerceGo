@@ -4,20 +4,17 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/slug"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/product/internal/event"
 	"github.com/utafrali/EcommerceGo/services/product/internal/repository"
 )
-
-// slugRegexp matches characters not allowed in a slug.
-var slugRegexp = regexp.MustCompile(`[^a-z0-9]+`)
 
 // ProductService implements the business logic for product operations.
 type ProductService struct {
@@ -74,7 +71,7 @@ func (s *ProductService) CreateProduct(ctx context.Context, input *CreateProduct
 	product := &domain.Product{
 		ID:          uuid.New().String(),
 		Name:        input.Name,
-		Slug:        generateSlug(input.Name),
+		Slug:        slug.Generate(input.Name),
 		Description: input.Description,
 		BrandID:     input.BrandID,
 		CategoryID:  input.CategoryID,
@@ -257,7 +254,7 @@ func (s *ProductService) UpdateProduct(ctx context.Context, id string, input *Up
 			return nil, apperrors.InvalidInput("product name must not be empty")
 		}
 		product.Name = *input.Name
-		product.Slug = generateSlug(*input.Name)
+		product.Slug = slug.Generate(*input.Name)
 	}
 
 	if input.Description != nil {
@@ -341,10 +338,3 @@ func (s *ProductService) DeleteProduct(ctx context.Context, id string) error {
 	return nil
 }
 
-// generateSlug creates a URL-friendly slug from the given name.
-func generateSlug(name string) string {
-	slug := strings.ToLower(strings.TrimSpace(name))
-	slug = slugRegexp.ReplaceAllString(slug, "-")
-	slug = strings.Trim(slug, "-")
-	return slug
-}

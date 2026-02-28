@@ -12,6 +12,7 @@ import (
 
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	pkgkafka "github.com/utafrali/EcommerceGo/pkg/kafka"
+	"github.com/utafrali/EcommerceGo/pkg/slug"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/product/internal/event"
 	"github.com/utafrali/EcommerceGo/services/product/internal/repository"
@@ -155,7 +156,7 @@ func TestGenerateSlug(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := generateSlug(tt.input)
+			result := slug.Generate(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
