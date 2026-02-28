@@ -43,8 +43,10 @@ export function MegaMenu({ category, onClose }: MegaMenuProps) {
   }[columnCount] || 'grid-cols-1';
 
   return (
-    <div
+    <nav
       ref={menuRef}
+      role="navigation"
+      aria-label={`${category.name} menu`}
       className="absolute left-0 right-0 top-full z-[52] animate-slide-up border-t border-stone-100 bg-white shadow-lg"
       onMouseLeave={onClose}
     >
@@ -148,6 +150,7 @@ export function MegaMenu({ category, onClose }: MegaMenuProps) {
               strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <path d="M5 12h14" />
               <path d="m12 5 7 7-7 7" />
@@ -155,6 +158,6 @@ export function MegaMenu({ category, onClose }: MegaMenuProps) {
           </Link>
         </div>
       </div>
-    </div>
+    </nav>
   );
 }

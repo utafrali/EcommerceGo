@@ -204,13 +204,27 @@ export function MobileDrawer({ isOpen, onClose, categories }: MobileDrawerProps)
           {/* Scrollable content */}
           <div className="flex-1 overflow-y-auto">
             {/* Main navigation links */}
-            <div className="border-b border-stone-100 px-4 py-3">
+            <div className="border-b border-stone-100 px-4 py-3 space-y-1">
               <Link
                 href="/products"
                 className="block rounded-lg px-3 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
                 onClick={onClose}
               >
                 All Products
+              </Link>
+              <Link
+                href="/products?sort=newest"
+                className="block rounded-lg px-3 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+                onClick={onClose}
+              >
+                New Arrivals
+              </Link>
+              <Link
+                href="/products?on_sale=true"
+                className="block rounded-lg px-3 py-2.5 text-sm font-bold text-brand hover:bg-brand-lighter transition-colors"
+                onClick={onClose}
+              >
+                Sale
               </Link>
             </div>
 

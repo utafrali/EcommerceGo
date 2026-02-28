@@ -327,6 +327,8 @@ export default function Header() {
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
                       className="flex items-center gap-1.5 rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200 will-change-transform"
                       aria-label="User menu"
+                      aria-expanded={userMenuOpen}
+                      aria-haspopup="true"
                     >
                       <UserIcon className="h-6 w-6" />
                       <span className="max-w-[150px] truncate text-sm font-medium">
@@ -336,7 +338,11 @@ export default function Header() {
                     </button>
 
                     {userMenuOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-52 animate-slide-up rounded-lg bg-white py-1 shadow-lg ring-1 ring-stone-200">
+                      <div
+                        role="menu"
+                        aria-label="User account menu"
+                        className="absolute right-0 top-full mt-2 w-52 animate-slide-up rounded-lg bg-white py-1 shadow-lg ring-1 ring-stone-200"
+                      >
                         <div className="border-b border-stone-100 px-4 py-2.5">
                           <p className="text-sm font-medium text-stone-900">
                             {user.first_name} {user.last_name}
@@ -347,6 +353,7 @@ export default function Header() {
                         </div>
                         <Link
                           href="/account"
+                          role="menuitem"
                           className="block px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 transition-colors"
                           onClick={() => setUserMenuOpen(false)}
                         >
@@ -354,6 +361,7 @@ export default function Header() {
                         </Link>
                         <Link
                           href="/orders"
+                          role="menuitem"
                           className="block px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 transition-colors"
                           onClick={() => setUserMenuOpen(false)}
                         >
@@ -361,6 +369,7 @@ export default function Header() {
                         </Link>
                         <Link
                           href="/wishlist"
+                          role="menuitem"
                           className="block px-4 py-2.5 text-sm text-stone-600 hover:bg-stone-50 transition-colors"
                           onClick={() => setUserMenuOpen(false)}
                         >
@@ -369,6 +378,7 @@ export default function Header() {
                         <div className="border-t border-stone-100">
                           <button
                             type="button"
+                            role="menuitem"
                             onClick={handleLogout}
                             className="block w-full px-4 py-2.5 text-left text-sm text-stone-600 hover:bg-stone-50 transition-colors"
                           >
@@ -397,9 +407,14 @@ export default function Header() {
               >
                 <ShoppingBagIcon className="h-6 w-6" />
                 {itemCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white" aria-hidden="true">
-                    {itemCount > 99 ? '99+' : itemCount}
-                  </span>
+                  <>
+                    <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white" aria-hidden="true">
+                      {itemCount > 99 ? '99+' : itemCount}
+                    </span>
+                    <span className="sr-only" aria-live="polite" aria-atomic="true">
+                      {itemCount} item{itemCount > 1 ? 's' : ''} in cart
+                    </span>
+                  </>
                 )}
               </Link>
             </div>
