@@ -17,7 +17,8 @@ test.describe('API Health Checks', () => {
   });
 
   test('BFF health endpoint is reachable', async ({ request }) => {
-    const response = await request.get('http://localhost:3001/health');
+    const bffPort = process.env.BFF_PORT || '3011';
+    const response = await request.get(`http://localhost:${bffPort}/health`);
     expect(response.ok()).toBeTruthy();
   });
 
