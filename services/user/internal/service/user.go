@@ -336,6 +336,54 @@ func (s *UserService) ResetPassword(ctx context.Context, token, newPassword stri
 	return nil
 }
 
+// ChangePassword allows an authenticated user to change their password.
+func (s *UserService) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
+	if currentPassword == "" {
+		return apperrors.InvalidInput("current password is required")
+	}
+	if err := validatePassword(newPassword); err != nil {
+		return err
+	}
+	if currentPassword == newPassword {
+		return apperrors.InvalidInput("new password must be different from current password")
+	}
+
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get user for password change: %w", err)
+	}
+
+	// Verify current password.
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)); err != nil {
+		return apperrors.Unauthorized("current password is incorrect")
+	}
+
+	// Hash new password.
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcryptCost)
+	if err != nil {
+		return fmt.Errorf("hash new password: %w", err)
+	}
+
+	user.PasswordHash = string(hashedPassword)
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("update user password: %w", err)
+	}
+
+	// Revoke all existing refresh tokens for this user (force re-login for security).
+	if err := s.refreshTokenRepo.RevokeByUserID(ctx, user.ID); err != nil {
+		s.logger.ErrorContext(ctx, "failed to revoke refresh tokens after password change",
+			slog.String("user_id", user.ID),
+			slog.String("error", err.Error()),
+		)
+	}
+
+	s.logger.InfoContext(ctx, "password changed",
+		slog.String("user_id", user.ID),
+	)
+
+	return nil
+}
+
 // --- Profile Operations ---
 
 // GetProfile retrieves a user by their ID.

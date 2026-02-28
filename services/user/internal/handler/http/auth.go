@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/utafrali/EcommerceGo/pkg/middleware"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/user/internal/service"
 )
@@ -50,6 +51,12 @@ type ForgotPasswordRequest struct {
 type ResetPasswordRequest struct {
 	Token       string `json:"token" validate:"required"`
 	NewPassword string `json:"new_password" validate:"required,min=8"`
+}
+
+// ChangePasswordRequest is the JSON request body for password change.
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" validate:"required"`
+	NewPassword     string `json:"new_password" validate:"required,min=8"`
 }
 
 // --- Response types ---
@@ -213,5 +220,41 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, response{
 		Data: map[string]string{"message": "password has been reset successfully"},
+	})
+}
+
+// ChangePassword handles POST /api/v1/auth/change-password
+func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
+
+	var req ChangePasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, response{
+			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		})
+		return
+	}
+
+	if err := validator.Validate(req); err != nil {
+		writeValidationError(w, err)
+		return
+	}
+
+	// Extract user ID from context (set by auth middleware).
+	userID := middleware.UserIDFromContext(r.Context())
+	if userID == "" {
+		writeJSON(w, http.StatusUnauthorized, response{
+			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
+		})
+		return
+	}
+
+	if err := h.service.ChangePassword(r.Context(), userID, req.CurrentPassword, req.NewPassword); err != nil {
+		writeAppError(w, r, err, h.logger)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, response{
+		Data: map[string]string{"message": "password has been changed successfully"},
 	})
 }

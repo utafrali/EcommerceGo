@@ -12,6 +12,7 @@ import (
 
 	"github.com/utafrali/EcommerceGo/pkg/database"
 	"github.com/utafrali/EcommerceGo/pkg/health"
+	"github.com/utafrali/EcommerceGo/pkg/httpclient"
 	"github.com/utafrali/EcommerceGo/services/checkout/migrations"
 	pkgkafka "github.com/utafrali/EcommerceGo/pkg/kafka"
 	"github.com/utafrali/EcommerceGo/services/checkout/internal/config"
@@ -74,7 +75,25 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	// Build the dependency graph.
 	repo := postgres.NewCheckoutRepository(pool)
 	eventProducer := event.NewProducer(producer, logger)
-	checkoutService := service.NewCheckoutService(repo, eventProducer, logger)
+
+	// Create HTTP client for inter-service communication.
+	httpClient := httpclient.New(httpclient.Config{
+		Timeout:         10 * time.Second,
+		MaxRetries:      3,
+		RetryWaitMin:    500 * time.Millisecond,
+		RetryWaitMax:    5 * time.Second,
+		MaxConnsPerHost: 100,
+	})
+
+	checkoutService := service.NewCheckoutService(
+		repo,
+		eventProducer,
+		logger,
+		httpClient,
+		cfg.InventoryServiceURL,
+		cfg.OrderServiceURL,
+		cfg.PaymentServiceURL,
+	)
 
 	// Health checks.
 	healthHandler := health.NewHandler()

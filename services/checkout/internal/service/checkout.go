@@ -1,15 +1,20 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/httpclient"
 	"github.com/utafrali/EcommerceGo/services/checkout/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/checkout/internal/event"
 	"github.com/utafrali/EcommerceGo/services/checkout/internal/repository"
@@ -22,17 +27,31 @@ const (
 
 // CheckoutService implements the business logic for checkout operations.
 type CheckoutService struct {
-	repo     repository.CheckoutRepository
-	producer *event.Producer
-	logger   *slog.Logger
+	repo                repository.CheckoutRepository
+	producer            *event.Producer
+	logger              *slog.Logger
+	httpClient          *httpclient.Client
+	inventoryServiceURL string
+	orderServiceURL     string
+	paymentServiceURL   string
 }
 
 // NewCheckoutService creates a new checkout service.
-func NewCheckoutService(repo repository.CheckoutRepository, producer *event.Producer, logger *slog.Logger) *CheckoutService {
+func NewCheckoutService(
+	repo repository.CheckoutRepository,
+	producer *event.Producer,
+	logger *slog.Logger,
+	httpClient *httpclient.Client,
+	inventoryServiceURL, orderServiceURL, paymentServiceURL string,
+) *CheckoutService {
 	return &CheckoutService{
-		repo:     repo,
-		producer: producer,
-		logger:   logger,
+		repo:                repo,
+		producer:            producer,
+		logger:              logger,
+		httpClient:          httpClient,
+		inventoryServiceURL: inventoryServiceURL,
+		orderServiceURL:     orderServiceURL,
+		paymentServiceURL:   paymentServiceURL,
 	}
 }
 
@@ -299,10 +318,14 @@ func (s *CheckoutService) ProcessCheckout(ctx context.Context, sessionID string)
 	}
 
 	// Step 1: Reserve inventory.
-	// In a real system, this would call the Inventory Service via HTTP.
-	// For now, we simulate success and assign reservation IDs.
-	for i := range session.Items {
-		session.Items[i].ReservationID = uuid.New().String()
+	reservationIDs, err := s.reserveInventory(ctx, session)
+	if err != nil {
+		return nil, fmt.Errorf("reserve inventory: %w", err)
+	}
+	for i, reservationID := range reservationIDs {
+		if i < len(session.Items) {
+			session.Items[i].ReservationID = reservationID
+		}
 	}
 	steps[0].Complete()
 	session.Status = domain.StatusItemsReserved
@@ -312,8 +335,13 @@ func (s *CheckoutService) ProcessCheckout(ctx context.Context, sessionID string)
 	}
 
 	// Step 2: Create order.
-	// In a real system, this would call the Order Service via HTTP.
-	session.OrderID = uuid.New().String()
+	orderID, err := s.createOrder(ctx, session)
+	if err != nil {
+		// Compensate: release inventory reservations
+		_ = s.releaseInventoryReservations(ctx, reservationIDs)
+		return nil, fmt.Errorf("create order: %w", err)
+	}
+	session.OrderID = orderID
 	steps[1].Complete()
 
 	if err := s.repo.Update(ctx, session); err != nil {
@@ -321,8 +349,14 @@ func (s *CheckoutService) ProcessCheckout(ctx context.Context, sessionID string)
 	}
 
 	// Step 3: Initiate payment.
-	// In a real system, this would call the Payment Service via HTTP.
-	session.PaymentID = uuid.New().String()
+	paymentID, err := s.initiatePayment(ctx, session)
+	if err != nil {
+		// Compensate: cancel order and release inventory
+		_ = s.cancelOrder(ctx, orderID)
+		_ = s.releaseInventoryReservations(ctx, reservationIDs)
+		return nil, fmt.Errorf("initiate payment: %w", err)
+	}
+	session.PaymentID = paymentID
 	session.Status = domain.StatusPaymentProcessing
 	steps[2].Complete()
 
@@ -394,4 +428,294 @@ func (s *CheckoutService) CancelCheckout(ctx context.Context, sessionID string) 
 	)
 
 	return session, nil
+}
+
+// reserveInventory calls the inventory service to reserve stock for all checkout items.
+func (s *CheckoutService) reserveInventory(ctx context.Context, session *domain.CheckoutSession) ([]string, error) {
+	type reserveRequest struct {
+		Items []struct {
+			VariantID string `json:"variant_id"`
+			Quantity  int    `json:"quantity"`
+		} `json:"items"`
+		CheckoutID string `json:"checkout_id"`
+	}
+
+	type reserveResponse struct {
+		ReservationIDs []string `json:"reservation_ids"`
+	}
+
+	req := reserveRequest{
+		Items:      make([]struct {
+			VariantID string `json:"variant_id"`
+			Quantity  int    `json:"quantity"`
+		}, len(session.Items)),
+		CheckoutID: session.ID,
+	}
+
+	for i, item := range session.Items {
+		req.Items[i].VariantID = item.VariantID
+		req.Items[i].Quantity = item.Quantity
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("marshal reserve request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.inventoryServiceURL+"/api/inventory/reserve", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("create reserve request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.httpClient.Do(ctx, httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("call inventory service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("inventory service returned status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var reserveResp reserveResponse
+	if err := json.NewDecoder(resp.Body).Decode(&reserveResp); err != nil {
+		return nil, fmt.Errorf("decode reserve response: %w", err)
+	}
+
+	s.logger.InfoContext(ctx, "inventory reserved",
+		slog.String("checkout_id", session.ID),
+		slog.Int("items_count", len(reserveResp.ReservationIDs)),
+	)
+
+	return reserveResp.ReservationIDs, nil
+}
+
+// createOrder calls the order service to create an order from the checkout session.
+func (s *CheckoutService) createOrder(ctx context.Context, session *domain.CheckoutSession) (string, error) {
+	type orderItem struct {
+		ProductID string `json:"product_id"`
+		VariantID string `json:"variant_id"`
+		Name      string `json:"name"`
+		SKU       string `json:"sku"`
+		Price     int64  `json:"price"`
+		Quantity  int    `json:"quantity"`
+	}
+
+	type createOrderRequest struct {
+		UserID          string      `json:"user_id"`
+		Items           []orderItem `json:"items"`
+		Currency        string      `json:"currency"`
+		SubtotalAmount  int64       `json:"subtotal_amount"`
+		TotalAmount     int64       `json:"total_amount"`
+		ShippingAddress struct {
+			FullName    string `json:"full_name"`
+			AddressLine string `json:"address_line"`
+			City        string `json:"city"`
+			PostalCode  string `json:"postal_code"`
+			Country     string `json:"country"`
+		} `json:"shipping_address"`
+		CheckoutID string `json:"checkout_id"`
+	}
+
+	type createOrderResponse struct {
+		OrderID string `json:"order_id"`
+	}
+
+	req := createOrderRequest{
+		UserID:         session.UserID,
+		Items:          make([]orderItem, len(session.Items)),
+		Currency:       session.Currency,
+		SubtotalAmount: session.SubtotalAmount,
+		TotalAmount:    session.TotalAmount,
+		CheckoutID:     session.ID,
+	}
+
+	for i, item := range session.Items {
+		req.Items[i] = orderItem{
+			ProductID: item.ProductID,
+			VariantID: item.VariantID,
+			Name:      item.Name,
+			SKU:       item.SKU,
+			Price:     item.Price,
+			Quantity:  item.Quantity,
+		}
+	}
+
+	if session.ShippingAddress != nil {
+		req.ShippingAddress.FullName = session.ShippingAddress.FullName
+		req.ShippingAddress.AddressLine = session.ShippingAddress.AddressLine
+		req.ShippingAddress.City = session.ShippingAddress.City
+		req.ShippingAddress.PostalCode = session.ShippingAddress.PostalCode
+		req.ShippingAddress.Country = session.ShippingAddress.Country
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("marshal create order request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.orderServiceURL+"/api/orders", bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("create order request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.httpClient.Do(ctx, httpReq)
+	if err != nil {
+		return "", fmt.Errorf("call order service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("order service returned status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var orderResp createOrderResponse
+	if err := json.NewDecoder(resp.Body).Decode(&orderResp); err != nil {
+		return "", fmt.Errorf("decode order response: %w", err)
+	}
+
+	s.logger.InfoContext(ctx, "order created",
+		slog.String("checkout_id", session.ID),
+		slog.String("order_id", orderResp.OrderID),
+	)
+
+	return orderResp.OrderID, nil
+}
+
+// initiatePayment calls the payment service to start payment processing.
+func (s *CheckoutService) initiatePayment(ctx context.Context, session *domain.CheckoutSession) (string, error) {
+	type initiatePaymentRequest struct {
+		OrderID       string `json:"order_id"`
+		UserID        string `json:"user_id"`
+		Amount        int64  `json:"amount"`
+		Currency      string `json:"currency"`
+		PaymentMethod string `json:"payment_method"`
+	}
+
+	type initiatePaymentResponse struct {
+		PaymentID string `json:"payment_id"`
+	}
+
+	req := initiatePaymentRequest{
+		OrderID:       session.OrderID,
+		UserID:        session.UserID,
+		Amount:        session.TotalAmount,
+		Currency:      session.Currency,
+		PaymentMethod: session.PaymentMethod,
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("marshal payment request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.paymentServiceURL+"/api/payments", bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("create payment request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.httpClient.Do(ctx, httpReq)
+	if err != nil {
+		return "", fmt.Errorf("call payment service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("payment service returned status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var paymentResp initiatePaymentResponse
+	if err := json.NewDecoder(resp.Body).Decode(&paymentResp); err != nil {
+		return "", fmt.Errorf("decode payment response: %w", err)
+	}
+
+	s.logger.InfoContext(ctx, "payment initiated",
+		slog.String("checkout_id", session.ID),
+		slog.String("payment_id", paymentResp.PaymentID),
+	)
+
+	return paymentResp.PaymentID, nil
+}
+
+// releaseInventoryReservations is a compensating action to release inventory holds.
+func (s *CheckoutService) releaseInventoryReservations(ctx context.Context, reservationIDs []string) error {
+	type releaseRequest struct {
+		ReservationIDs []string `json:"reservation_ids"`
+	}
+
+	req := releaseRequest{
+		ReservationIDs: reservationIDs,
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to marshal release request", slog.String("error", err.Error()))
+		return fmt.Errorf("marshal release request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.inventoryServiceURL+"/api/inventory/release", bytes.NewReader(body))
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to create release request", slog.String("error", err.Error()))
+		return fmt.Errorf("create release request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.httpClient.Do(ctx, httpReq)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to call inventory service for release", slog.String("error", err.Error()))
+		return fmt.Errorf("call inventory service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		s.logger.ErrorContext(ctx, "inventory service release failed",
+			slog.Int("status", resp.StatusCode),
+			slog.String("body", string(bodyBytes)),
+		)
+		return fmt.Errorf("inventory service returned status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	s.logger.InfoContext(ctx, "inventory reservations released",
+		slog.Int("count", len(reservationIDs)),
+	)
+
+	return nil
+}
+
+// cancelOrder is a compensating action to cancel an order.
+func (s *CheckoutService) cancelOrder(ctx context.Context, orderID string) error {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.orderServiceURL+"/api/orders/"+orderID+"/cancel", nil)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to create cancel order request", slog.String("error", err.Error()))
+		return fmt.Errorf("create cancel order request: %w", err)
+	}
+
+	resp, err := s.httpClient.Do(ctx, httpReq)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to call order service for cancellation", slog.String("error", err.Error()))
+		return fmt.Errorf("call order service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		s.logger.ErrorContext(ctx, "order service cancellation failed",
+			slog.Int("status", resp.StatusCode),
+			slog.String("body", string(bodyBytes)),
+		)
+		return fmt.Errorf("order service returned status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	s.logger.InfoContext(ctx, "order cancelled",
+		slog.String("order_id", orderID),
+	)
+
+	return nil
 }

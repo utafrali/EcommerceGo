@@ -50,10 +50,6 @@ func NewRouter(
 		r.Post("/reset-password", authHandler.ResetPassword)
 	})
 
-	// User profile, address, and wishlist endpoints (auth required)
-	userHandler := NewUserHandler(userService, logger)
-	wishlistHandler := NewWishlistHandler(wishlistRepo, logger)
-
 	// Token validator that bridges to our internal JWTManager.
 	tokenValidator := func(token string) (*middleware.Claims, error) {
 		claims, err := jwtManager.ValidateAccessToken(token)
@@ -66,6 +62,18 @@ func NewRouter(
 			Role:   claims.Role,
 		}, nil
 	}
+
+	// Authenticated auth endpoints (change password)
+	r.Route("/api/v1/auth", func(r chi.Router) {
+		r.Use(ContentTypeJSON)
+		r.Use(middleware.Auth(tokenValidator))
+
+		r.Post("/change-password", authHandler.ChangePassword)
+	})
+
+	// User profile, address, and wishlist endpoints (auth required)
+	userHandler := NewUserHandler(userService, logger)
+	wishlistHandler := NewWishlistHandler(wishlistRepo, logger)
 
 	r.Route("/api/v1/users", func(r chi.Router) {
 		r.Use(ContentTypeJSON)

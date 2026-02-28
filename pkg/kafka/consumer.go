@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -84,24 +85,49 @@ func (c *Consumer) Start(ctx context.Context) error {
 				continue
 			}
 
-			if err := c.handler(ctx, event); err != nil {
-				c.logger.Error("failed to handle event",
+			// Retry logic with exponential backoff.
+			var lastErr error
+			for attempt := 1; attempt <= maxHandlerRetries; attempt++ {
+				if err := c.handler(ctx, event); err != nil {
+					lastErr = err
+					c.logger.Warn("handler failed, will retry",
+						slog.String("event_type", event.EventType),
+						slog.String("aggregate_id", event.AggregateID),
+						slog.String("error", err.Error()),
+						slog.String("topic", msg.Topic),
+						slog.Int("partition", msg.Partition),
+						slog.Int64("offset", msg.Offset),
+						slog.Int("attempt", attempt),
+						slog.Int("max_retries", maxHandlerRetries),
+					)
+
+					// If not the last attempt, wait with exponential backoff.
+					if attempt < maxHandlerRetries {
+						backoff := time.Duration(attempt) * 100 * time.Millisecond
+						select {
+						case <-ctx.Done():
+							return nil
+						case <-time.After(backoff):
+							// Continue to next retry attempt
+						}
+					}
+				} else {
+					// Success - break out of retry loop
+					lastErr = nil
+					break
+				}
+			}
+
+			// If all retries failed, commit the message as poison pill.
+			if lastErr != nil {
+				c.logger.Error("handler failed after all retries, skipping poison message",
 					slog.String("event_type", event.EventType),
 					slog.String("aggregate_id", event.AggregateID),
-					slog.String("error", err.Error()),
+					slog.String("error", lastErr.Error()),
 					slog.String("topic", msg.Topic),
 					slog.Int("partition", msg.Partition),
 					slog.Int64("offset", msg.Offset),
-				)
-				// Poison pill protection: commit the message to avoid
-				// blocking the partition forever. A proper DLQ can be
-				// added later; for now we log and skip.
-				c.logger.Error("skipping poison message after handler failure",
-					slog.String("event_type", event.EventType),
-					slog.String("aggregate_id", event.AggregateID),
-					slog.String("topic", msg.Topic),
-					slog.Int("partition", msg.Partition),
-					slog.Int64("offset", msg.Offset),
+					slog.Int("retries", maxHandlerRetries),
 				)
 				if commitErr := c.reader.CommitMessages(ctx, msg); commitErr != nil {
 					c.logger.Error("failed to commit poison message", slog.String("error", commitErr.Error()))

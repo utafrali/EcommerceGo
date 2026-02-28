@@ -27,6 +27,11 @@ type Config struct {
 
 	// Kafka
 	KafkaBrokers []string `env:"KAFKA_BROKERS" envDefault:"localhost:9092" envSeparator:","`
+
+	// Service URLs for saga orchestration
+	InventoryServiceURL string `env:"INVENTORY_SERVICE_URL" envDefault:"http://localhost:8007"`
+	OrderServiceURL     string `env:"ORDER_SERVICE_URL" envDefault:"http://localhost:8003"`
+	PaymentServiceURL   string `env:"PAYMENT_SERVICE_URL" envDefault:"http://localhost:8005"`
 }
 
 // Load reads configuration from environment variables.
