@@ -5,13 +5,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "REPO_ROOT=.. tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "start": "REPO_ROOT=.. node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "decide": "REPO_ROOT=.. npx tsx src/cli.ts",
+    "decide:execute": "REPO_ROOT=.. npx tsx src/cli.ts --execute",
+    "decide:watch": "REPO_ROOT=.. npx tsx src/cli.ts --watch 15"
   },
   "dependencies": {
-    "fastify": "^5.3.3"
+    "fastify": "^5.3.3",
+    "pino-pretty": "^13.1.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
