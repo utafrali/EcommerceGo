@@ -58,7 +58,7 @@ func (e *Engine) Suggest(ctx context.Context, prefix string, limit int) ([]strin
 	}
 
 	res, err := e.client.Search(
-		e.client.Search.WithIndex(IndexName),
+		e.client.Search.WithIndex(e.indexName),
 		e.client.Search.WithBody(bytes.NewReader(data)),
 		e.client.Search.WithContext(ctx),
 	)

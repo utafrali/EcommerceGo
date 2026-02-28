@@ -18,7 +18,8 @@ type Config struct {
 	GRPCPort int `env:"SEARCH_GRPC_PORT" envDefault:"9010"`
 
 	// Elasticsearch
-	ElasticsearchURL string `env:"ELASTICSEARCH_URL" envDefault:"http://localhost:9200"`
+	ElasticsearchURL   string `env:"ELASTICSEARCH_URL" envDefault:"http://localhost:9200"`
+	ElasticsearchIndex string `env:"ELASTICSEARCH_INDEX" envDefault:"ecommerce_products"`
 
 	// Search engine selection (elasticsearch or memory)
 	SearchEngine string `env:"SEARCH_ENGINE" envDefault:"elasticsearch"`

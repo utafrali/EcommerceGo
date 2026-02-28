@@ -3,6 +3,7 @@ module github.com/utafrali/EcommerceGo/services/search
 go 1.23
 
 require (
+	github.com/elastic/go-elasticsearch/v8 v8.19.3
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.9.0
@@ -13,7 +14,6 @@ require (
 	github.com/caarlos0/env/v10 v10.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/elastic/elastic-transport-go/v8 v8.8.0 // indirect
-	github.com/elastic/go-elasticsearch/v8 v8.19.3 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/klauspost/compress v1.17.7 // indirect

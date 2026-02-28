@@ -15,8 +15,9 @@ import (
 
 // Engine is an Elasticsearch-backed implementation of the SearchEngine interface.
 type Engine struct {
-	client *elasticsearch.Client
-	logger *slog.Logger
+	client    *elasticsearch.Client
+	indexName string
+	logger    *slog.Logger
 }
 
 // esSearchResponse is the structure used to decode Elasticsearch search responses.
@@ -58,7 +59,12 @@ type esErrorResponse struct {
 
 // New creates a new Elasticsearch engine connected to the given URL.
 // It ensures the products index exists, creating it if necessary.
-func New(esURL string, logger *slog.Logger) (*Engine, error) {
+// If indexName is empty, DefaultIndexName ("ecommerce_products") is used.
+func New(esURL string, indexName string, logger *slog.Logger) (*Engine, error) {
+	if indexName == "" {
+		indexName = DefaultIndexName
+	}
+
 	cfg := elasticsearch.Config{
 		Addresses: []string{esURL},
 	}
@@ -69,8 +75,9 @@ func New(esURL string, logger *slog.Logger) (*Engine, error) {
 	}
 
 	e := &Engine{
-		client: client,
-		logger: logger,
+		client:    client,
+		indexName: indexName,
+		logger:    logger,
 	}
 
 	if err := e.ensureIndex(); err != nil {
@@ -96,7 +103,7 @@ func (e *Engine) Ping(ctx context.Context) error {
 
 // ensureIndex checks whether the products index exists and creates it if not.
 func (e *Engine) ensureIndex() error {
-	res, err := e.client.Indices.Exists([]string{IndexName})
+	res, err := e.client.Indices.Exists([]string{e.indexName})
 	if err != nil {
 		return fmt.Errorf("check index exists: %w", err)
 	}
@@ -104,14 +111,15 @@ func (e *Engine) ensureIndex() error {
 
 	// Status 200 means the index exists.
 	if res.StatusCode == 200 {
-		e.logger.Info("elasticsearch index already exists", "index", IndexName)
+		e.logger.Info("elasticsearch index already exists", "index", e.indexName)
 		return nil
 	}
 
 	// Create the index with the mapping.
+	mapping := buildIndexMapping()
 	res, err = e.client.Indices.Create(
-		IndexName,
-		e.client.Indices.Create.WithBody(strings.NewReader(IndexMapping)),
+		e.indexName,
+		e.client.Indices.Create.WithBody(strings.NewReader(mapping)),
 	)
 	if err != nil {
 		return fmt.Errorf("create index: %w", err)
@@ -126,7 +134,7 @@ func (e *Engine) ensureIndex() error {
 		return fmt.Errorf("create index: unexpected status %s", res.Status())
 	}
 
-	e.logger.Info("elasticsearch index created", "index", IndexName)
+	e.logger.Info("elasticsearch index created", "index", e.indexName)
 	return nil
 }
 
@@ -138,7 +146,7 @@ func (e *Engine) Index(ctx context.Context, product *domain.SearchableProduct) e
 	}
 
 	res, err := e.client.Index(
-		IndexName,
+		e.indexName,
 		bytes.NewReader(data),
 		e.client.Index.WithDocumentID(product.ID),
 		e.client.Index.WithRefresh("true"),
@@ -165,7 +173,7 @@ func (e *Engine) Index(ctx context.Context, product *domain.SearchableProduct) e
 // It does not return an error if the document does not exist (404 is ignored).
 func (e *Engine) Delete(ctx context.Context, id string) error {
 	res, err := e.client.Delete(
-		IndexName,
+		e.indexName,
 		id,
 		e.client.Delete.WithContext(ctx),
 	)
@@ -209,7 +217,7 @@ func (e *Engine) Search(ctx context.Context, query *domain.SearchQuery) (*domain
 	}
 
 	res, err := e.client.Search(
-		e.client.Search.WithIndex(IndexName),
+		e.client.Search.WithIndex(e.indexName),
 		e.client.Search.WithBody(bytes.NewReader(data)),
 		e.client.Search.WithContext(ctx),
 		e.client.Search.WithTrackTotalHits(true),
@@ -284,8 +292,8 @@ func (e *Engine) buildSearchQuery(query *domain.SearchQuery, page, perPage int) 
 		"query": map[string]interface{}{
 			"bool": boolQuery,
 		},
-		"from":            (page - 1) * perPage,
-		"size":            perPage,
+		"from":             (page - 1) * perPage,
+		"size":             perPage,
 		"track_total_hits": true,
 	}
 
@@ -365,6 +373,31 @@ func (e *Engine) buildSort(sortBy string) []interface{} {
 	}
 }
 
+// DeleteIndex removes the entire Elasticsearch index.
+// It is intended for testing and administrative operations only.
+// A 404 response is treated as success (index already absent).
+func (e *Engine) DeleteIndex(ctx context.Context) error {
+	res, err := e.client.Indices.Delete(
+		[]string{e.indexName},
+		e.client.Indices.Delete.WithContext(ctx),
+	)
+	if err != nil {
+		return fmt.Errorf("elasticsearch delete index: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() && res.StatusCode != 404 {
+		var errResp esErrorResponse
+		if decErr := json.NewDecoder(res.Body).Decode(&errResp); decErr == nil {
+			return fmt.Errorf("elasticsearch delete index: %s — %s", errResp.Error.Type, errResp.Error.Reason)
+		}
+		return fmt.Errorf("elasticsearch delete index: unexpected status %s", res.Status())
+	}
+
+	e.logger.Info("elasticsearch index deleted", "index", e.indexName)
+	return nil
+}
+
 // BulkIndex adds or updates multiple products in the Elasticsearch index
 // using the bulk NDJSON API.
 func (e *Engine) BulkIndex(ctx context.Context, products []domain.SearchableProduct) error {
@@ -378,7 +411,7 @@ func (e *Engine) BulkIndex(ctx context.Context, products []domain.SearchableProd
 		// Action line.
 		action := map[string]interface{}{
 			"index": map[string]interface{}{
-				"_index": IndexName,
+				"_index": e.indexName,
 				"_id":    products[i].ID,
 			},
 		}
@@ -394,7 +427,7 @@ func (e *Engine) BulkIndex(ctx context.Context, products []domain.SearchableProd
 
 	res, err := e.client.Bulk(
 		bytes.NewReader(buf.Bytes()),
-		e.client.Bulk.WithIndex(IndexName),
+		e.client.Bulk.WithIndex(e.indexName),
 		e.client.Bulk.WithRefresh("true"),
 		e.client.Bulk.WithContext(ctx),
 	)

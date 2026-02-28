@@ -36,12 +36,15 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	switch cfg.SearchEngine {
 	case "elasticsearch":
 		var err error
-		esEng, err = esengine.New(cfg.ElasticsearchURL, logger)
+		esEng, err = esengine.New(cfg.ElasticsearchURL, cfg.ElasticsearchIndex, logger)
 		if err != nil {
 			return nil, fmt.Errorf("init elasticsearch engine: %w", err)
 		}
 		eng = esEng
-		logger.Info("elasticsearch search engine initialized", slog.String("url", cfg.ElasticsearchURL))
+		logger.Info("elasticsearch search engine initialized",
+			slog.String("url", cfg.ElasticsearchURL),
+			slog.String("index", cfg.ElasticsearchIndex),
+		)
 	default:
 		eng = memory.New()
 		logger.Info("in-memory search engine initialized")

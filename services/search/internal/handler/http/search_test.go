@@ -15,9 +15,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/services/search/internal/engine/memory"
 	"github.com/utafrali/EcommerceGo/services/search/internal/service"
 )
+
+// response is a local alias for the standard JSON response envelope used in tests.
+type response = httputil.Response
 
 func newTestHandler() *SearchHandler {
 	eng := memory.New()
