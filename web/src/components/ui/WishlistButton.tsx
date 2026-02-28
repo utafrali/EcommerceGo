@@ -36,7 +36,7 @@ export function WishlistButton({
     e.stopPropagation();
 
     if (!isAuthenticated) {
-      toast.error('Please sign in to add to wishlist');
+      toast.error('Favorilere eklemek için giriş yapın');
       return;
     }
 
@@ -47,14 +47,14 @@ export function WishlistButton({
     try {
       await toggle(productId);
     } catch {
-      toast.error('Could not update wishlist. Please try again.');
+      toast.error('Favori listesi güncellenemedi. Lütfen tekrar deneyin.');
     }
   }
 
   return (
     <button
       type="button"
-      aria-label={active ? 'Remove from wishlist' : 'Add to wishlist'}
+      aria-label={active ? 'Favorilerden çıkar' : 'Favorilere ekle'}
       onClick={handleClick}
       className={cn(
         'flex items-center justify-center rounded-full bg-white/80 backdrop-blur-sm transition-all duration-200 hover:bg-white active:scale-90',

@@ -78,10 +78,10 @@ export function ProductCard({ product }: ProductCardProps) {
               e.stopPropagation();
               // Quick View modal — future implementation
             }}
-            aria-label={`Quick view: ${product.name}`}
-            className="pointer-events-auto translate-y-3 rounded-full bg-white px-6 py-3 text-xs sm:text-xs font-semibold uppercase tracking-wider text-stone-800 opacity-0 shadow-md transition-all duration-300 hover:bg-stone-900 hover:text-white group-hover:translate-y-0 group-hover:opacity-100"
+            aria-label={`Hızlı görüntüle: ${product.name}`}
+            className="pointer-events-auto translate-y-3 rounded-full bg-white px-6 py-3 text-xs sm:text-xs font-semibold uppercase tracking-wider text-stone-800 opacity-0 shadow-md transition-all duration-300 hover:bg-brand hover:text-white group-hover:translate-y-0 group-hover:opacity-100"
           >
-            Quick View
+            Hızlı Görüntüle
           </button>
         </div>
 
@@ -89,12 +89,12 @@ export function ProductCard({ product }: ProductCardProps) {
         {product.variants && product.variants.length > 0 && (
           <>
             {product.variants[0].stock_quantity === 0 ? (
-              <div className="absolute left-3 top-3 z-10 rounded-full bg-red-500 px-3 py-1 text-xs font-semibold text-white shadow-md">
-                Out of Stock
+              <div className="absolute left-3 top-3 z-10 rounded-sm bg-stone-800 px-2.5 py-0.5 text-xs font-bold text-white shadow-sm">
+                Tükendi
               </div>
             ) : product.variants[0].stock_quantity <= 5 ? (
-              <div className="absolute left-3 top-3 z-10 rounded-full bg-orange-500 px-3 py-1 text-xs font-semibold text-white shadow-md">
-                Only {product.variants[0].stock_quantity} left
+              <div className="absolute left-3 top-3 z-10 rounded-sm bg-brand-accent px-2.5 py-0.5 text-xs font-bold text-white shadow-sm">
+                Son {product.variants[0].stock_quantity} adet
               </div>
             ) : null}
           </>
@@ -103,7 +103,7 @@ export function ProductCard({ product }: ProductCardProps) {
         {/* Wishlist heart — always visible (top-right) */}
         <button
           type="button"
-          aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          aria-label={wishlisted ? 'Favorilerden çıkar' : 'Favorilere ekle'}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -131,8 +131,8 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {/* Discount badge — top-left */}
         {discountPercent !== null && discountPercent > 0 && (
-          <span className="absolute left-3 top-3 z-10 rounded-sm bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
-            -{discountPercent}%
+          <span className="absolute left-3 top-3 z-10 rounded-sm bg-brand px-2 py-0.5 text-xs font-bold text-white">
+            -%{discountPercent}
           </span>
         )}
       </div>
@@ -166,10 +166,10 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="mb-2 flex items-baseline gap-2">
           {salePrice !== null ? (
             <>
-              <span className="text-lg font-bold leading-tight text-stone-900">
+              <span className="text-lg font-bold leading-tight text-brand">
                 {formatPrice(salePrice, product.currency)}
               </span>
-              <span className="text-sm text-red-500/80 line-through">
+              <span className="text-sm text-stone-400 line-through">
                 {formatPrice(product.base_price, product.currency)}
               </span>
             </>

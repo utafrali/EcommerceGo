@@ -146,9 +146,12 @@ export default async function ProductsPage({
       </nav>
 
       {/* ── Page Title ──────────────────────────────────────────────────── */}
-      <h1 className="mb-8 text-3xl font-bold tracking-tight text-stone-900">
-        {searchQuery ? `"${searchQuery}" için sonuçlar` : 'Tüm Ürünler'}
-      </h1>
+      <div className="mb-8">
+        <h1 className="text-3xl font-black tracking-tight text-stone-900">
+          {searchQuery ? `"${searchQuery}" için sonuçlar` : 'Tüm Ürünler'}
+        </h1>
+        <div className="mt-2 h-0.5 w-12 bg-brand" />
+      </div>
 
       {/* ── Error Banner ────────────────────────────────────────────────── */}
       {hasError && (

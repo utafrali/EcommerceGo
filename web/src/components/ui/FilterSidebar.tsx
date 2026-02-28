@@ -396,7 +396,7 @@ export function FilterSidebar({
         <button
           type="button"
           onClick={handlePriceApply}
-          className="mt-3 w-full rounded-md bg-stone-100 px-3 py-1.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-200"
+          className="mt-3 w-full rounded-md bg-brand px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
         >
           Uygula
         </button>
