@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -41,12 +42,13 @@ func NewPaymentService(
 
 // CreatePaymentInput holds the parameters for creating a payment.
 type CreatePaymentInput struct {
-	CheckoutID string `json:"checkout_id" validate:"required,uuid"`
-	OrderID    string `json:"order_id" validate:"required,uuid"`
-	UserID     string `json:"user_id" validate:"required,uuid"`
-	Amount     int64  `json:"amount" validate:"required,gt=0"`
-	Currency   string `json:"currency" validate:"required,len=3"`
-	Method     string `json:"method" validate:"required,oneof=credit_card debit_card bank_transfer wallet"`
+	CheckoutID     string `json:"checkout_id" validate:"required,uuid"`
+	OrderID        string `json:"order_id" validate:"required,uuid"`
+	UserID         string `json:"user_id" validate:"required,uuid"`
+	Amount         int64  `json:"amount" validate:"required,gt=0"`
+	Currency       string `json:"currency" validate:"required,len=3"`
+	Method         string `json:"method" validate:"required,oneof=credit_card debit_card bank_transfer wallet"`
+	IdempotencyKey string `json:"idempotency_key,omitempty"`
 }
 
 // RefundPaymentInput holds the parameters for refunding a payment.
@@ -56,6 +58,7 @@ type RefundPaymentInput struct {
 }
 
 // CreatePayment creates a new payment record in the pending state.
+// Supports idempotency via the IdempotencyKey field to prevent duplicate payments.
 func (s *PaymentService) CreatePayment(ctx context.Context, input *CreatePaymentInput) (*domain.Payment, error) {
 	if input.CheckoutID == "" {
 		return nil, apperrors.InvalidInput("checkout_id is required")
@@ -76,20 +79,40 @@ func (s *PaymentService) CreatePayment(ctx context.Context, input *CreatePayment
 		return nil, apperrors.InvalidInput(fmt.Sprintf("invalid payment method %q", input.Method))
 	}
 
+	// Idempotency check: if an idempotency key is provided, check if we've already processed this request.
+	if input.IdempotencyKey != "" {
+		existingPayment, err := s.repo.GetByIdempotencyKey(ctx, input.IdempotencyKey)
+		if err == nil && existingPayment != nil {
+			s.logger.InfoContext(ctx, "payment request is duplicate, returning existing payment",
+				slog.String("payment_id", existingPayment.ID),
+				slog.String("idempotency_key", input.IdempotencyKey),
+			)
+			return existingPayment, nil
+		}
+		// If error is not "not found", log it but continue (degraded mode).
+		if err != nil && !errors.Is(err, apperrors.ErrNotFound) {
+			s.logger.WarnContext(ctx, "failed to check idempotency key, proceeding without idempotency protection",
+				slog.String("idempotency_key", input.IdempotencyKey),
+				slog.String("error", err.Error()),
+			)
+		}
+	}
+
 	now := time.Now().UTC()
 	payment := &domain.Payment{
-		ID:           uuid.New().String(),
-		CheckoutID:   input.CheckoutID,
-		OrderID:      input.OrderID,
-		UserID:       input.UserID,
-		Amount:       input.Amount,
-		Currency:     strings.ToUpper(input.Currency),
-		Status:       domain.PaymentStatusPending,
-		Method:       input.Method,
-		ProviderName: s.provider.Name(),
-		Metadata:     make(map[string]any),
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:             uuid.New().String(),
+		CheckoutID:     input.CheckoutID,
+		OrderID:        input.OrderID,
+		UserID:         input.UserID,
+		Amount:         input.Amount,
+		Currency:       strings.ToUpper(input.Currency),
+		Status:         domain.PaymentStatusPending,
+		Method:         input.Method,
+		ProviderName:   s.provider.Name(),
+		IdempotencyKey: input.IdempotencyKey,
+		Metadata:       make(map[string]any),
+		CreatedAt:      now,
+		UpdatedAt:      now,
 	}
 
 	if err := s.repo.Create(ctx, payment); err != nil {

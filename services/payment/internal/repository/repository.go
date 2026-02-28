@@ -17,6 +17,9 @@ type PaymentRepository interface {
 	// GetByCheckoutID retrieves a payment by the associated checkout ID.
 	GetByCheckoutID(ctx context.Context, checkoutID string) (*domain.Payment, error)
 
+	// GetByIdempotencyKey retrieves a payment by its idempotency key.
+	GetByIdempotencyKey(ctx context.Context, key string) (*domain.Payment, error)
+
 	// Update modifies an existing payment in the store.
 	Update(ctx context.Context, payment *domain.Payment) error
 

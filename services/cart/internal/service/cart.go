@@ -109,25 +109,21 @@ func (s *CartService) AddItem(ctx context.Context, userID string, input AddItemI
 	expectedVersion := cart.Version
 
 	// Check if the item already exists (same product+variant). If so, merge.
-	found := false
-	for i := range cart.Items {
-		if cart.Items[i].ProductID == input.ProductID && cart.Items[i].VariantID == input.VariantID {
-			newQty := cart.Items[i].Quantity + input.Quantity
-			if newQty > MaxQuantityPerItem {
-				return nil, apperrors.InvalidInput(fmt.Sprintf("combined quantity must not exceed %d", MaxQuantityPerItem))
-			}
-			cart.Items[i].Quantity = newQty
-			// Update price and other fields in case they changed.
-			cart.Items[i].Price = input.Price
-			cart.Items[i].Name = input.Name
-			cart.Items[i].SKU = input.SKU
-			cart.Items[i].ImageURL = input.ImageURL
-			found = true
-			break
+	itemIdx := cart.FindItemIndex(input.ProductID, input.VariantID)
+	if itemIdx >= 0 {
+		// Item exists - merge by updating quantity and metadata.
+		newQty := cart.Items[itemIdx].Quantity + input.Quantity
+		if newQty > MaxQuantityPerItem {
+			return nil, apperrors.InvalidInput(fmt.Sprintf("combined quantity must not exceed %d", MaxQuantityPerItem))
 		}
-	}
-
-	if !found {
+		cart.Items[itemIdx].Quantity = newQty
+		// Update price and other fields in case they changed.
+		cart.Items[itemIdx].Price = input.Price
+		cart.Items[itemIdx].Name = input.Name
+		cart.Items[itemIdx].SKU = input.SKU
+		cart.Items[itemIdx].ImageURL = input.ImageURL
+	} else {
+		// Item doesn't exist - add new item.
 		if len(cart.Items) >= MaxItemsPerCart {
 			return nil, apperrors.InvalidInput(fmt.Sprintf("cart must not contain more than %d items", MaxItemsPerCart))
 		}
@@ -197,22 +193,16 @@ func (s *CartService) UpdateItemQuantity(ctx context.Context, userID, productID,
 
 	expectedVersion := cart.Version
 
-	found := false
-	for i := range cart.Items {
-		if cart.Items[i].ProductID == productID && cart.Items[i].VariantID == variantID {
-			found = true
-			if quantity == 0 {
-				// Remove the item.
-				cart.Items = append(cart.Items[:i], cart.Items[i+1:]...)
-			} else {
-				cart.Items[i].Quantity = quantity
-			}
-			break
-		}
+	itemIdx := cart.FindItemIndex(productID, variantID)
+	if itemIdx < 0 {
+		return nil, apperrors.NotFound("cart item", productID+"/"+variantID)
 	}
 
-	if !found {
-		return nil, apperrors.NotFound("cart item", productID+"/"+variantID)
+	if quantity == 0 {
+		// Remove the item.
+		cart.Items = append(cart.Items[:itemIdx], cart.Items[itemIdx+1:]...)
+	} else {
+		cart.Items[itemIdx].Quantity = quantity
 	}
 
 	now := time.Now().UTC()
@@ -264,18 +254,12 @@ func (s *CartService) RemoveItem(ctx context.Context, userID, productID, variant
 
 	expectedVersion := cart.Version
 
-	found := false
-	for i := range cart.Items {
-		if cart.Items[i].ProductID == productID && cart.Items[i].VariantID == variantID {
-			cart.Items = append(cart.Items[:i], cart.Items[i+1:]...)
-			found = true
-			break
-		}
-	}
-
-	if !found {
+	itemIdx := cart.FindItemIndex(productID, variantID)
+	if itemIdx < 0 {
 		return nil, apperrors.NotFound("cart item", productID+"/"+variantID)
 	}
+
+	cart.Items = append(cart.Items[:itemIdx], cart.Items[itemIdx+1:]...)
 
 	now := time.Now().UTC()
 	cart.UpdatedAt = now

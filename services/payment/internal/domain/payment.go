@@ -25,20 +25,21 @@ const (
 
 // Payment represents a payment transaction.
 type Payment struct {
-	ID            string         `json:"id"`
-	CheckoutID    string         `json:"checkout_id"`
-	OrderID       string         `json:"order_id"`
-	UserID        string         `json:"user_id"`
-	Amount        int64          `json:"amount"`
-	Currency      string         `json:"currency"`
-	Status        string         `json:"status"`
-	Method        string         `json:"method"`
-	ProviderName  string         `json:"provider_name"`
-	ProviderPayID string         `json:"provider_payment_id,omitempty"`
-	FailureReason string         `json:"failure_reason,omitempty"`
-	Metadata      map[string]any `json:"metadata,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	ID             string         `json:"id"`
+	CheckoutID     string         `json:"checkout_id"`
+	OrderID        string         `json:"order_id"`
+	UserID         string         `json:"user_id"`
+	Amount         int64          `json:"amount"`
+	Currency       string         `json:"currency"`
+	Status         string         `json:"status"`
+	Method         string         `json:"method"`
+	ProviderName   string         `json:"provider_name"`
+	ProviderPayID  string         `json:"provider_payment_id,omitempty"`
+	FailureReason  string         `json:"failure_reason,omitempty"`
+	IdempotencyKey string         `json:"idempotency_key,omitempty"`
+	Metadata       map[string]any `json:"metadata,omitempty"`
+	CreatedAt      time.Time      `json:"created_at"`
+	UpdatedAt      time.Time      `json:"updated_at"`
 }
 
 // ValidPaymentStatuses returns all valid payment statuses.

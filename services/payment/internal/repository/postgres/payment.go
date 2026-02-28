@@ -32,8 +32,8 @@ func (r *PaymentRepository) Create(ctx context.Context, p *domain.Payment) error
 	}
 
 	query := `
-		INSERT INTO payments (id, checkout_id, order_id, user_id, amount, currency, status, method, provider_name, provider_payment_id, failure_reason, metadata, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
+		INSERT INTO payments (id, checkout_id, order_id, user_id, amount, currency, status, method, provider_name, provider_payment_id, failure_reason, idempotency_key, metadata, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
 
 	_, err = r.pool.Exec(ctx, query,
 		p.ID,
@@ -47,6 +47,7 @@ func (r *PaymentRepository) Create(ctx context.Context, p *domain.Payment) error
 		p.ProviderName,
 		p.ProviderPayID,
 		p.FailureReason,
+		p.IdempotencyKey,
 		metadataJSON,
 		p.CreatedAt,
 		p.UpdatedAt,
@@ -61,7 +62,7 @@ func (r *PaymentRepository) Create(ctx context.Context, p *domain.Payment) error
 // GetByID retrieves a payment by its ID.
 func (r *PaymentRepository) GetByID(ctx context.Context, id string) (*domain.Payment, error) {
 	query := `
-		SELECT id, checkout_id, order_id, user_id, amount, currency, status, method, provider_name, provider_payment_id, failure_reason, metadata, created_at, updated_at
+		SELECT id, checkout_id, order_id, user_id, amount, currency, status, method, provider_name, provider_payment_id, failure_reason, idempotency_key, metadata, created_at, updated_at
 		FROM payments
 		WHERE id = $1`
 
@@ -71,11 +72,25 @@ func (r *PaymentRepository) GetByID(ctx context.Context, id string) (*domain.Pay
 // GetByCheckoutID retrieves a payment by its checkout ID.
 func (r *PaymentRepository) GetByCheckoutID(ctx context.Context, checkoutID string) (*domain.Payment, error) {
 	query := `
-		SELECT id, checkout_id, order_id, user_id, amount, currency, status, method, provider_name, provider_payment_id, failure_reason, metadata, created_at, updated_at
+		SELECT id, checkout_id, order_id, user_id, amount, currency, status, method, provider_name, provider_payment_id, failure_reason, idempotency_key, metadata, created_at, updated_at
 		FROM payments
 		WHERE checkout_id = $1`
 
 	return r.scanPayment(ctx, query, checkoutID)
+}
+
+// GetByIdempotencyKey retrieves a payment by its idempotency key.
+func (r *PaymentRepository) GetByIdempotencyKey(ctx context.Context, key string) (*domain.Payment, error) {
+	if key == "" {
+		return nil, apperrors.NotFound("payment", "")
+	}
+
+	query := `
+		SELECT id, checkout_id, order_id, user_id, amount, currency, status, method, provider_name, provider_payment_id, failure_reason, idempotency_key, metadata, created_at, updated_at
+		FROM payments
+		WHERE idempotency_key = $1`
+
+	return r.scanPayment(ctx, query, key)
 }
 
 // Update modifies an existing payment in the database.
@@ -123,7 +138,7 @@ func (r *PaymentRepository) Update(ctx context.Context, p *domain.Payment) error
 // ListByUserID returns payments for a given user with pagination.
 func (r *PaymentRepository) ListByUserID(ctx context.Context, userID string, offset, limit int) ([]domain.Payment, int, error) {
 	query := `
-		SELECT id, checkout_id, order_id, user_id, amount, currency, status, method, provider_name, provider_payment_id, failure_reason, metadata, created_at, updated_at,
+		SELECT id, checkout_id, order_id, user_id, amount, currency, status, method, provider_name, provider_payment_id, failure_reason, idempotency_key, metadata, created_at, updated_at,
 		       count(*) OVER() AS total_count
 		FROM payments
 		WHERE user_id = $1
@@ -159,6 +174,7 @@ func (r *PaymentRepository) ListByUserID(ctx context.Context, userID string, off
 			&p.ProviderName,
 			&p.ProviderPayID,
 			&p.FailureReason,
+			&p.IdempotencyKey,
 			&metadataJSON,
 			&p.CreatedAt,
 			&p.UpdatedAt,
@@ -313,6 +329,7 @@ func (r *PaymentRepository) scanPayment(ctx context.Context, query string, args 
 		&p.ProviderName,
 		&p.ProviderPayID,
 		&p.FailureReason,
+		&p.IdempotencyKey,
 		&metadataJSON,
 		&p.CreatedAt,
 		&p.UpdatedAt,

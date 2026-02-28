@@ -42,3 +42,14 @@ func (c *Cart) ItemCount() int {
 	}
 	return count
 }
+
+// FindItemIndex returns the index of the cart item matching the given product and variant IDs.
+// Returns -1 if not found. This provides O(n) search but centralizes the logic for easier optimization later.
+func (c *Cart) FindItemIndex(productID, variantID string) int {
+	for i := range c.Items {
+		if c.Items[i].ProductID == productID && c.Items[i].VariantID == variantID {
+			return i
+		}
+	}
+	return -1
+}
