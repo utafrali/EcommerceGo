@@ -12,7 +12,7 @@ export default defineConfig({
   retries: 1,
   use: {
     baseURL: `http://localhost:${E2E_PORT}`,
-    headless: false,
+    headless: true,
     // slowMo: 500, // Commented out - causes TypeScript error (not in official types)
     screenshot: 'only-on-failure',
   },
