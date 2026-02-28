@@ -12,9 +12,11 @@ export default defineConfig({
   retries: 1,
   use: {
     baseURL: `http://localhost:${E2E_PORT}`,
-    headless: true,
+    headless: false,
+    slowMo: 500, // Slow down actions by 500ms for visibility
     screenshot: 'only-on-failure',
   },
+  workers: 1, // Run tests serially so you can watch
   webServer: {
     command: `npx next dev --port ${E2E_PORT}`,
     port: E2E_PORT,
