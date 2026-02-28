@@ -104,15 +104,40 @@ func (r *OrderRepository) Create(ctx context.Context, o *domain.Order) error {
 
 // GetByID retrieves an order by its ID, eagerly loading its items.
 func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order, error) {
+	// Optimized query: fetch order and items in a single query using LEFT JOIN + JSONB_AGG.
+	// This eliminates the N+1 query problem (was: 1 query for order + 1 query for items).
 	orderQuery := `
-		SELECT id, user_id, status, subtotal_amount, discount_amount, shipping_amount, total_amount, currency, shipping_address, billing_address, notes, canceled_reason, created_at, updated_at
-		FROM orders
-		WHERE id = $1`
+		SELECT
+			o.id, o.user_id, o.status, o.subtotal_amount, o.discount_amount,
+			o.shipping_amount, o.total_amount, o.currency, o.shipping_address,
+			o.billing_address, o.notes, o.canceled_reason, o.created_at, o.updated_at,
+			COALESCE(
+				JSONB_AGG(
+					JSONB_BUILD_OBJECT(
+						'id', oi.id,
+						'product_id', oi.product_id,
+						'variant_id', oi.variant_id,
+						'name', oi.name,
+						'sku', oi.sku,
+						'price', oi.price,
+						'quantity', oi.quantity,
+						'subtotal', oi.subtotal
+					) ORDER BY oi.created_at
+				) FILTER (WHERE oi.id IS NOT NULL),
+				'[]'::jsonb
+			) AS items
+		FROM orders o
+		LEFT JOIN order_items oi ON o.id = oi.order_id
+		WHERE o.id = $1
+		GROUP BY o.id, o.user_id, o.status, o.subtotal_amount, o.discount_amount,
+			o.shipping_amount, o.total_amount, o.currency, o.shipping_address,
+			o.billing_address, o.notes, o.canceled_reason, o.created_at, o.updated_at`
 
 	var (
 		o            domain.Order
 		shippingJSON []byte
 		billingJSON  []byte
+		itemsJSON    []byte
 	)
 
 	err := r.pool.QueryRow(ctx, orderQuery, id).Scan(
@@ -130,6 +155,7 @@ func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order
 		&o.CanceledReason,
 		&o.CreatedAt,
 		&o.UpdatedAt,
+		&itemsJSON,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -154,12 +180,14 @@ func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order
 		o.BillingAddress = &addr
 	}
 
-	// Load order items.
-	items, err := r.loadOrderItems(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("load order items: %w", err)
+	// Unmarshal items from JSONB_AGG result.
+	if len(itemsJSON) > 0 && string(itemsJSON) != "null" && string(itemsJSON) != "[]" {
+		if err := json.Unmarshal(itemsJSON, &o.Items); err != nil {
+			return nil, fmt.Errorf("unmarshal order items: %w", err)
+		}
+	} else {
+		o.Items = []domain.OrderItem{}
 	}
-	o.Items = items
 
 	return &o, nil
 }
