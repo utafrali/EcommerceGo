@@ -297,7 +297,7 @@ export default function Header() {
             {/* Logo — larger and bolder */}
             <Link
               href="/"
-              className="flex-shrink-0 text-2xl font-extrabold tracking-tight text-stone-900"
+              className="flex-shrink-0 text-2xl font-extrabold leading-none tracking-tight text-stone-900"
             >
               Ecommerce<span className="text-brand">Go</span>
             </Link>
@@ -487,7 +487,7 @@ export default function Header() {
             {/* Sale — special link with red dot badge */}
             <Link
               href="/products?on_sale=true"
-              className="group relative text-sm font-bold text-red-600 hover:text-red-700 transition-colors"
+              className="group relative text-sm font-semibold text-red-600 hover:text-red-700 transition-colors"
             >
               <span className="flex items-center gap-1.5">
                 Sale

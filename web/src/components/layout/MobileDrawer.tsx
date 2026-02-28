@@ -256,7 +256,7 @@ export function MobileDrawer({ isOpen, onClose, categories }: MobileDrawerProps)
               </Link>
               <Link
                 href="/products?on_sale=true"
-                className="block rounded-lg px-3 py-2.5 text-sm font-bold text-brand hover:bg-brand-lighter transition-colors"
+                className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-brand hover:bg-brand-lighter transition-colors"
                 onClick={onClose}
               >
                 Sale

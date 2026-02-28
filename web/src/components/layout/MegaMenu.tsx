@@ -62,7 +62,7 @@ export function MegaMenu({ category, onClose }: MegaMenuProps) {
                       {/* Subcategory heading (level 1) */}
                       <Link
                         href={`/products?category_id=${subcategory.id}`}
-                        className="text-sm font-semibold text-stone-900 hover:text-brand transition-colors"
+                        className="text-base font-semibold text-stone-900 hover:text-brand transition-colors"
                         onClick={onClose}
                       >
                         {subcategory.name}
