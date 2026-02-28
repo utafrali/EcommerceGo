@@ -38,6 +38,9 @@ func Load() (*Config, error) {
 	if cfg.HTTPPort < 1 || cfg.HTTPPort > 65535 {
 		return nil, fmt.Errorf("invalid HTTP port: %d", cfg.HTTPPort)
 	}
+	if cfg.GRPCPort < 1 || cfg.GRPCPort > 65535 {
+		return nil, fmt.Errorf("invalid gRPC port: %d", cfg.GRPCPort)
+	}
 	return cfg, nil
 }
 

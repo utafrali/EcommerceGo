@@ -215,25 +215,6 @@ func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, response{Data: detail})
 }
 
-// GetProductBySlug handles GET /api/v1/products/{slug}
-func (h *ProductHandler) GetProductBySlug(w http.ResponseWriter, r *http.Request) {
-	slug := chi.URLParam(r, "slug")
-	if slug == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "slug is required"},
-		})
-		return
-	}
-
-	detail, err := h.service.GetProductDetailBySlug(r.Context(), slug)
-	if err != nil {
-		h.writeError(w, r, err)
-		return
-	}
-
-	writeJSON(w, http.StatusOK, response{Data: detail})
-}
-
 // CreateProduct handles POST /api/v1/products
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	// Limit request body to 1MB to prevent DoS via large payloads.
