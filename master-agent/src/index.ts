@@ -16,16 +16,16 @@ app.get("/health", async () => {
 // ─── Decide Iteration ─────────────────────────────────────────────────────────
 
 app.post<{ Body: DecideRequest }>("/decide-iteration", async (req, reply) => {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return reply.status(500).send({
-      error: "ANTHROPIC_API_KEY is not set",
-    });
-  }
-
   const { extra_context } = req.body ?? {};
 
-  const result = await decideIteration(extra_context);
-  return result;
+  try {
+    const result = await decideIteration(extra_context);
+    return result;
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    reply.status(500);
+    return { error: message };
+  }
 });
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────

@@ -1,10 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { execSync } from "child_process";
 import { gatherContext, formatContextForPrompt } from "./context.js";
 import type { IterationPlan, DecideResponse } from "./types.js";
-
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
 
 const SYSTEM_PROMPT = `You are the Master Agent for the EcommerceGo project — an AI-driven, open-source, microservices e-commerce platform.
 
@@ -24,7 +20,7 @@ Your role is to analyze the current state of the codebase and determine the best
 - Consider: security, performance, observability, test coverage, code quality, DX, documentation
 
 ## Output Format
-Respond with a single JSON object (no markdown fences). Schema:
+Respond with a single JSON object (no markdown fences, no explanation outside JSON). Schema:
 {
   "round_number": <integer, next after the last completed round>,
   "title": <string, short descriptive title for this iteration>,
@@ -42,47 +38,82 @@ Respond with a single JSON object (no markdown fences). Schema:
   "skip_reason": <string or null, if no meaningful work remains>
 }`;
 
+interface ClaudeCliResult {
+  type: string;
+  subtype: string;
+  result: string;
+  is_error: boolean;
+  session_id?: string;
+}
+
+function extractJson(text: string): string {
+  // Strip markdown fences if present
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) return fenced[1].trim();
+  // Find bare JSON object
+  const bare = text.match(/\{[\s\S]*\}/);
+  if (bare) return bare[0];
+  return text.trim();
+}
+
 export async function decideIteration(
   extraContext?: string
 ): Promise<DecideResponse> {
   const ctx = gatherContext(extraContext);
   const contextText = formatContextForPrompt(ctx);
 
-  const userMessage = `Analyze the repository state below and decide the next pipeline iteration.\n\n${contextText}`;
+  const fullPrompt = [
+    SYSTEM_PROMPT,
+    "",
+    "---",
+    "",
+    `Analyze the repository state below and decide the next pipeline iteration.`,
+    "",
+    contextText,
+  ].join("\n");
 
-  const response = await client.messages.create({
-    model: "claude-opus-4-6",
-    max_tokens: 8000,
-    thinking: { type: "adaptive" },
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userMessage }],
-  });
+  // Call claude CLI in non-interactive print mode.
+  // Stdin carries the full prompt; tools are disabled so it just responds.
+  // CLAUDECODE env var must be unset to allow nested invocation.
+  const env = { ...process.env };
+  delete env["CLAUDECODE"];
 
-  // Extract the text block (thinking blocks are separate)
-  const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("Claude returned no text content");
+  const raw = execSync(
+    `claude -p --output-format json --model claude-opus-4-6 --allowedTools ""`,
+    {
+      input: fullPrompt,
+      encoding: "utf-8",
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 180_000,
+      env,
+    }
+  );
+
+  let cliResult: ClaudeCliResult;
+  try {
+    cliResult = JSON.parse(raw) as ClaudeCliResult;
+  } catch {
+    throw new Error(`Failed to parse claude CLI output: ${raw.slice(0, 300)}`);
   }
+
+  if (cliResult.is_error) {
+    throw new Error(`Claude CLI returned an error: ${cliResult.result}`);
+  }
+
+  const jsonText = extractJson(cliResult.result);
 
   let plan: IterationPlan;
   try {
-    plan = JSON.parse(textBlock.text) as IterationPlan;
+    plan = JSON.parse(jsonText) as IterationPlan;
   } catch {
-    // Try to extract JSON from the text if it contains extra content
-    const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error(
-        `Failed to parse iteration plan from Claude response: ${textBlock.text.slice(0, 200)}`
-      );
-    }
-    plan = JSON.parse(jsonMatch[0]) as IterationPlan;
+    throw new Error(
+      `Failed to parse IterationPlan from: ${jsonText.slice(0, 300)}`
+    );
   }
-
-  const hasThinking = response.content.some((b) => b.type === "thinking");
 
   return {
     plan,
-    model: response.model,
-    thinking_enabled: hasThinking,
+    model: "claude-opus-4-6",
+    thinking_enabled: false,
   };
 }
