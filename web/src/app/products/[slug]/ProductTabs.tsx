@@ -29,9 +29,9 @@ export function ProductTabs({
   const [activeTab, setActiveTab] = useState<TabId>('description');
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: 'description', label: 'Description' },
-    { id: 'reviews', label: `Reviews (${reviewSummary.total_count})` },
-    { id: 'specifications', label: 'Specifications' },
+    { id: 'description', label: 'Açıklama' },
+    { id: 'reviews', label: `Değerlendirmeler (${reviewSummary.total_count})` },
+    { id: 'specifications', label: 'Teknik Özellikler' },
   ];
 
   return (
@@ -91,7 +91,7 @@ function DescriptionPanel({ description }: { description: string }) {
   if (!description) {
     return (
       <p className="text-stone-500 italic">
-        No description available for this product.
+        Bu ürün için açıklama bulunmuyor.
       </p>
     );
   }
@@ -121,7 +121,7 @@ function SpecificationsPanel({ product }: { product: Product }) {
   if (!hasSpecs) {
     return (
       <p className="text-stone-500 italic">
-        No specifications available for this product.
+        Bu ürün için teknik özellik bulunmuyor.
       </p>
     );
   }
@@ -132,7 +132,7 @@ function SpecificationsPanel({ product }: { product: Product }) {
       {metadataEntries.length > 0 && (
         <div>
           <h3 className="mb-4 text-lg font-semibold text-stone-900">
-            Product Details
+            Ürün Detayları
           </h3>
           <dl className="divide-y divide-stone-200 rounded-lg border border-stone-200">
             {metadataEntries.map(([key, value]) => (
@@ -158,14 +158,14 @@ function SpecificationsPanel({ product }: { product: Product }) {
       {variants.length > 0 && (
         <div>
           <h3 className="mb-4 text-lg font-semibold text-stone-900">
-            Available Variants
+            Mevcut Varyantlar
           </h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-stone-200 rounded-lg border border-stone-200">
               <thead className="bg-stone-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
-                    Name
+                    Ad
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
                     SKU
@@ -180,7 +180,7 @@ function SpecificationsPanel({ product }: { product: Product }) {
                     </th>
                   ))}
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-stone-500">
-                    Price
+                    Fiyat
                   </th>
                 </tr>
               </thead>
@@ -206,7 +206,7 @@ function SpecificationsPanel({ product }: { product: Product }) {
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-stone-900 font-medium">
                       {variant.price !== null
                         ? `$${(variant.price / 100).toFixed(2)}`
-                        : 'Base price'}
+                        : 'Temel fiyat'}
                     </td>
                   </tr>
                 ))}

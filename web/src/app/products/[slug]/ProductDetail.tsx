@@ -168,9 +168,9 @@ export function ProductDetail({ product, reviewSummary }: ProductDetailProps) {
         quantity,
         image_url: primaryImageUrl,
       });
-      toast.success(`Added ${product.name} to cart`);
+      toast.success(`${product.name} sepete eklendi`);
     } catch {
-      toast.error('Failed to add item to cart. Please try again.');
+      toast.error('Ürün sepete eklenemedi. Lütfen tekrar deneyin.');
     } finally {
       setIsAddingToCart(false);
     }
@@ -235,7 +235,7 @@ export function ProductDetail({ product, reviewSummary }: ProductDetailProps) {
                 variant={product.status === 'draft' ? 'warning' : 'error'}
                 size="md"
               >
-                {product.status === 'draft' ? 'Coming Soon' : product.status}
+                {product.status === 'draft' ? 'Yakında' : product.status}
               </Badge>
             </div>
           )}
@@ -263,7 +263,7 @@ export function ProductDetail({ product, reviewSummary }: ProductDetailProps) {
                             key={value}
                             type="button"
                             onClick={() => handleAttributeSelect(attrKey, value)}
-                            aria-label={`Select color ${value}`}
+                            aria-label={`${value} rengini seç`}
                             title={value}
                             className={cn(
                               'h-9 w-9 rounded-full border-2 transition-all',
@@ -328,12 +328,12 @@ export function ProductDetail({ product, reviewSummary }: ProductDetailProps) {
               {isAddingToCart ? (
                 <>
                   <LoadingSpinner />
-                  Adding...
+                  Ekleniyor...
                 </>
               ) : (
                 <>
                   <CartIcon />
-                  Add to Cart
+                  Sepete Ekle
                 </>
               )}
             </button>
@@ -351,13 +351,13 @@ export function ProductDetail({ product, reviewSummary }: ProductDetailProps) {
           {/* Shipping / Returns / Security Info */}
           <div className="mt-6 space-y-3 border-t border-stone-200 pt-6">
             <div className="flex items-center gap-3 text-sm text-stone-600">
-              <TruckIcon /> <span>Free shipping on orders over $50</span>
+              <TruckIcon /> <span>500 TL üzeri ücretsiz kargo</span>
             </div>
             <div className="flex items-center gap-3 text-sm text-stone-600">
-              <RefreshIcon /> <span>30-day return policy</span>
+              <RefreshIcon /> <span>30 gün iade garantisi</span>
             </div>
             <div className="flex items-center gap-3 text-sm text-stone-600">
-              <ShieldIcon /> <span>Secure payment guaranteed</span>
+              <ShieldIcon /> <span>Güvenli ödeme garantisi</span>
             </div>
           </div>
         </div>
@@ -372,7 +372,7 @@ export function ProductDetail({ product, reviewSummary }: ProductDetailProps) {
             disabled={isAddingToCart || product.status !== 'published'}
             className="flex-1 rounded-lg bg-brand py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-light disabled:bg-stone-300"
           >
-            {isAddingToCart ? 'Adding...' : 'Add to Cart'}
+            {isAddingToCart ? 'Ekleniyor...' : 'Sepete Ekle'}
           </button>
         </div>
       </div>

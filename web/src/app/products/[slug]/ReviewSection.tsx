@@ -44,7 +44,7 @@ export function ReviewSection({
         setCurrentPage(page);
         setTotalPages(response.total_pages);
       } catch {
-        toast.error('Failed to load reviews.');
+        toast.error('Değerlendirmeler yüklenemedi.');
       } finally {
         setIsLoadingPage(false);
       }
@@ -68,7 +68,7 @@ export function ReviewSection({
             </div>
             <RatingStars rating={reviewSummary.average_rating} size="md" />
             <div className="mt-1 text-sm text-stone-500">
-              {reviewSummary.total_count} review{reviewSummary.total_count !== 1 ? 's' : ''}
+              {reviewSummary.total_count} değerlendirme
             </div>
           </div>
         </div>
@@ -83,12 +83,12 @@ export function ReviewSection({
       ) : (
         <div className="rounded-lg border border-stone-200 bg-stone-50 p-6 text-center">
           <p className="text-stone-600">
-            Want to share your experience?{' '}
+            Deneyiminizi paylaşmak ister misiniz?{' '}
             <Link
               href="/auth/login"
               className="font-medium text-brand hover:text-brand-light transition-colors"
             >
-              Sign in to write a review
+              Değerlendirme yazmak için giriş yapın
             </Link>
           </p>
         </div>
@@ -102,10 +102,10 @@ export function ReviewSection({
               <ChatBubbleIcon className="text-stone-400" />
             </div>
             <h4 className="mb-1 text-base font-medium text-stone-700">
-              No reviews yet
+              Henüz değerlendirme yok
             </h4>
             <p className="text-sm text-stone-500">
-              Be the first to share your experience with this product!
+              Bu ürünü ilk değerlendiren siz olun!
             </p>
           </div>
         ) : (
@@ -189,9 +189,9 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (rating === 0) newErrors.rating = 'Please select a rating';
-    if (!title.trim()) newErrors.title = 'Please enter a title';
-    if (!body.trim()) newErrors.body = 'Please enter a review';
+    if (rating === 0) newErrors.rating = 'Lütfen bir puan seçin';
+    if (!title.trim()) newErrors.title = 'Lütfen bir başlık girin';
+    if (!body.trim()) newErrors.body = 'Lütfen bir değerlendirme yazın';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -210,7 +210,7 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
         };
         const response = await api.createReview(productId, data);
         onReviewSubmitted(response.data);
-        toast.success('Review submitted successfully!');
+        toast.success('Değerlendirmeniz başarıyla gönderildi!');
 
         // Reset form
         setRating(0);
@@ -219,7 +219,7 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
         setErrors({});
         setIsOpen(false);
       } catch {
-        toast.error('Failed to submit review. Please try again.');
+        toast.error('Değerlendirme gönderilemedi. Lütfen tekrar deneyin.');
       } finally {
         setIsSubmitting(false);
       }
@@ -234,7 +234,7 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
         onClick={() => setIsOpen(true)}
         className="rounded-lg border-2 border-dashed border-stone-300 px-6 py-4 text-sm font-medium text-stone-600 transition-colors hover:border-brand hover:text-brand"
       >
-        Write a Review
+        Değerlendirme Yaz
       </button>
     );
   }
@@ -245,13 +245,13 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
       className="rounded-lg border border-stone-200 bg-white p-6 shadow-sm"
     >
       <h3 className="mb-4 text-lg font-semibold text-stone-900">
-        Write a Review
+        Değerlendirme Yaz
       </h3>
 
       {/* Star Rating Selector */}
       <div className="mb-4">
         <label className="mb-2 block text-sm font-medium text-stone-700">
-          Rating
+          Puanınız
         </label>
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((star) => (
@@ -261,7 +261,7 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
               onClick={() => setRating(star)}
               onMouseEnter={() => setHoverRating(star)}
               onMouseLeave={() => setHoverRating(0)}
-              aria-label={`Rate ${star} star${star !== 1 ? 's' : ''}`}
+              aria-label={`${star} yıldız ver`}
               className="transition-transform hover:scale-110"
             >
               <svg
@@ -292,14 +292,14 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
           htmlFor="review-title"
           className="mb-1 block text-sm font-medium text-stone-700"
         >
-          Title
+          Başlık
         </label>
         <input
           id="review-title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Summarize your experience"
+          placeholder="Deneyiminizi özetleyin"
           maxLength={100}
           className={cn(
             'w-full rounded-md border px-3 py-2 text-sm text-stone-900 placeholder-stone-400 transition-colors focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand',
@@ -317,13 +317,13 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
           htmlFor="review-body"
           className="mb-1 block text-sm font-medium text-stone-700"
         >
-          Review
+          Değerlendirme
         </label>
         <textarea
           id="review-body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="Share your thoughts about this product"
+          placeholder="Bu ürün hakkındaki görüşlerinizi paylaşın"
           rows={4}
           maxLength={2000}
           className={cn(
@@ -348,7 +348,7 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
               : 'bg-brand hover:bg-brand-light',
           )}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Review'}
+          {isSubmitting ? 'Gönderiliyor...' : 'Gönder'}
         </button>
         <button
           type="button"
@@ -359,7 +359,7 @@ function WriteReviewForm({ productId, onReviewSubmitted }: WriteReviewFormProps)
           disabled={isSubmitting}
           className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:text-stone-800 transition-colors"
         >
-          Cancel
+          Vazgeç
         </button>
       </div>
     </form>

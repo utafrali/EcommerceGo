@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `${product.name} | EcommerceGo`,
       description: product.description
         ? product.description.slice(0, 160)
-        : `Shop ${product.name} on EcommerceGo`,
+        : `${product.name} ürününü EcommerceGo'da keşfedin`,
       openGraph: {
         title: product.name,
         description: product.description?.slice(0, 160),
@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   } catch {
     return {
-      title: 'Product Not Found | EcommerceGo',
+      title: 'Ürün Bulunamadı | EcommerceGo',
     };
   }
 }
@@ -85,11 +85,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
       {/* Breadcrumb */}
       <nav className="mb-6 flex items-center gap-2 text-sm text-stone-500">
         <Link href="/" className="hover:text-brand transition-colors">
-          Home
+          Ana Sayfa
         </Link>
         <ChevronRight />
         <Link href="/products" className="hover:text-brand transition-colors">
-          Products
+          Ürünler
         </Link>
         {product.category && (
           <>
@@ -128,7 +128,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       {similarProducts.length > 0 && (
         <section className="mt-16">
           <h2 className="mb-6 text-2xl font-bold text-stone-900">
-            Similar Products
+            Benzer Ürünler
           </h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {similarProducts.map((p) => (
