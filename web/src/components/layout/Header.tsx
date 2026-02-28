@@ -245,9 +245,12 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm">
       {/* ── Layer 1: Top Promotional Bar (Premium Gradient) ──────────────── */}
-      {!topBarDismissed && (
-        <div className="relative bg-gradient-to-r from-stone-900 to-stone-800 text-white">
-          <div className="mx-auto flex h-9 max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
+      <div
+        className={`relative bg-gradient-to-r from-stone-900 to-stone-800 text-white overflow-hidden transition-all duration-300 ${
+          topBarDismissed ? 'max-h-0' : 'max-h-9'
+        }`}
+      >
+        <div className="mx-auto flex h-9 max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
             <p className="flex items-center gap-1.5 text-xs font-medium tracking-wide animate-fade-in-slow sm:text-sm">
               <SparkleIcon className="h-3.5 w-3.5 text-brand-accent" />
               <span>Free shipping on orders over $50</span>
@@ -275,7 +278,6 @@ export default function Header() {
             </button>
           </div>
         </div>
-      )}
 
       {/* ── Layer 2: Main Header ─────────────────────────────────────────── */}
       <div className="border-b border-stone-200">
