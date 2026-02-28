@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { spawn } from "child_process";
 import { gatherContext, formatContextForPrompt } from "./context.js";
 import type { IterationPlan, DecideResponse } from "./types.js";
 
@@ -43,17 +43,83 @@ interface ClaudeCliResult {
   subtype: string;
   result: string;
   is_error: boolean;
-  session_id?: string;
 }
 
 function extractJson(text: string): string {
-  // Strip markdown fences if present
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenced) return fenced[1].trim();
-  // Find bare JSON object
   const bare = text.match(/\{[\s\S]*\}/);
   if (bare) return bare[0];
   return text.trim();
+}
+
+/**
+ * Calls the claude CLI via async spawn (not execSync).
+ * execSync / spawnSync hits ETIMEDOUT on macOS/Node 23 when piping large input.
+ * Async spawn + manual stdin.end() is reliable.
+ */
+function callClaude(prompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // Remove CLAUDECODE so nested-session guard doesn't fire
+    const env: Record<string, string> = {};
+    for (const [k, v] of Object.entries(process.env)) {
+      if (k !== "CLAUDECODE" && v !== undefined) env[k] = v;
+    }
+
+    const child = spawn(
+      "claude",
+      [
+        "-p",
+        "--output-format",
+        "json",
+        "--model",
+        "claude-opus-4-6",
+        "--allowedTools",
+        "",
+      ],
+      { env, stdio: ["pipe", "pipe", "pipe"] }
+    );
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
+    child.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+
+    const timeout = setTimeout(() => {
+      child.kill("SIGTERM");
+      reject(new Error("claude CLI timed out after 180s"));
+    }, 180_000);
+
+    child.on("close", (code) => {
+      clearTimeout(timeout);
+      if (code === 0 || (code === null && stdout)) {
+        resolve(stdout);
+      } else {
+        reject(
+          new Error(
+            `claude CLI exited with code ${code}. stderr: ${stderr.slice(0, 500)}`
+          )
+        );
+      }
+    });
+
+    child.on("error", (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
+
+    // Write prompt to stdin then close it
+    child.stdin.write(prompt, "utf-8", (err) => {
+      if (err) {
+        clearTimeout(timeout);
+        child.kill();
+        reject(err);
+        return;
+      }
+      child.stdin.end();
+    });
+  });
 }
 
 export async function decideIteration(
@@ -67,27 +133,12 @@ export async function decideIteration(
     "",
     "---",
     "",
-    `Analyze the repository state below and decide the next pipeline iteration.`,
+    "Analyze the repository state below and decide the next pipeline iteration.",
     "",
     contextText,
   ].join("\n");
 
-  // Call claude CLI in non-interactive print mode.
-  // Stdin carries the full prompt; tools are disabled so it just responds.
-  // CLAUDECODE env var must be unset to allow nested invocation.
-  const env = { ...process.env };
-  delete env["CLAUDECODE"];
-
-  const raw = execSync(
-    `claude -p --output-format json --model claude-opus-4-6 --allowedTools ""`,
-    {
-      input: fullPrompt,
-      encoding: "utf-8",
-      maxBuffer: 10 * 1024 * 1024,
-      timeout: 180_000,
-      env,
-    }
-  );
+  const raw = await callClaude(fullPrompt);
 
   let cliResult: ClaudeCliResult;
   try {
@@ -111,9 +162,5 @@ export async function decideIteration(
     );
   }
 
-  return {
-    plan,
-    model: "claude-opus-4-6",
-    thinking_enabled: false,
-  };
+  return { plan, model: "claude-opus-4-6", thinking_enabled: false };
 }

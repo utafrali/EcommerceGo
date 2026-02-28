@@ -1,19 +1,33 @@
 #!/usr/bin/env node
 /**
- * master-agent CLI
- * Usage:
- *   npx tsx src/cli.ts                    # decide next iteration
- *   npx tsx src/cli.ts --extra "focus on X"
- *   npx tsx src/cli.ts --execute          # decide + immediately run via claude
- *   npx tsx src/cli.ts --watch 15         # loop every 15 minutes
+ * master-agent CLI — pretty printer & runner
+ *
+ * WORKFLOW (two terminals):
+ *   Terminal 1:  npm run dev            ← server + live logs
+ *   Terminal 2:  npm run decide         ← this CLI, calls the server
+ *
+ * Usage (Terminal 2):
+ *   npm run decide                      # decide next iteration (interactive)
+ *   npm run decide -- --extra "X"       # pass extra context
+ *   npm run decide:execute              # decide + auto-run via claude
+ *   npm run decide:watch                # loop every 15 min
  */
 
-import { execSync, spawn } from "child_process";
+import { spawn } from "child_process";
 import * as readline from "readline";
-import { gatherContext, formatContextForPrompt } from "./context.js";
-import { decideIteration } from "./decide.js";
-import { log, section, step, indent, printPlan, color, c } from "./logger.js";
-import type { IterationPlan } from "./types.js";
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
+import { log, section, step, printPlan, color, c } from "./logger.js";
+import type { DecideResponse, IterationPlan } from "./types.js";
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+
+const PORT = Number(process.env.PORT) || 4001;
+const BASE_URL = `http://localhost:${PORT}`;
+const REPO_ROOT =
+  process.env.REPO_ROOT ??
+  path.resolve(fileURLToPath(import.meta.url), "../../../");
 
 // ─── Args ─────────────────────────────────────────────────────────────────────
 
@@ -24,24 +38,37 @@ const shouldExecute = args.includes("--execute") || args.includes("-e");
 const watchIdx = args.indexOf("--watch");
 const watchMinutes = watchIdx !== -1 ? Number(args[watchIdx + 1]) || 15 : null;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── HTTP helpers ─────────────────────────────────────────────────────────────
 
-function ask(question: string): Promise<string> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
+async function fetchJson<T>(url: string, body?: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: body !== undefined ? "POST" : "GET",
+    headers: body !== undefined ? { "Content-Type": "application/json" } : {},
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim().toLowerCase());
-    });
-  });
+  const json = (await res.json()) as T;
+  if (!res.ok) {
+    const err = (json as { error?: string }).error ?? res.statusText;
+    throw new Error(`HTTP ${res.status}: ${err}`);
+  }
+  return json;
 }
 
-async function runExecution(plan: IterationPlan, repoRoot: string) {
+async function isServerUp(): Promise<boolean> {
+  try {
+    await fetchJson(`${BASE_URL}/health`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ─── Execution ────────────────────────────────────────────────────────────────
+
+async function runExecution(plan: IterationPlan): Promise<void> {
   section("EXECUTION");
-  step("exec", color(c.cyan, "Spawning claude to implement the plan..."));
+  step("exec", color(c.cyan, `Spawning claude to implement round ${plan.round_number}...`));
+  log(`  ${color(c.gray, "(you can watch progress in real-time below)")}`);
   log("");
 
   const prompt = [
@@ -58,118 +85,79 @@ async function runExecution(plan: IterationPlan, repoRoot: string) {
     "Work through each task systematically. Read files before editing. Run tests after changes where possible.",
   ].join("\n");
 
-  // Unset CLAUDECODE so nested invocation works
-  const env = { ...process.env };
-  delete env["CLAUDECODE"];
+  const env: Record<string, string> = {};
+  for (const [k, v] of Object.entries(process.env)) {
+    if (k !== "CLAUDECODE" && v !== undefined) env[k] = v;
+  }
 
   const child = spawn(
     "claude",
-    [
-      "-p",
-      prompt,
-      "--model",
-      "claude-opus-4-6",
-      "--allowedTools",
-      "Bash,Read,Edit,Write,Glob,Grep",
-    ],
-    {
-      cwd: repoRoot,
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-    }
+    ["-p", prompt, "--model", "claude-opus-4-6", "--allowedTools", "Bash,Read,Edit,Write,Glob,Grep"],
+    { cwd: REPO_ROOT, env, stdio: ["ignore", "pipe", "pipe"] }
   );
 
-  let buffer = "";
-
-  child.stdout.on("data", (chunk: Buffer) => {
-    const text = chunk.toString();
-    buffer += text;
-    process.stdout.write(text);
-  });
-
-  child.stderr.on("data", (chunk: Buffer) => {
-    process.stderr.write(color(c.gray, chunk.toString()));
-  });
+  child.stdout!.on("data", (chunk: Buffer) => process.stdout.write(chunk));
+  child.stderr!.on("data", (chunk: Buffer) =>
+    process.stderr.write(color(c.gray, chunk.toString()))
+  );
 
   await new Promise<void>((resolve, reject) => {
-    child.on("close", (code) => {
-      if (code === 0 || code === null) {
-        resolve();
-      } else {
-        reject(new Error(`claude exited with code ${code}`));
-      }
-    });
+    child.on("close", (code) =>
+      code === 0 || code === null ? resolve() : reject(new Error(`claude exited ${code}`))
+    );
     child.on("error", reject);
   });
 
   section("DONE");
-  step("done", `Round ${plan.round_number} executed.`);
-
-  // Auto-commit suggestion
+  step("done", color(c.green, `Round ${plan.round_number} executed.`));
   log("");
-  log(
-    `  ${color(c.gray, "To commit:")}  git add -A && git commit -m "feat: pipeline round ${plan.round_number} — ${plan.title}"`
-  );
+  log(`  ${color(c.gray, "Suggested commit:")}  git add -A && git commit -m "feat: pipeline round ${plan.round_number} — ${plan.title}"`);
   log("");
-
-  return buffer;
 }
 
-// ─── Main loop ────────────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function runOnce() {
-  const repoRoot =
-    process.env.REPO_ROOT ??
-    new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
-
   log("");
-  log(
-    color(c.bold + c.cyan, "  ╔══════════════════════════════╗")
-  );
+  log(color(c.bold + c.cyan, "  ╔══════════════════════════════╗"));
   log(color(c.bold + c.cyan, "  ║   EcommerceGo Master Agent   ║"));
   log(color(c.bold + c.cyan, "  ╚══════════════════════════════╝"));
-  log(`  ${color(c.gray, `repo: ${repoRoot}`)}`);
+  log(`  ${color(c.gray, `repo: ${REPO_ROOT}`)}`);
 
-  // 1. Gather context
-  section("GATHERING CONTEXT");
-  const ctx = gatherContext(extraContext);
+  // Check server
+  section("SERVER");
+  if (!(await isServerUp())) {
+    log("");
+    log(color(c.red + c.bold, "  Server not running on port " + PORT));
+    log("");
+    log("  Start it first in another terminal:");
+    log(color(c.cyan + c.bold, "    cd master-agent && npm run dev"));
+    log("");
+    log("  That terminal will show live logs for each request.");
+    log("");
+    process.exit(1);
+  }
+  step("ok", `Server running on ${color(c.cyan, `localhost:${PORT}`)}`);
 
-  step("ok", `Services:  ${color(c.cyan, ctx.services.join(", "))}`);
-  step("ok", `Packages:  ${color(c.cyan, ctx.packages.join(", "))}`);
-
-  const commitLines = ctx.recentCommits.split("\n").filter(Boolean);
-  step("ok", `Commits:   ${color(c.cyan, String(commitLines.length))} loaded`);
-  indent(commitLines.slice(0, 5));
-
-  const roundLines = ctx.pipelineRounds.split("###").filter((l) => l.trim());
-  step(
-    "ok",
-    `Pipeline rounds: ${color(c.cyan, String(roundLines.length))} found`
-  );
-
+  // Call /decide-iteration
+  section("ASKING CLAUDE");
   if (extraContext) {
     step("arrow", `Extra context: ${color(c.yellow, extraContext)}`);
   }
-
-  const contextText = formatContextForPrompt(ctx);
-  const tokenEst = Math.round(contextText.length / 4);
-  step("ok", `Context size: ~${color(c.cyan, String(tokenEst))} tokens`);
-
-  // 2. Ask Claude
-  section("ASKING CLAUDE");
-  step(
-    "thinking",
-    color(c.yellow, "Calling claude-opus-4-6 via CLI session (may take ~30s)...")
-  );
+  step("thinking", color(c.yellow, "Calling claude-opus-4-6 via server (30–60s)..."));
   log("");
 
   const start = Date.now();
-  const response = await decideIteration(extraContext);
+  const response = await fetchJson<DecideResponse>(`${BASE_URL}/decide-iteration`, {
+    extra_context: extraContext,
+  });
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
 
   step("ok", `Response received in ${color(c.green, elapsed + "s")}`);
+  step("ok", `Round ${color(c.cyan, String(response.plan.round_number))} — ${color(c.bold, response.plan.title)}`);
+  step("ok", `Tasks: ${color(c.cyan, String(response.plan.tasks.length))}  Priority: ${response.plan.priority}  Scope: ${response.plan.estimated_scope}`);
 
-  // 3. Print plan
+  // Print plan
   section("ITERATION PLAN");
   printPlan(response.plan);
 
@@ -178,58 +166,46 @@ async function runOnce() {
     return;
   }
 
-  // 4. Execute?
+  // Execute?
   if (shouldExecute) {
     log("");
     log(color(c.bold + c.green, "  --execute flag set. Starting execution..."));
-    await runExecution(response.plan, repoRoot);
+    await runExecution(response.plan);
     return;
   }
 
-  // Interactive prompt
   log("");
   const answer = await ask(
-    color(
-      c.bold,
-      `  Execute this plan via claude? ${color(c.gray, "[y/N/s(save)]")} `
-    )
+    color(c.bold, `  Execute this plan via claude? ${color(c.gray, "[y/N/s(save)]")} `)
   );
 
   if (answer === "y" || answer === "yes") {
-    await runExecution(response.plan, repoRoot);
+    await runExecution(response.plan);
   } else if (answer === "s" || answer === "save") {
     const outFile = `iteration-plan-round-${response.plan.round_number}.json`;
-    const { writeFileSync } = await import("fs");
-    writeFileSync(outFile, JSON.stringify(response.plan, null, 2));
+    fs.writeFileSync(outFile, JSON.stringify(response.plan, null, 2));
     step("ok", `Plan saved to ${color(c.cyan, outFile)}`);
   } else {
     step("arrow", color(c.gray, "Skipped. Run with --execute to auto-run."));
   }
 }
 
-async function watchLoop(intervalMinutes: number) {
-  log(
-    color(
-      c.bold + c.magenta,
-      `  ⏱  Watch mode — running every ${intervalMinutes} minutes`
-    )
-  );
-  log(color(c.gray, "  Press Ctrl+C to stop.\n"));
+function ask(question: string): Promise<string> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(question, (a) => { rl.close(); resolve(a.trim().toLowerCase()); });
+  });
+}
 
+async function watchLoop(intervalMinutes: number) {
+  log(color(c.bold + c.magenta, `  ⏱  Watch mode — running every ${intervalMinutes} minutes`));
+  log(color(c.gray, "  Press Ctrl+C to stop.\n"));
   while (true) {
-    try {
-      await runOnce();
-    } catch (err) {
+    try { await runOnce(); } catch (err) {
       log(color(c.red, `  Error: ${err instanceof Error ? err.message : String(err)}`));
     }
-
     log("");
-    log(
-      color(
-        c.gray,
-        `  Next run in ${intervalMinutes}m. Press Ctrl+C to stop.`
-      )
-    );
+    log(color(c.gray, `  Next run in ${intervalMinutes}m. Press Ctrl+C to stop.`));
     await new Promise((r) => setTimeout(r, intervalMinutes * 60 * 1000));
   }
 }
@@ -244,9 +220,6 @@ try {
   }
 } catch (err) {
   log("");
-  log(
-    color(c.red + c.bold, "  ERROR: ") +
-      (err instanceof Error ? err.message : String(err))
-  );
+  log(color(c.red + c.bold, "  ERROR: ") + (err instanceof Error ? err.message : String(err)));
   process.exit(1);
 }
