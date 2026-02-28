@@ -41,4 +41,4 @@ export type SortOptionValue = (typeof SORT_OPTIONS)[number]['value'];
 // ─── Hero & Navigation ─────────────────────────────────────────────────────
 
 export const HERO_AUTOPLAY_INTERVAL = 5000;
-export const MEGAMENU_CLOSE_DELAY = 200;
+export const MEGAMENU_CLOSE_DELAY = 300;

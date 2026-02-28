@@ -23,6 +23,7 @@ function MenuIcon({ className }: { className?: string }) {
       strokeWidth={1.5}
       stroke="currentColor"
       className={className}
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -42,6 +43,7 @@ function HeartIcon({ className }: { className?: string }) {
       strokeWidth={1.5}
       stroke="currentColor"
       className={className}
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -61,6 +63,7 @@ function UserIcon({ className }: { className?: string }) {
       strokeWidth={1.5}
       stroke="currentColor"
       className={className}
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -80,6 +83,7 @@ function ShoppingBagIcon({ className }: { className?: string }) {
       strokeWidth={1.5}
       stroke="currentColor"
       className={className}
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -99,6 +103,7 @@ function ChevronDownIcon({ className }: { className?: string }) {
       strokeWidth={1.5}
       stroke="currentColor"
       className={className}
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -118,6 +123,7 @@ function SparkleIcon({ className }: { className?: string }) {
       strokeWidth={1.5}
       stroke="currentColor"
       className={className}
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -301,35 +307,12 @@ export default function Header() {
               </div>
             </div>
 
-            {/* Mobile: Search icon that opens drawer */}
-            <button
-              type="button"
-              className="rounded-lg p-2 text-stone-600 hover:bg-stone-50 transition-colors md:hidden"
-              onClick={() => setMobileDrawerOpen(true)}
-              aria-label="Open search"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="h-6 w-6"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                />
-              </svg>
-            </button>
-
             {/* Right actions */}
             <div className="flex items-center gap-1 sm:gap-3">
               {/* Wishlist (desktop) */}
               <Link
                 href="/wishlist"
-                className="hidden rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200 md:block"
+                className="hidden rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200 will-change-transform md:block"
                 aria-label="Wishlist"
               >
                 <HeartIcon className="h-6 w-6" />
@@ -342,11 +325,11 @@ export default function Header() {
                     <button
                       type="button"
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="flex items-center gap-1.5 rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200"
+                      className="flex items-center gap-1.5 rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200 will-change-transform"
                       aria-label="User menu"
                     >
                       <UserIcon className="h-6 w-6" />
-                      <span className="max-w-[100px] truncate text-sm font-medium">
+                      <span className="max-w-[150px] truncate text-sm font-medium">
                         {user.first_name}
                       </span>
                       <ChevronDownIcon className="h-3.5 w-3.5" />
@@ -398,7 +381,7 @@ export default function Header() {
                 ) : (
                   <Link
                     href="/auth/login"
-                    className="flex items-center gap-1.5 rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200"
+                    className="flex items-center gap-1.5 rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200 will-change-transform"
                   >
                     <UserIcon className="h-6 w-6" />
                     <span className="text-sm font-medium">Sign In</span>
@@ -409,7 +392,7 @@ export default function Header() {
               {/* Cart */}
               <Link
                 href="/cart"
-                className="relative rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200"
+                className="relative rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200 will-change-transform"
                 aria-label={itemCount > 0 ? `Shopping cart with ${itemCount} item${itemCount > 1 ? 's' : ''}` : "Shopping cart"}
               >
                 <ShoppingBagIcon className="h-6 w-6" />
@@ -420,6 +403,11 @@ export default function Header() {
                 )}
               </Link>
             </div>
+          </div>
+
+          {/* Mobile Search Bar (below logo row) */}
+          <div className="pb-3 pt-2 md:hidden">
+            <SearchBar placeholder="Search products..." />
           </div>
         </div>
       </div>

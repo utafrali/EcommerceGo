@@ -26,6 +26,7 @@ function CloseIcon({ className }: { className?: string }) {
       strokeWidth={1.5}
       stroke="currentColor"
       className={className}
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -45,6 +46,7 @@ function ChevronIcon({ className, expanded }: { className?: string; expanded: bo
       strokeWidth={1.5}
       stroke="currentColor"
       className={`${className || ''} transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -64,6 +66,7 @@ function CartIcon({ className }: { className?: string }) {
       strokeWidth={1.5}
       stroke="currentColor"
       className={className}
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -83,6 +86,7 @@ function UserIcon({ className }: { className?: string }) {
       strokeWidth={1.5}
       stroke="currentColor"
       className={className}
+      aria-hidden="true"
     >
       <path
         strokeLinecap="round"
@@ -291,6 +295,7 @@ export function MobileDrawer({ isOpen, onClose, categories }: MobileDrawerProps)
                   strokeWidth={1.5}
                   stroke="currentColor"
                   className="h-5 w-5 text-stone-500"
+                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
@@ -314,6 +319,7 @@ export function MobileDrawer({ isOpen, onClose, categories }: MobileDrawerProps)
                       strokeWidth={1.5}
                       stroke="currentColor"
                       className="h-5 w-5 text-stone-500"
+                      aria-hidden="true"
                     >
                       <path
                         strokeLinecap="round"

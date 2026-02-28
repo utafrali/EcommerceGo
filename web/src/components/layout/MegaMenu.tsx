@@ -34,6 +34,14 @@ export function MegaMenu({ category, onClose }: MegaMenuProps) {
     columns[i % columnCount]?.push(child);
   });
 
+  // Map column count to Tailwind grid class
+  const gridClass = {
+    1: 'grid-cols-1',
+    2: 'grid-cols-2',
+    3: 'grid-cols-3',
+    4: 'grid-cols-4',
+  }[columnCount] || 'grid-cols-1';
+
   return (
     <div
       ref={menuRef}
@@ -44,12 +52,7 @@ export function MegaMenu({ category, onClose }: MegaMenuProps) {
         <div className="flex gap-8">
           {/* Subcategory columns (75% width) */}
           <div className="flex-1">
-            <div
-              className="grid gap-8"
-              style={{
-                gridTemplateColumns: `repeat(${columnCount || 1}, minmax(0, 1fr))`,
-              }}
-            >
+            <div className={`grid gap-8 ${gridClass}`}>
               {columns.map((column, colIdx) => (
                 <div key={colIdx} className="space-y-6">
                   {column.map((subcategory) => (
