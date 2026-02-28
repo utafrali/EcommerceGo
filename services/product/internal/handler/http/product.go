@@ -2,7 +2,6 @@ package http
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -10,7 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/product/internal/repository"
@@ -58,17 +57,6 @@ type UpdateProductRequest struct {
 
 // --- Response envelope ---
 
-type response struct {
-	Data  any            `json:"data,omitempty"`
-	Error *errorResponse `json:"error,omitempty"`
-}
-
-type errorResponse struct {
-	Code    string            `json:"code"`
-	Message string            `json:"message"`
-	Fields  map[string]string `json:"fields,omitempty"`
-}
-
 type listResponse struct {
 	Data       any `json:"data"`
 	TotalCount int `json:"total_count"`
@@ -90,8 +78,8 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("page"); v != "" {
 		page, err := strconv.Atoi(v)
 		if err != nil || page < 1 {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
 			})
 			return
 		}
@@ -100,8 +88,8 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("per_page"); v != "" {
 		perPage, err := strconv.Atoi(v)
 		if err != nil || perPage < 1 || perPage > 100 {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
 			})
 			return
 		}
@@ -115,8 +103,8 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	}
 	if v := r.URL.Query().Get("status"); v != "" {
 		if !domain.IsValidStatus(v) {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "status must be one of: draft, published, archived"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "status must be one of: draft, published, archived"},
 			})
 			return
 		}
@@ -128,8 +116,8 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("min_price"); v != "" {
 		price, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "min_price must be a valid number"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "min_price must be a valid number"},
 			})
 			return
 		}
@@ -138,8 +126,8 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("max_price"); v != "" {
 		price, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "max_price must be a valid number"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "max_price must be a valid number"},
 			})
 			return
 		}
@@ -147,16 +135,16 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if filter.MinPrice != nil && filter.MaxPrice != nil && *filter.MinPrice > *filter.MaxPrice {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "min_price must not exceed max_price"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "min_price must not exceed max_price"},
 		})
 		return
 	}
 
 	if v := r.URL.Query().Get("sort_by"); v != "" {
 		if !domain.IsValidSortBy(v) {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "sort_by must be one of: newest, price_asc, price_desc, name_asc, name_desc"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "sort_by must be one of: newest, price_asc, price_desc, name_asc, name_desc"},
 			})
 			return
 		}
@@ -165,7 +153,7 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 
 	products, total, err := h.service.ListProducts(r.Context(), filter)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -174,7 +162,7 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		totalPages++
 	}
 
-	writeJSON(w, http.StatusOK, listResponse{
+	httputil.WriteJSON(w, http.StatusOK, listResponse{
 		Data:       products,
 		TotalCount: total,
 		Page:       filter.Page,
@@ -190,8 +178,8 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	idOrSlug := chi.URLParam(r, "idOrSlug")
 	if idOrSlug == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "product id or slug is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product id or slug is required"},
 		})
 		return
 	}
@@ -208,11 +196,11 @@ func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: detail})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: detail})
 }
 
 // CreateProduct handles POST /api/v1/products
@@ -222,14 +210,14 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	var req CreateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -245,19 +233,19 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 	product, err := h.service.CreateProduct(r.Context(), input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, response{Data: product})
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{Data: product})
 }
 
 // UpdateProduct handles PUT /api/v1/products/{id}
 func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
 		})
 		return
 	}
@@ -267,14 +255,14 @@ func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -291,156 +279,27 @@ func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 	product, err := h.service.UpdateProduct(r.Context(), id, input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: product})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: product})
 }
 
 // DeleteProduct handles DELETE /api/v1/products/{id}
 func (h *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
 		})
 		return
 	}
 
 	if err := h.service.DeleteProduct(r.Context(), id); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: map[string]string{"id": id, "status": "deleted"}})
-}
-
-// --- Helpers ---
-
-func (h *ProductHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
-		writeJSON(w, appErr.Status, response{
-			Error: &errorResponse{Code: appErr.Code, Message: appErr.Message},
-		})
-		return
-	}
-
-	status := apperrors.HTTPStatus(err)
-	code := "INTERNAL_ERROR"
-	message := "an internal error occurred"
-
-	switch {
-	case errors.Is(err, apperrors.ErrNotFound):
-		code = "NOT_FOUND"
-		message = "resource not found"
-		status = http.StatusNotFound
-	case errors.Is(err, apperrors.ErrAlreadyExists):
-		code = "ALREADY_EXISTS"
-		message = "resource already exists"
-		status = http.StatusConflict
-	case errors.Is(err, apperrors.ErrInvalidInput):
-		code = "INVALID_INPUT"
-		message = err.Error()
-		status = http.StatusBadRequest
-	}
-
-	if status == http.StatusInternalServerError {
-		h.logger.ErrorContext(r.Context(), "internal error",
-			slog.String("error", err.Error()),
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
-	}
-
-	writeJSON(w, status, response{
-		Error: &errorResponse{Code: code, Message: message},
-	})
-}
-
-func (h *ProductHandler) writeValidationError(w http.ResponseWriter, err error) {
-	var valErr *validator.ValidationError
-	if errors.As(err, &valErr) {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{
-				Code:    "VALIDATION_ERROR",
-				Message: "request validation failed",
-				Fields:  valErr.Fields(),
-			},
-		})
-		return
-	}
-
-	writeJSON(w, http.StatusBadRequest, response{
-		Error: &errorResponse{Code: "INVALID_INPUT", Message: err.Error()},
-	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	// Headers are already sent; nothing meaningful can be done if encoding fails.
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-// handleWriteError is a standalone error writer usable by any handler in this package.
-func handleWriteError(w http.ResponseWriter, r *http.Request, err error, logger *slog.Logger) {
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
-		writeJSON(w, appErr.Status, response{
-			Error: &errorResponse{Code: appErr.Code, Message: appErr.Message},
-		})
-		return
-	}
-
-	status := apperrors.HTTPStatus(err)
-	code := "INTERNAL_ERROR"
-	message := "an internal error occurred"
-
-	switch {
-	case errors.Is(err, apperrors.ErrNotFound):
-		code = "NOT_FOUND"
-		message = "resource not found"
-		status = http.StatusNotFound
-	case errors.Is(err, apperrors.ErrAlreadyExists):
-		code = "ALREADY_EXISTS"
-		message = "resource already exists"
-		status = http.StatusConflict
-	case errors.Is(err, apperrors.ErrInvalidInput):
-		code = "INVALID_INPUT"
-		message = err.Error()
-		status = http.StatusBadRequest
-	}
-
-	if status == http.StatusInternalServerError {
-		logger.ErrorContext(r.Context(), "internal error",
-			slog.String("error", err.Error()),
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
-	}
-
-	writeJSON(w, status, response{
-		Error: &errorResponse{Code: code, Message: message},
-	})
-}
-
-// handleWriteValidationError is a standalone validation error writer usable by any handler in this package.
-func handleWriteValidationError(w http.ResponseWriter, err error) {
-	var valErr *validator.ValidationError
-	if errors.As(err, &valErr) {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{
-				Code:    "VALIDATION_ERROR",
-				Message: "request validation failed",
-				Fields:  valErr.Fields(),
-			},
-		})
-		return
-	}
-
-	writeJSON(w, http.StatusBadRequest, response{
-		Error: &errorResponse{Code: "INVALID_INPUT", Message: err.Error()},
-	})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id, "status": "deleted"}})
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/product/internal/service"
 )
@@ -41,8 +42,8 @@ type CreateReviewRequest struct {
 func (h *ReviewHandler) ListReviews(w http.ResponseWriter, r *http.Request) {
 	productID := chi.URLParam(r, "productId")
 	if productID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
 		})
 		return
 	}
@@ -63,11 +64,11 @@ func (h *ReviewHandler) ListReviews(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.service.ListReviews(r.Context(), productID, page, perPage)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"data":        result.Reviews,
 		"summary":     result.Summary,
 		"total_count": result.TotalCount,
@@ -81,16 +82,16 @@ func (h *ReviewHandler) ListReviews(w http.ResponseWriter, r *http.Request) {
 func (h *ReviewHandler) CreateReview(w http.ResponseWriter, r *http.Request) {
 	productID := chi.URLParam(r, "productId")
 	if productID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
 		})
 		return
 	}
 
 	userID := r.Header.Get("X-User-ID")
 	if userID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "X-User-ID header is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "X-User-ID header is required"},
 		})
 		return
 	}
@@ -100,14 +101,14 @@ func (h *ReviewHandler) CreateReview(w http.ResponseWriter, r *http.Request) {
 
 	var req CreateReviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -121,19 +122,10 @@ func (h *ReviewHandler) CreateReview(w http.ResponseWriter, r *http.Request) {
 
 	review, err := h.service.CreateReview(r.Context(), input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, response{Data: review})
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{Data: review})
 }
 
-// --- Helpers (reuse patterns from ProductHandler) ---
-
-func (h *ReviewHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {
-	handleWriteError(w, r, err, h.logger)
-}
-
-func (h *ReviewHandler) writeValidationError(w http.ResponseWriter, err error) {
-	handleWriteValidationError(w, err)
-}

@@ -3,7 +3,6 @@ package http
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/pkg/slug"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
@@ -68,36 +68,22 @@ func (h *CategoryHandler) ListCategories(w http.ResponseWriter, r *http.Request)
 
 	categories, err := h.repo.ListAll(r.Context())
 	if err != nil {
-		h.logger.ErrorContext(r.Context(), "failed to list categories",
-			slog.String("error", err.Error()),
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
-		writeJSON(w, http.StatusInternalServerError, response{
-			Error: &errorResponse{Code: "INTERNAL_ERROR", Message: fmt.Sprintf("failed to list categories: %v", err)},
-		})
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: categories})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: categories})
 }
 
 // listCategoriesTree returns categories as a nested tree.
 func (h *CategoryHandler) listCategoriesTree(w http.ResponseWriter, r *http.Request) {
 	tree, err := h.repo.ListTree(r.Context())
 	if err != nil {
-		h.logger.ErrorContext(r.Context(), "failed to list categories tree",
-			slog.String("error", err.Error()),
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
-		writeJSON(w, http.StatusInternalServerError, response{
-			Error: &errorResponse{Code: "INTERNAL_ERROR", Message: fmt.Sprintf("failed to list categories tree: %v", err)},
-		})
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: tree})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: tree})
 }
 
 // GetCategory handles GET /api/v1/categories/{id}
@@ -105,8 +91,8 @@ func (h *CategoryHandler) listCategoriesTree(w http.ResponseWriter, r *http.Requ
 func (h *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 	idOrSlug := chi.URLParam(r, "id")
 	if idOrSlug == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "category id or slug is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "category id or slug is required"},
 		})
 		return
 	}
@@ -123,11 +109,11 @@ func (h *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: category})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: category})
 }
 
 // CreateCategory handles POST /api/v1/categories
@@ -137,14 +123,14 @@ func (h *CategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 
 	var req CreateCategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -154,12 +140,12 @@ func (h *CategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 		parent, err := h.repo.GetByID(r.Context(), *req.ParentID)
 		if err != nil {
 			if errors.Is(err, apperrors.ErrNotFound) {
-				writeJSON(w, http.StatusBadRequest, response{
-					Error: &errorResponse{Code: "INVALID_INPUT", Message: "parent category not found"},
+				httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+					Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "parent category not found"},
 				})
 				return
 			}
-			h.writeError(w, r, err)
+			httputil.WriteError(w, r, err, h.logger)
 			return
 		}
 		level = parent.Level + 1
@@ -187,7 +173,7 @@ func (h *CategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.repo.Create(r.Context(), category); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -196,15 +182,15 @@ func (h *CategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 		slog.String("slug", category.Slug),
 	)
 
-	writeJSON(w, http.StatusCreated, response{Data: category})
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{Data: category})
 }
 
 // UpdateCategory handles PUT /api/v1/categories/{id}
 func (h *CategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "category id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "category id is required"},
 		})
 		return
 	}
@@ -214,29 +200,29 @@ func (h *CategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request)
 
 	var req UpdateCategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
 	// Fetch the existing category.
 	category, err := h.repo.GetByID(r.Context(), id)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
 	// Apply partial updates.
 	if req.Name != nil {
 		if *req.Name == "" {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_INPUT", Message: "category name must not be empty"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "category name must not be empty"},
 			})
 			return
 		}
@@ -247,20 +233,20 @@ func (h *CategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request)
 	if req.ParentID != nil {
 		// Validate the new parent exists and prevent self-referencing.
 		if *req.ParentID == id {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_INPUT", Message: "a category cannot be its own parent"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "a category cannot be its own parent"},
 			})
 			return
 		}
 		parent, err := h.repo.GetByID(r.Context(), *req.ParentID)
 		if err != nil {
 			if errors.Is(err, apperrors.ErrNotFound) {
-				writeJSON(w, http.StatusBadRequest, response{
-					Error: &errorResponse{Code: "INVALID_INPUT", Message: "parent category not found"},
+				httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+					Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "parent category not found"},
 				})
 				return
 			}
-			h.writeError(w, r, err)
+			httputil.WriteError(w, r, err, h.logger)
 			return
 		}
 		category.ParentID = req.ParentID
@@ -288,7 +274,7 @@ func (h *CategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.repo.Update(r.Context(), category); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -297,21 +283,21 @@ func (h *CategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request)
 		slog.String("slug", category.Slug),
 	)
 
-	writeJSON(w, http.StatusOK, response{Data: category})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: category})
 }
 
 // DeleteCategory handles DELETE /api/v1/categories/{id}
 func (h *CategoryHandler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "category id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "category id is required"},
 		})
 		return
 	}
 
 	if err := h.repo.Delete(r.Context(), id); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -319,16 +305,7 @@ func (h *CategoryHandler) DeleteCategory(w http.ResponseWriter, r *http.Request)
 		slog.String("category_id", id),
 	)
 
-	writeJSON(w, http.StatusOK, response{Data: map[string]string{"id": id, "status": "deleted"}})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id, "status": "deleted"}})
 }
 
-// --- Helpers ---
-
-func (h *CategoryHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {
-	handleWriteError(w, r, err, h.logger)
-}
-
-func (h *CategoryHandler) writeValidationError(w http.ResponseWriter, err error) {
-	handleWriteValidationError(w, err)
-}
 

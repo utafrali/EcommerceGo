@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/product/internal/repository/postgres"
@@ -89,7 +90,7 @@ func (h *BannerHandler) ListBanners(w http.ResponseWriter, r *http.Request) {
 
 	banners, total, err := h.repo.List(r.Context(), filter)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -98,7 +99,7 @@ func (h *BannerHandler) ListBanners(w http.ResponseWriter, r *http.Request) {
 		totalPages++
 	}
 
-	writeJSON(w, http.StatusOK, listResponse{
+	httputil.WriteJSON(w, http.StatusOK, listResponse{
 		Data:       banners,
 		TotalCount: total,
 		Page:       filter.Page,
@@ -111,19 +112,19 @@ func (h *BannerHandler) ListBanners(w http.ResponseWriter, r *http.Request) {
 func (h *BannerHandler) GetBanner(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "banner id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "banner id is required"},
 		})
 		return
 	}
 
 	banner, err := h.repo.GetByID(r.Context(), id)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: banner})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: banner})
 }
 
 // CreateBanner handles POST /api/v1/banners
@@ -133,14 +134,14 @@ func (h *BannerHandler) CreateBanner(w http.ResponseWriter, r *http.Request) {
 
 	var req CreateBannerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -167,7 +168,7 @@ func (h *BannerHandler) CreateBanner(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.Create(r.Context(), banner); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -176,15 +177,15 @@ func (h *BannerHandler) CreateBanner(w http.ResponseWriter, r *http.Request) {
 		slog.String("position", banner.Position),
 	)
 
-	writeJSON(w, http.StatusCreated, response{Data: banner})
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{Data: banner})
 }
 
 // UpdateBanner handles PUT /api/v1/banners/{id}
 func (h *BannerHandler) UpdateBanner(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "banner id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "banner id is required"},
 		})
 		return
 	}
@@ -194,21 +195,21 @@ func (h *BannerHandler) UpdateBanner(w http.ResponseWriter, r *http.Request) {
 
 	var req UpdateBannerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
 	// Fetch existing banner.
 	banner, err := h.repo.GetByID(r.Context(), id)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -245,7 +246,7 @@ func (h *BannerHandler) UpdateBanner(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.Update(r.Context(), banner); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -254,21 +255,21 @@ func (h *BannerHandler) UpdateBanner(w http.ResponseWriter, r *http.Request) {
 		slog.String("position", banner.Position),
 	)
 
-	writeJSON(w, http.StatusOK, response{Data: banner})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: banner})
 }
 
 // DeleteBanner handles DELETE /api/v1/banners/{id}
 func (h *BannerHandler) DeleteBanner(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "banner id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "banner id is required"},
 		})
 		return
 	}
 
 	if err := h.repo.Delete(r.Context(), id); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -276,15 +277,6 @@ func (h *BannerHandler) DeleteBanner(w http.ResponseWriter, r *http.Request) {
 		slog.String("banner_id", id),
 	)
 
-	writeJSON(w, http.StatusOK, response{Data: map[string]string{"id": id, "status": "deleted"}})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id, "status": "deleted"}})
 }
 
-// --- Helpers (reuse patterns from ProductHandler) ---
-
-func (h *BannerHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {
-	handleWriteError(w, r, err, h.logger)
-}
-
-func (h *BannerHandler) writeValidationError(w http.ResponseWriter, err error) {
-	handleWriteValidationError(w, err)
-}
