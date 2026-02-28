@@ -4,24 +4,24 @@ test.describe('Auth Flow - Login Page', () => {
   test('login page loads with heading', async ({ page }) => {
     await page.goto('/auth/login');
     await expect(
-      page.getByRole('heading', { name: 'Sign in to EcommerceGo' }),
+      page.getByRole('heading', { name: "EcommerceGo'ya Giriş Yap" }),
     ).toBeVisible();
   });
 
   test('login page has register link', async ({ page }) => {
     await page.goto('/auth/login');
-    await expect(page.getByText("Don't have an account?")).toBeVisible();
-    await expect(page.getByRole('main').getByRole('link', { name: 'Register' })).toBeVisible();
+    await expect(page.getByText('Hesabınız yok mu?')).toBeVisible();
+    await expect(page.getByRole('main').getByRole('link', { name: 'Üye Ol' })).toBeVisible();
   });
 
   test('login form has email input', async ({ page }) => {
     await page.goto('/auth/login');
-    const emailInput = page.getByLabel('Email address');
+    const emailInput = page.getByLabel('E-posta adresi');
     await expect(emailInput).toBeVisible();
     await expect(emailInput).toHaveAttribute('type', 'email');
     await expect(emailInput).toHaveAttribute(
       'placeholder',
-      'you@example.com',
+      'siz@ornek.com',
     );
   });
 
@@ -32,20 +32,20 @@ test.describe('Auth Flow - Login Page', () => {
     await expect(passwordInput).toHaveAttribute('type', 'password');
     await expect(passwordInput).toHaveAttribute(
       'placeholder',
-      'Enter your password',
+      'Şifrenizi girin',
     );
   });
 
   test('login form has submit button', async ({ page }) => {
     await page.goto('/auth/login');
-    const submitButton = page.getByRole('button', { name: 'Sign In' });
+    const submitButton = page.getByRole('button', { name: 'Giriş Yap' });
     await expect(submitButton).toBeVisible();
     await expect(submitButton).toHaveAttribute('type', 'submit');
   });
 
   test('email and password fields accept input', async ({ page }) => {
     await page.goto('/auth/login');
-    const emailInput = page.getByLabel('Email address');
+    const emailInput = page.getByLabel('E-posta adresi');
     const passwordInput = page.locator('input[name="password"]');
 
     await emailInput.fill('test@example.com');
@@ -57,7 +57,7 @@ test.describe('Auth Flow - Login Page', () => {
 
   test('email field has required attribute', async ({ page }) => {
     await page.goto('/auth/login');
-    const emailInput = page.getByLabel('Email address');
+    const emailInput = page.getByLabel('E-posta adresi');
     await expect(emailInput).toHaveAttribute('required', '');
   });
 
@@ -66,42 +66,24 @@ test.describe('Auth Flow - Login Page', () => {
     const passwordInput = page.locator('input[name="password"]');
     await expect(passwordInput).toHaveAttribute('required', '');
   });
-
-  // TODO: Uncomment when login form submission is wired to BFF
-  // test('submitting login form with valid credentials redirects to home', async ({ page }) => {
-  //   await page.goto('/auth/login');
-  //   await page.getByLabel('Email address').fill('test@example.com');
-  //   await page.locator('input[name="password"]').fill('password123');
-  //   await page.getByRole('button', { name: 'Sign In' }).click();
-  //   await expect(page).toHaveURL('/');
-  // });
-
-  // TODO: Uncomment when error handling is implemented
-  // test('submitting login form with invalid credentials shows error', async ({ page }) => {
-  //   await page.goto('/auth/login');
-  //   await page.getByLabel('Email address').fill('wrong@example.com');
-  //   await page.locator('input[name="password"]').fill('wrongpassword');
-  //   await page.getByRole('button', { name: 'Sign In' }).click();
-  //   await expect(page.getByText('Invalid credentials')).toBeVisible();
-  // });
 });
 
 test.describe('Auth Flow - Cart Page (requires auth)', () => {
   test('cart page loads with heading', async ({ page }) => {
     await page.goto('/cart');
     await expect(
-      page.getByRole('heading', { name: 'Shopping Cart' }),
+      page.getByRole('heading', { name: 'Sepetim' }),
     ).toBeVisible();
   });
 
   test('cart page shows empty cart message', async ({ page }) => {
     await page.goto('/cart');
-    await expect(page.getByText('Your cart is empty')).toBeVisible();
+    await expect(page.getByText('Sepetiniz boş')).toBeVisible();
   });
 
   test('cart page shows explore products link', async ({ page }) => {
     await page.goto('/cart');
-    const exploreLink = page.getByRole('link', { name: 'Explore Products' });
+    const exploreLink = page.getByRole('link', { name: 'Ürünleri Keşfet' });
     await expect(exploreLink).toBeVisible();
     await expect(exploreLink).toHaveAttribute('href', '/products');
   });
@@ -110,17 +92,11 @@ test.describe('Auth Flow - Cart Page (requires auth)', () => {
     page,
   }) => {
     await page.goto('/cart');
-    await expect(page.getByText('Your cart is empty')).toBeVisible();
+    await expect(page.getByText('Sepetiniz boş')).toBeVisible();
     await expect(
       page.getByText(
-        'Discover amazing products and start shopping today. Your perfect find is just a click away!',
+        'Harika ürünleri keşfedin ve alışverişe başlayın. Aradığınız şey bir tık uzağınızda!',
       ),
     ).toBeVisible();
   });
-
-  // TODO: Uncomment when cart requires authentication
-  // test('unauthenticated user visiting cart is redirected to login', async ({ page }) => {
-  //   await page.goto('/cart');
-  //   await expect(page).toHaveURL('/auth/login?redirect=/cart');
-  // });
 });

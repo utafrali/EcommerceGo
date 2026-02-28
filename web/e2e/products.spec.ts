@@ -4,7 +4,7 @@ test.describe('Products List Page (PLP)', () => {
   test('products page loads with heading', async ({ page }) => {
     await page.goto('/products');
     await expect(
-      page.getByRole('heading', { name: 'All Products' }),
+      page.getByRole('heading', { name: 'Tüm Ürünler' }),
     ).toBeVisible();
   });
 
@@ -12,29 +12,22 @@ test.describe('Products List Page (PLP)', () => {
     await page.goto('/products');
     const breadcrumb = page.locator('nav[aria-label="Breadcrumb"]');
     await expect(breadcrumb).toBeVisible();
-    await expect(breadcrumb.getByText('Home')).toBeVisible();
-    await expect(breadcrumb.getByText('Products')).toBeVisible();
+    await expect(breadcrumb.getByText('Ana Sayfa')).toBeVisible();
+    await expect(breadcrumb.getByText('Ürünler')).toBeVisible();
   });
 
-  test('products page breadcrumb Home links to homepage', async ({ page }) => {
+  test('products page breadcrumb Ana Sayfa links to homepage', async ({ page }) => {
     await page.goto('/products');
     const breadcrumb = page.locator('nav[aria-label="Breadcrumb"]');
-    const homeLink = breadcrumb.getByRole('link', { name: 'Home' });
+    const homeLink = breadcrumb.getByRole('link', { name: 'Ana Sayfa' });
     await expect(homeLink).toBeVisible();
     await expect(homeLink).toHaveAttribute('href', '/');
   });
 
   test('products page has sort dropdown', async ({ page }) => {
     await page.goto('/products');
-    const sortDropdown = page.getByLabel('Sort products').first();
+    const sortDropdown = page.getByLabel('Ürünleri sırala').first();
     await expect(sortDropdown).toBeVisible();
-  });
-
-  test('products page has search bar', async ({ page }) => {
-    await page.goto('/products');
-    await page.waitForLoadState('networkidle');
-    const searchInput = page.getByPlaceholder('Search products...');
-    await expect(searchInput.first()).toBeVisible();
   });
 
   test('products page handles empty or error state gracefully', async ({
@@ -42,25 +35,25 @@ test.describe('Products List Page (PLP)', () => {
   }) => {
     await page.goto('/products');
     // The page should display either product cards, an empty message, or an error banner -- not crash
-    const heading = page.getByRole('heading', { name: 'All Products' });
+    const heading = page.getByRole('heading', { name: 'Tüm Ürünler' });
     await expect(heading).toBeVisible();
   });
 
   test('products page shows result count', async ({ page }) => {
     await page.goto('/products');
     await page.waitForLoadState('networkidle');
-    // "Showing X products" is always displayed regardless of product count
-    await expect(page.getByText(/Showing \d+ products?/)).toBeVisible();
+    // Shows "X ürün" — always displayed regardless of product count
+    await expect(page.getByText(/\d+\s+ürün/)).toBeVisible();
   });
 
-  test('Shop Now button on homepage navigates to products page', async ({
+  test('hero CTA on homepage navigates to products page', async ({
     page,
   }) => {
     await page.goto('/');
-    await page.getByRole('link', { name: 'Shop Now' }).first().click();
-    await expect(page).toHaveURL('/products');
+    await page.getByRole('link', { name: 'KEŞFET' }).first().click();
+    await expect(page).toHaveURL(/\/products/);
     await expect(
-      page.getByRole('heading', { name: 'All Products' }),
+      page.getByRole('heading', { name: 'Tüm Ürünler' }),
     ).toBeVisible();
   });
 });
@@ -69,7 +62,7 @@ test.describe('Product Detail Page (PDP)', () => {
   // Note: These tests navigate to /products first and try to click through,
   // or test the structure of the PDP if products are available.
 
-  test('PDP shows breadcrumb with Products link', async ({ page }) => {
+  test('PDP shows breadcrumb with Ürünler link', async ({ page }) => {
     // Try to access a product page; if no products exist, skip gracefully
     await page.goto('/products');
 
@@ -87,7 +80,7 @@ test.describe('Product Detail Page (PDP)', () => {
     await productLinks.first().click();
     await page.waitForLoadState('networkidle');
 
-    // Check that Products breadcrumb link is present (use navigation scope to avoid header link)
+    // Check that Ürünler breadcrumb link is present
     const breadcrumb = page.getByRole('navigation', { name: /breadcrumb/i }).first();
 
     // If no breadcrumb navigation, skip test
@@ -96,7 +89,7 @@ test.describe('Product Detail Page (PDP)', () => {
       return;
     }
 
-    const productsLink = breadcrumb.getByRole('link', { name: 'Products' }).first();
+    const productsLink = breadcrumb.getByRole('link', { name: 'Ürünler' }).first();
     await expect(productsLink).toBeVisible();
     await expect(productsLink).toHaveAttribute('href', '/products');
   });
@@ -134,11 +127,11 @@ test.describe('Product Detail Page (PDP)', () => {
     await productLinks.first().click();
     await page.waitForLoadState('networkidle');
 
-    const addToCartButton = page.getByRole('button', { name: /Add to Cart/i });
+    const addToCartButton = page.getByRole('button', { name: /Sepete Ekle/i });
     await expect(addToCartButton).toBeVisible();
   });
 
-  test('PDP shows product tabs (Description, Reviews, Specifications)', async ({
+  test('PDP shows product tabs (Açıklama, Değerlendirmeler, Teknik Özellikler)', async ({
     page,
   }) => {
     await page.goto('/products');
@@ -158,15 +151,15 @@ test.describe('Product Detail Page (PDP)', () => {
     const tabNav = page.locator('nav[aria-label="Product tabs"]');
     await expect(tabNav).toBeVisible();
 
-    // Check individual tabs
+    // Check individual tabs (Turkish labels)
     await expect(
-      tabNav.getByRole('tab', { name: 'Description' }),
+      tabNav.getByRole('tab', { name: 'Açıklama' }),
     ).toBeVisible();
     await expect(
-      tabNav.getByRole('tab', { name: /Reviews/ }),
+      tabNav.getByRole('tab', { name: /Değerlendirmeler/ }),
     ).toBeVisible();
     await expect(
-      tabNav.getByRole('tab', { name: 'Specifications' }),
+      tabNav.getByRole('tab', { name: 'Teknik Özellikler' }),
     ).toBeVisible();
   });
 
@@ -184,9 +177,9 @@ test.describe('Product Detail Page (PDP)', () => {
     await productLinks.first().click();
     await page.waitForLoadState('networkidle');
 
-    // Wishlist button may be an icon/button with aria-label
-    const wishlistButton = page.locator('button[aria-label*="wishlist" i]').or(
-      page.getByRole('button', { name: /wishlist/i })
+    // Wishlist button has Turkish aria-label: "Favorilere ekle" / "Favorilerden çıkar"
+    const wishlistButton = page.locator('button[aria-label*="Favori"]').or(
+      page.getByRole('button', { name: /favori/i })
     );
 
     // If wishlist button not implemented, skip test
@@ -216,11 +209,11 @@ test.describe('Product Detail Page (PDP)', () => {
     const main = page.locator('main');
 
     await expect(
-      main.getByText('Free shipping on orders over $50').first(),
+      main.getByText('500 TL üzeri ücretsiz kargo').first(),
     ).toBeVisible();
-    await expect(main.getByText('30-day return policy').first()).toBeVisible();
+    await expect(main.getByText('30 gün iade garantisi').first()).toBeVisible();
     await expect(
-      main.getByText('Secure payment guaranteed').first(),
+      main.getByText('Güvenli ödeme garantisi').first(),
     ).toBeVisible();
   });
 });

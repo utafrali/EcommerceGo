@@ -4,27 +4,27 @@ test.describe('Wishlist Page', () => {
   test('wishlist page is accessible at /wishlist', async ({ page }) => {
     await page.goto('/wishlist');
     await expect(
-      page.getByRole('heading', { name: 'My Wishlist' }),
+      page.getByRole('heading', { name: 'Favorilerim' }),
     ).toBeVisible();
   });
 
   test('unauthenticated user sees sign-in prompt', async ({ page }) => {
     await page.goto('/wishlist');
     await expect(
-      page.getByText('Sign in to view your wishlist'),
+      page.getByText('Favorilerinizi görüntülemek için giriş yapın'),
     ).toBeVisible();
-    // Scope to main content to avoid header's Sign In link
-    const signInLink = page.getByRole('main').getByRole('link', { name: 'Sign In' });
+    // Scope to main content to avoid header's sign-in link
+    const signInLink = page.getByRole('main').getByRole('link', { name: 'Giriş Yap' });
     await expect(signInLink).toBeVisible();
     await expect(signInLink).toHaveAttribute('href', '/auth/login');
   });
 
   test('wishlist sign-in link navigates to login page', async ({ page }) => {
     await page.goto('/wishlist');
-    await page.getByRole('main').getByRole('link', { name: 'Sign In' }).click();
+    await page.getByRole('main').getByRole('link', { name: 'Giriş Yap' }).click();
     await expect(page).toHaveURL('/auth/login');
     await expect(
-      page.getByRole('heading', { name: 'Sign in to EcommerceGo' }),
+      page.getByRole('heading', { name: "EcommerceGo'ya Giriş Yap" }),
     ).toBeVisible();
   });
 });
@@ -35,7 +35,7 @@ test.describe('Wishlist Button on Product Cards', () => {
 
     // Check if there are any product cards on the page
     const wishlistButtons = page.getByRole('button', {
-      name: 'Add to wishlist',
+      name: 'Favorilere ekle',
     });
     const productLinks = page.locator('a[href^="/products/"]');
     const productCount = await productLinks.count();
@@ -56,12 +56,12 @@ test.describe('Wishlist Link in Header', () => {
     await page.goto('/');
     const wishlistLink = page
       .locator('header')
-      .getByRole('link', { name: 'Wishlist' });
+      .getByRole('link', { name: 'Favoriler' });
     await expect(wishlistLink).toBeVisible();
     await wishlistLink.click();
     await expect(page).toHaveURL('/wishlist');
     await expect(
-      page.getByRole('heading', { name: 'My Wishlist' }),
+      page.getByRole('heading', { name: 'Favorilerim' }),
     ).toBeVisible();
   });
 });

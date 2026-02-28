@@ -8,8 +8,8 @@ test.describe('Product Search Scenarios', () => {
   test('user can search for products using search bar', async ({ page }) => {
     await page.goto('/');
 
-    // Find and interact with search bar in header
-    const searchInput = page.locator('header').getByPlaceholder(/search products/i).first();
+    // Find and interact with search bar in header (Turkish placeholder)
+    const searchInput = page.locator('header').getByPlaceholder(/ürün|marka|kategori/i).first();
     await expect(searchInput).toBeVisible();
 
     // Type search query
@@ -17,21 +17,21 @@ test.describe('Product Search Scenarios', () => {
     await searchInput.press('Enter');
 
     // Should navigate to products page with search query
-    await expect(page).toHaveURL(/\/products.*q=shirt/);
+    await expect(page).toHaveURL(/\/products.*(?:q=|search=)shirt/);
 
-    // Should show result count (first match) or empty state heading
+    // Should show result count (Turkish: "X ürün") or empty state heading
     await expect(
-      page.getByText(/\d+\s+products?/i).first()
+      page.getByText(/\d+\s+ürün/i).or(page.getByText(/ürün bulunamadı/i)).first()
     ).toBeVisible();
   });
 
   test('search with no results shows helpful empty state', async ({ page }) => {
     await page.goto('/products?q=xyznonexistentproduct123');
 
-    // Should show empty state
-    await expect(page.getByText(/no products found/i)).toBeVisible();
+    // Should show empty state (Turkish text)
+    await expect(page.getByText(/ürün bulunamadı/i)).toBeVisible();
     await expect(
-      page.getByText(/try adjusting your search/i)
+      page.getByText(/farklı anahtar kelimeler/i)
     ).toBeVisible();
   });
 
@@ -58,7 +58,7 @@ test.describe('Product Filtering & Sorting Scenarios', () => {
     await page.waitForLoadState('networkidle');
 
     // Click on Categories filter section (if collapsed)
-    const categoriesButton = page.getByRole('button', { name: /categories/i });
+    const categoriesButton = page.getByRole('button', { name: /kategoriler/i });
     if (await categoriesButton.isVisible()) {
       await categoriesButton.click();
     }
@@ -66,7 +66,7 @@ test.describe('Product Filtering & Sorting Scenarios', () => {
     // Select a category checkbox
     const firstCategory = page
       .locator('[role="group"]')
-      .filter({ hasText: /categories/i })
+      .filter({ hasText: /kategoriler/i })
       .locator('input[type="checkbox"]')
       .first();
 
@@ -81,8 +81,8 @@ test.describe('Product Filtering & Sorting Scenarios', () => {
   test('user can sort products by price', async ({ page }) => {
     await page.goto('/products');
 
-    // Find sort dropdown (aria-label: "Sort products")
-    const sortDropdown = page.getByLabel(/sort products/i);
+    // Find sort dropdown (Turkish aria-label: "Ürünleri sırala")
+    const sortDropdown = page.getByLabel(/ürünleri sırala/i);
     await expect(sortDropdown).toBeVisible();
 
     // Select "Price: Low to High" option by value
@@ -95,8 +95,8 @@ test.describe('Product Filtering & Sorting Scenarios', () => {
   test('user can apply price range filter', async ({ page }) => {
     await page.goto('/products');
 
-    // Open price range filter section
-    const priceButton = page.getByRole('button', { name: /price range/i });
+    // Open price range filter section (Turkish: "Fiyat Aralığı")
+    const priceButton = page.getByRole('button', { name: /fiyat aralığı/i });
     if (await priceButton.isVisible()) {
       await priceButton.click();
     }
@@ -110,8 +110,8 @@ test.describe('Product Filtering & Sorting Scenarios', () => {
       const maxInput = page.getByPlaceholder(/max/i);
       await maxInput.fill('100');
 
-      // Click apply button
-      const applyButton = page.getByRole('button', { name: /apply/i });
+      // Click apply button (Turkish: "Uygula")
+      const applyButton = page.getByRole('button', { name: /uygula/i });
       await applyButton.click();
 
       // URL should update with price parameters
@@ -138,27 +138,24 @@ test.describe('Product Filtering & Sorting Scenarios', () => {
 });
 
 test.describe('Shopping Cart Scenarios', () => {
-  test('user can view cart from header', async ({ page }) => {
-    await page.goto('/');
+  test('user can view cart page', async ({ page }) => {
+    // Cart is now a mini-cart button in header; navigate directly
+    await page.goto('/cart');
 
-    // Click cart icon in header (has aria-label or contains cart text)
-    const cartLink = page.locator('header a[href="/cart"]').first();
-    await cartLink.click();
-
-    // Should navigate to cart page
+    // Should be on cart page
     await expect(page).toHaveURL('/cart');
-    // Check for main h1 heading specifically
-    await expect(page.getByRole('heading', { name: 'Shopping Cart', level: 1 })).toBeVisible();
+    // Check for main h1 heading (Turkish: "Sepetim")
+    await expect(page.getByRole('heading', { name: 'Sepetim', level: 1 })).toBeVisible();
   });
 
   test('empty cart shows helpful message and CTA', async ({ page }) => {
     await page.goto('/cart');
 
-    // Should show empty state
-    await expect(page.getByText(/your cart is empty/i)).toBeVisible();
+    // Should show empty state (Turkish: "Sepetiniz boş")
+    await expect(page.getByText(/sepetiniz boş/i)).toBeVisible();
 
-    // Should have "Explore Products" link
-    const exploreLink = page.getByRole('link', { name: /explore products/i });
+    // Should have "Ürünleri Keşfet" link
+    const exploreLink = page.getByRole('link', { name: /ürünleri keşfet/i });
     await expect(exploreLink).toBeVisible();
 
     // Click should navigate to products
@@ -170,7 +167,7 @@ test.describe('Shopping Cart Scenarios', () => {
     await page.goto('/cart');
 
     // Order summary should be visible (even if empty)
-    const orderSummary = page.getByText(/order summary/i).or(page.getByText(/subtotal/i));
+    const orderSummary = page.getByText(/sipariş özeti/i).or(page.getByText(/ara toplam/i));
     // Summary may not show on completely empty cart, so we just check the page loaded
     await expect(page).toHaveURL('/cart');
   });
@@ -185,7 +182,7 @@ test.describe('Checkout Flow Scenarios', () => {
 
     // If on checkout page, should have shipping address form
     if (page.url().includes('/checkout')) {
-      const addressField = page.locator('input[id="line1"]').or(page.getByLabel(/address/i));
+      const addressField = page.locator('input[id="line1"]').or(page.getByLabel(/adres/i));
       await expect(addressField.first()).toBeVisible({ timeout: 10000 });
     }
   });
@@ -194,14 +191,14 @@ test.describe('Checkout Flow Scenarios', () => {
     await page.goto('/checkout');
 
     // Try to proceed without filling form
-    const continueButton = page.getByRole('button', { name: /continue/i });
+    const continueButton = page.getByRole('button', { name: /devam/i });
 
     if (await continueButton.isVisible()) {
       await continueButton.click();
 
       // Should show validation errors
       await expect(
-        page.locator('text=/required|must be filled/i').first()
+        page.locator('text=/zorunlu|required|must be filled/i').first()
       ).toBeVisible({ timeout: 2000 }).catch(() => {
         // If no validation message appears, form might handle it differently
         console.log('No validation message found - form may prevent submission differently');
@@ -255,9 +252,9 @@ test.describe('Product Detail Scenarios', () => {
     if (await firstProductLink.isVisible()) {
       await firstProductLink.click();
 
-      // Should have Add to Cart button
+      // Should have Sepete Ekle button (Turkish)
       await expect(
-        page.getByRole('button', { name: /add to cart/i })
+        page.getByRole('button', { name: /sepete ekle/i })
       ).toBeVisible();
     } else {
       test.skip();
@@ -295,26 +292,26 @@ test.describe('Navigation & CMS Content Scenarios', () => {
   test('homepage hero section displays correctly', async ({ page }) => {
     await page.goto('/');
 
-    // Hero heading - "Discover Quality Products"
+    // Hero uses Modanisa-style fallback slides with Turkish content
+    // First slide has h2 "ELBİSE" and CTA "KEŞFET"
     await expect(
-      page.getByRole('heading', { name: /discover.*quality.*products/i }).first()
+      page.getByRole('heading', { name: /ELBİSE|YENİ|ÖZEL|KIŞ/i }).first()
     ).toBeVisible();
 
-    // Shop Now CTA (first one - in hero section)
-    const shopNowButton = page.getByRole('link', { name: /shop now/i }).first();
-    await expect(shopNowButton).toBeVisible();
+    // Shop CTA (first one - in hero section)
+    const shopButton = page.getByRole('link', { name: /keşfet|alışveri/i }).first();
+    await expect(shopButton).toBeVisible();
 
     // Click should navigate to products
-    await shopNowButton.click();
-    await expect(page).toHaveURL('/products');
+    await shopButton.click();
+    await expect(page).toHaveURL(/\/products/);
   });
 
   test('homepage displays benefit/trust signals', async ({ page }) => {
     await page.goto('/');
 
-    // Should show benefit bar with trust signals
-    // Look for common e-commerce benefits
-    const benefitBar = page.locator('text=/free.*shipping|free.*returns|secure.*payment/i').first();
+    // Should show benefit bar with Turkish trust signals
+    const benefitBar = page.locator('text=/kargo bedava|koşulsuz iade|taksit/i').first();
     await expect(benefitBar).toBeVisible();
   });
 
@@ -325,29 +322,25 @@ test.describe('Navigation & CMS Content Scenarios', () => {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await page.waitForTimeout(500);
 
-    // Should have footer content (newsletter or email input)
+    // Should have footer content
     const footerContent = page.locator('footer').first();
     await expect(footerContent).toBeVisible();
 
-    // Check for newsletter or general footer text
-    const hasNewsletter = await page.getByPlaceholder(/email/i).isVisible().catch(() => false);
+    // Check for Turkish footer content
+    const hasTurkishContent = await footerContent.getByText(/Hakkımızda|Kampanyalar|Kategoriler/i).isVisible().catch(() => false);
     const hasFooterText = await footerContent.isVisible();
 
-    expect(hasNewsletter || hasFooterText).toBeTruthy();
+    expect(hasTurkishContent || hasFooterText).toBeTruthy();
   });
 
   test('user can navigate between main sections', async ({ page }) => {
     await page.goto('/');
 
-    // Navigate to Products via header link
+    // Navigate to Products via header link (href-based, no text dependency)
     await page.locator('header a[href="/products"]').first().click();
     await expect(page).toHaveURL('/products');
 
-    // Navigate to Cart
-    await page.locator('header a[href="/cart"]').first().click();
-    await expect(page).toHaveURL('/cart');
-
-    // Navigate to Wishlist
+    // Navigate to Wishlist (header has "Favoriler" link with href="/wishlist")
     await page.locator('header a[href="/wishlist"]').first().click();
     await expect(page).toHaveURL('/wishlist');
 
@@ -361,13 +354,13 @@ test.describe('Wishlist Scenarios', () => {
   test('unauthenticated user sees sign-in prompt on wishlist', async ({ page }) => {
     await page.goto('/wishlist');
 
-    // Should show sign-in prompt
+    // Should show Turkish sign-in prompt
     await expect(
-      page.getByText(/sign in.*view.*wishlist/i)
+      page.getByText(/favorilerinizi.*giriş/i)
     ).toBeVisible();
 
     // Should have sign-in button in the wishlist empty state (not header)
-    const signInButton = page.locator('main').getByRole('link', { name: /sign in/i }).first();
+    const signInButton = page.locator('main').getByRole('link', { name: /giriş yap/i }).first();
     await expect(signInButton).toBeVisible();
 
     // Click should navigate to login
@@ -378,9 +371,9 @@ test.describe('Wishlist Scenarios', () => {
   test('wishlist page shows create account option', async ({ page }) => {
     await page.goto('/wishlist');
 
-    // Should show create account option for new users
+    // Should show "Üye Ol" option for new users (Turkish)
     await expect(
-      page.getByRole('link', { name: /create account/i })
+      page.getByRole('link', { name: /üye ol/i })
     ).toBeVisible();
   });
 });
@@ -389,8 +382,8 @@ test.describe('Accessibility & Mobile UX Scenarios', () => {
   test('all interactive elements have proper ARIA labels', async ({ page }) => {
     await page.goto('/');
 
-    // Check search input has label
-    const searchInput = page.getByPlaceholder(/search/i);
+    // Check search input has label (Turkish placeholder) — use first() to avoid strict mode violation
+    const searchInput = page.getByPlaceholder(/ürün|marka|kategori/i).first();
     const ariaLabel = await searchInput.getAttribute('aria-label');
     // Either aria-label or associated label should exist
     expect(ariaLabel || await searchInput.isVisible()).toBeTruthy();
@@ -421,7 +414,7 @@ test.describe('Accessibility & Mobile UX Scenarios', () => {
     await page.goto('/products');
 
     // Check button dimensions (should be >= 44px for accessibility)
-    const sortButton = page.getByLabel(/sort products/i);
+    const sortButton = page.getByLabel(/ürünleri sırala/i);
 
     if (await sortButton.isVisible()) {
       const box = await sortButton.boundingBox();

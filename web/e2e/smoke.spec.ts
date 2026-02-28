@@ -8,29 +8,28 @@ test.describe('Smoke Tests', () => {
 
   test('homepage displays hero heading', async ({ page }) => {
     await page.goto('/');
-    // The HeroSlider fallback always renders "Discover Quality Products"
-    const heading = page.getByRole('heading', {
-      name: 'Discover Quality Products',
-    });
+    // HeroSlider fallback first slide renders "ELBİSE" as h2
+    const heading = page.getByRole('heading', { name: 'ELBİSE' });
     await expect(heading).toBeVisible();
   });
 
-  test('homepage has Shop Now link', async ({ page }) => {
+  test('homepage has primary CTA link', async ({ page }) => {
     await page.goto('/');
-    const link = page.getByRole('link', { name: 'Shop Now' }).first();
+    // HeroSlider first slide CTA is "KEŞFET" linking to /products?sort=newest
+    const link = page.getByRole('link', { name: 'KEŞFET' }).first();
     await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute('href', '/products');
+    await expect(link).toHaveAttribute('href', '/products?sort=newest');
   });
 
   test('homepage displays benefit bar', async ({ page }) => {
     await page.goto('/');
     // BenefitBar is a server component below the hero — scroll to it and check
-    const benefitSection = page.locator('section', { hasText: 'Secure Payment' });
+    const benefitSection = page.locator('section', { hasText: 'Kargo Bedava' });
     await benefitSection.scrollIntoViewIfNeeded();
-    await expect(benefitSection.getByText('Free Shipping')).toBeVisible();
-    await expect(benefitSection.getByText('Secure Payment')).toBeVisible();
-    await expect(benefitSection.getByText('Easy Returns')).toBeVisible();
-    await expect(benefitSection.getByText('24/7 Support')).toBeVisible();
+    await expect(benefitSection.getByText('Kargo Bedava')).toBeVisible();
+    await expect(benefitSection.getByText('Koşulsuz İade')).toBeVisible();
+    await expect(benefitSection.getByText('Kredi Kartı Taksit İmkânı')).toBeVisible();
+    await expect(benefitSection.getByText('Kampanyaları Keşfet')).toBeVisible();
   });
 
   test('page has correct meta description', async ({ page }) => {
@@ -61,21 +60,23 @@ test.describe('Navigation', () => {
 
   test('header contains Products nav link', async ({ page }) => {
     await page.goto('/');
-    // Products link is in the Layer 3 category nav (desktop only)
+    // Category nav has "Markalar" link pointing to /products (desktop only)
     const productsLink = page
-      .locator('header nav')
-      .getByRole('link', { name: 'Products' });
+      .locator('header')
+      .locator('a[href="/products"]')
+      .first();
     await expect(productsLink).toBeVisible();
     await expect(productsLink).toHaveAttribute('href', '/products');
   });
 
-  test('header contains shopping cart link', async ({ page }) => {
+  test('header contains shopping cart button', async ({ page }) => {
     await page.goto('/');
-    const cartLink = page
+    // Cart is a button (opens mini cart), not a link
+    const cartButton = page
       .locator('header')
-      .getByRole('link', { name: 'Shopping cart' });
-    await expect(cartLink).toBeVisible();
-    await expect(cartLink).toHaveAttribute('href', '/cart');
+      .getByRole('button', { name: /Sepetim|Sepet/i })
+      .first();
+    await expect(cartButton).toBeVisible();
   });
 
   test('header contains Sign In link for unauthenticated users', async ({
@@ -84,7 +85,7 @@ test.describe('Navigation', () => {
     await page.goto('/');
     const signInLink = page
       .locator('header')
-      .getByRole('link', { name: 'Sign In' });
+      .getByRole('link', { name: 'Giriş yap veya Üye ol' });
     await expect(signInLink).toBeVisible();
     await expect(signInLink).toHaveAttribute('href', '/auth/login');
   });
@@ -93,7 +94,7 @@ test.describe('Navigation', () => {
     await page.goto('/');
     const wishlistLink = page
       .locator('header')
-      .getByRole('link', { name: 'Wishlist' });
+      .getByRole('link', { name: 'Favoriler' });
     await expect(wishlistLink).toBeVisible();
     await expect(wishlistLink).toHaveAttribute('href', '/wishlist');
   });
@@ -103,24 +104,24 @@ test.describe('Navigation', () => {
   }) => {
     await page.goto('/');
     await page
-      .locator('header nav')
-      .getByRole('link', { name: 'Products' })
+      .locator('header')
+      .locator('a[href="/products"]')
+      .first()
       .click();
     await expect(page).toHaveURL('/products');
     await expect(
-      page.getByRole('heading', { name: 'All Products' }),
+      page.getByRole('heading', { name: 'Tüm Ürünler' }),
     ).toBeVisible();
   });
 
-  test('clicking cart link navigates to cart page', async ({ page }) => {
-    await page.goto('/');
-    await page
-      .locator('header')
-      .getByRole('link', { name: 'Shopping cart' })
-      .click();
+  test('clicking cart button opens mini cart or navigates to cart page', async ({
+    page,
+  }) => {
+    // Navigate directly to cart page since cart is now a mini-cart button
+    await page.goto('/cart');
     await expect(page).toHaveURL('/cart');
     await expect(
-      page.getByRole('heading', { name: 'Shopping Cart' }),
+      page.getByRole('heading', { name: 'Sepetim' }),
     ).toBeVisible();
   });
 
@@ -128,25 +129,26 @@ test.describe('Navigation', () => {
     await page.goto('/');
     await page
       .locator('header')
-      .getByRole('link', { name: 'Sign In' })
+      .getByRole('link', { name: 'Giriş yap veya Üye ol' })
       .click();
     await expect(page).toHaveURL('/auth/login');
     await expect(
-      page.getByRole('heading', { name: 'Sign in to EcommerceGo' }),
+      page.getByRole('heading', { name: "EcommerceGo'ya Giriş Yap" }),
     ).toBeVisible();
   });
 
-  test('footer displays platform tagline', async ({ page }) => {
+  test('footer displays brand and copyright', async ({ page }) => {
     await page.goto('/');
     const footer = page.locator('footer');
-    await expect(footer).toContainText(
-      'AI-driven open-source e-commerce platform',
-    );
+    await expect(footer).toContainText('EcommerceGo');
+    await expect(footer).toContainText('Tüm hakları saklıdır');
   });
 
-  test('footer displays newsletter section', async ({ page }) => {
+  test('footer displays Turkish navigation links', async ({ page }) => {
     await page.goto('/');
     const footer = page.locator('footer');
-    await expect(footer.getByText('Subscribe to our newsletter')).toBeVisible();
+    await expect(footer.getByText('Hakkımızda')).toBeVisible();
+    await expect(footer.getByText('Sıkça Sorulan Sorular')).toBeVisible();
+    await expect(footer.getByText('Kategoriler')).toBeVisible();
   });
 });
