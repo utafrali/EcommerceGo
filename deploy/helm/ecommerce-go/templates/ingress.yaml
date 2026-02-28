@@ -1,0 +1,86 @@
+{{/*
+ingress.yaml — Ingress resources for the API Gateway and Web storefront.
+Rendered only when ingress.enabled is true.
+*/}}
+{{- if .Values.ingress.enabled }}
+{{- $gatewaySvc := include "ecommerce-go.serviceName" (dict "root" . "name" "gateway") }}
+{{- $webSvc     := include "ecommerce-go.serviceName" (dict "root" . "name" "web") }}
+{{- $gatewayPort := (index .Values.services "gateway").service.port }}
+{{- $webPort     := (index .Values.services "web").service.port }}
+
+# ---------------------------------------------------------------------------
+# API Gateway ingress
+# ---------------------------------------------------------------------------
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ecommerce-go.fullname" . }}-gateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ecommerce-go.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway-ingress
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.gateway.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.gateway.hostname | quote }}
+      secretName: {{ .Values.ingress.gateway.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.gateway.hostname | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $gatewaySvc }}
+                port:
+                  number: {{ $gatewayPort }}
+
+# ---------------------------------------------------------------------------
+# Web storefront ingress
+# ---------------------------------------------------------------------------
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ecommerce-go.fullname" . }}-web
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ecommerce-go.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web-ingress
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.web.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.web.hostname | quote }}
+      secretName: {{ .Values.ingress.web.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.web.hostname | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $webSvc }}
+                port:
+                  number: {{ $webPort }}
+{{- end }}

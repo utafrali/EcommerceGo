@@ -1,0 +1,14 @@
+apiVersion: v2
+name: ecommerce-go
+description: EcommerceGo microservices platform — 12 Go services, BFF, Web storefront
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - ecommerce
+  - microservices
+  - go
+home: https://github.com/utafrali/EcommerceGo
+maintainers:
+  - name: EcommerceGo maintainers
+    url: https://github.com/utafrali/EcommerceGo

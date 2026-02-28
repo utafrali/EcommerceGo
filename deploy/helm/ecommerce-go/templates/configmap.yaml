@@ -1,0 +1,68 @@
+{{/*
+configmap.yaml — shared environment variables injected into every service pod.
+Service-specific env vars are defined in values.yaml under services.<name>.extraEnv
+and rendered directly in the Deployment template.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ecommerce-go.fullname" . }}-common-env
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ecommerce-go.labels" . | nindent 4 }}
+data:
+  # ------------------------------------------------------------------
+  # General
+  # ------------------------------------------------------------------
+  ENVIRONMENT: {{ .Values.env.ENVIRONMENT | quote }}
+  LOG_LEVEL: {{ .Values.env.LOG_LEVEL | quote }}
+
+  # ------------------------------------------------------------------
+  # PostgreSQL
+  # ------------------------------------------------------------------
+  POSTGRES_HOST: {{ .Values.postgresql.host | quote }}
+  POSTGRES_PORT: {{ .Values.postgresql.port | toString | quote }}
+  POSTGRES_USER: {{ .Values.postgresql.user | quote }}
+  POSTGRES_SSL_MODE: {{ .Values.postgresql.sslMode | quote }}
+
+  # Per-service database names
+  PRODUCT_DB_NAME: "product_db"
+  CART_DB_NAME: "cart_db"
+  ORDER_DB_NAME: "order_db"
+  CHECKOUT_DB_NAME: "checkout_db"
+  PAYMENT_DB_NAME: "payment_db"
+  USER_DB_NAME: "user_db"
+  INVENTORY_DB_NAME: "inventory_db"
+  CAMPAIGN_DB_NAME: "campaign_db"
+  NOTIFICATION_DB_NAME: "notification_db"
+  MEDIA_DB_NAME: "media_db"
+
+  # ------------------------------------------------------------------
+  # Redis
+  # ------------------------------------------------------------------
+  REDIS_HOST: {{ .Values.redis.host | quote }}
+  REDIS_PORT: {{ .Values.redis.port | toString | quote }}
+
+  # ------------------------------------------------------------------
+  # Kafka
+  # ------------------------------------------------------------------
+  KAFKA_BROKERS: {{ .Values.kafka.brokers | quote }}
+
+  # ------------------------------------------------------------------
+  # Elasticsearch
+  # ------------------------------------------------------------------
+  ELASTICSEARCH_URL: {{ .Values.elasticsearch.url | quote }}
+
+  # ------------------------------------------------------------------
+  # MinIO
+  # ------------------------------------------------------------------
+  MINIO_ENDPOINT: {{ .Values.minio.endpoint | quote }}
+  MINIO_BUCKET: {{ .Values.minio.bucket | quote }}
+  MINIO_USE_SSL: {{ .Values.minio.useSSL | toString | quote }}
+
+  # ------------------------------------------------------------------
+  # SMTP / Notification
+  # ------------------------------------------------------------------
+  SMTP_HOST: {{ .Values.smtp.host | quote }}
+  SMTP_PORT: {{ .Values.smtp.port | toString | quote }}
+  SMTP_FROM: {{ .Values.smtp.from | quote }}

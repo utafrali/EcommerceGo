@@ -1,0 +1,143 @@
+{{/*
+deployment.yaml — generic Deployment for every enabled service.
+Iterates over .Values.services and renders one Deployment per entry.
+*/}}
+{{- range $name, $service := .Values.services }}
+{{- if $service.enabled }}
+{{- $ctx := dict "Chart" $.Chart "Release" $.Release "Values" $.Values "component" $name }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ecommerce-go.serviceName" (dict "root" $ctx "name" $name) }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "ecommerce-go.labels" $ctx | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  replicas: {{ $service.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "ecommerce-go.name" $ctx }}
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+      app.kubernetes.io/component: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "ecommerce-go.name" $ctx }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+        app.kubernetes.io/component: {{ $name }}
+      annotations:
+        # Force pod restart when ConfigMap or Secret changes.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") $ | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") $ | sha256sum }}
+    spec:
+      {{- include "ecommerce-go.imagePullSecrets" $ | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: {{ $name }}
+          image: {{ include "ecommerce-go.image" (dict "global" $.Values.global "image" $service.image) }}
+          imagePullPolicy: {{ $service.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $service.service.port }}
+              protocol: TCP
+            {{- if gt (int $service.service.grpcPort) 0 }}
+            - name: grpc
+              containerPort: {{ $service.service.grpcPort }}
+              protocol: TCP
+            {{- end }}
+          env:
+            # ----------------------------------------------------------------
+            # Port env var (named <SERVICE>_HTTP_PORT or PORT for Node services)
+            # ----------------------------------------------------------------
+            {{- $upper := $name | upper }}
+            - name: {{ $upper }}_HTTP_PORT
+              value: {{ $service.service.port | toString | quote }}
+            {{- if gt (int $service.service.grpcPort) 0 }}
+            - name: {{ $upper }}_GRPC_PORT
+              value: {{ $service.service.grpcPort | toString | quote }}
+            {{- end }}
+            {{- if $service.dbName }}
+            - name: {{ $upper }}_DB_NAME
+              value: {{ $service.dbName | quote }}
+            {{- end }}
+            # ----------------------------------------------------------------
+            # Sensitive values from Secret
+            # ----------------------------------------------------------------
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ecommerce-go.fullname" $ctx }}-secrets
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ecommerce-go.fullname" $ctx }}-secrets
+                  key: JWT_SECRET
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ecommerce-go.fullname" $ctx }}-secrets
+                  key: REDIS_PASSWORD
+            {{- if eq $name "payment" }}
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ecommerce-go.fullname" $ctx }}-secrets
+                  key: STRIPE_SECRET_KEY
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ecommerce-go.fullname" $ctx }}-secrets
+                  key: STRIPE_WEBHOOK_SECRET
+            {{- end }}
+            {{- if eq $name "media" }}
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ecommerce-go.fullname" $ctx }}-secrets
+                  key: MINIO_ACCESS_KEY
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ecommerce-go.fullname" $ctx }}-secrets
+                  key: MINIO_SECRET_KEY
+            {{- end }}
+            {{- if eq $name "notification" }}
+            - name: SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ecommerce-go.fullname" $ctx }}-secrets
+                  key: SMTP_USERNAME
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ecommerce-go.fullname" $ctx }}-secrets
+                  key: SMTP_PASSWORD
+            {{- end }}
+            # ----------------------------------------------------------------
+            # Service-specific extra env vars (from values.yaml extraEnv)
+            # ----------------------------------------------------------------
+            {{- range $k, $v := $service.extraEnv }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "ecommerce-go.fullname" $ctx }}-common-env
+          resources:
+            {{- include "ecommerce-go.resources" (dict "default" $.Values.defaultResources "override" $service.resources) | nindent 12 }}
+          {{- include "ecommerce-go.probes" (dict "default" $.Values.defaultProbes "override" $service.probes) | nindent 10 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+      terminationGracePeriodSeconds: 30
+{{- end }}
+{{- end }}

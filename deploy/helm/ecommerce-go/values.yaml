@@ -1,0 +1,454 @@
+# =============================================================================
+# values.yaml — EcommerceGo Helm Chart default values
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Global settings
+# ---------------------------------------------------------------------------
+global:
+  imageRegistry: ""          # e.g. "ghcr.io/utafrali" — prefix applied to all images
+  imagePullSecrets: []       # e.g. ["regcred"]
+  nameOverride: ""
+  fullnameOverride: ""
+
+# ---------------------------------------------------------------------------
+# Secrets (base64-encoded values — override in production!)
+# Use external secret managers for real deployments.
+# ---------------------------------------------------------------------------
+secrets:
+  # base64("ecommerce_secret")
+  postgresPassword: "ZWNvbW1lcmNlX3NlY3JldA=="
+  # base64("change-this-to-a-secure-secret-in-production")
+  jwtSecret: "Y2hhbmdlLXRoaXMtdG8tYS1zZWN1cmUtc2VjcmV0LWluLXByb2R1Y3Rpb24="
+  redisPassword: ""
+  # base64("sk_test_xxx")
+  stripeSecretKey: "c2tfdGVzdF94eHg="
+  # base64("whsec_xxx")
+  stripeWebhookSecret: "d2hzZWNfeHh4"
+  # base64("minioadmin")
+  minioAccessKey: "bWluaW9hZG1pbg=="
+  minioSecretKey: "bWluaW9hZG1pbg=="
+  smtpUsername: ""
+  smtpPassword: ""
+
+# ---------------------------------------------------------------------------
+# Common environment variables injected into every service via ConfigMap
+# ---------------------------------------------------------------------------
+env:
+  ENVIRONMENT: production
+  LOG_LEVEL: info
+
+# ---------------------------------------------------------------------------
+# Infrastructure connection settings
+# ---------------------------------------------------------------------------
+postgresql:
+  host: postgres
+  port: 5432
+  user: ecommerce
+  # password is stored in the Secret (see secret.yaml)
+  sslMode: disable
+
+redis:
+  host: redis
+  port: 6379
+  # password is stored in the Secret (see secret.yaml)
+
+kafka:
+  brokers: "kafka:9092"
+
+elasticsearch:
+  url: "http://elasticsearch:9200"
+
+minio:
+  endpoint: "minio:9000"
+  bucket: ecommerce-media
+  useSSL: false
+  # accessKey and secretKey are stored in the Secret (see secret.yaml)
+
+smtp:
+  host: mailhog
+  port: 1025
+  from: noreply@ecommercego.dev
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+    # kubernetes.io/tls-acme: "true"
+  # API Gateway ingress
+  gateway:
+    hostname: api.ecommercego.example.com
+    tls:
+      enabled: false
+      secretName: gateway-tls
+  # Web storefront ingress
+  web:
+    hostname: ecommercego.example.com
+    tls:
+      enabled: false
+      secretName: web-tls
+
+# ---------------------------------------------------------------------------
+# Default resource limits (overrideable per service)
+# ---------------------------------------------------------------------------
+defaultResources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# Default probe settings
+# ---------------------------------------------------------------------------
+defaultProbes:
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# ---------------------------------------------------------------------------
+# Services
+# Each entry is keyed by its short name.
+# Fields:
+#   enabled         — deploy this service (bool)
+#   replicaCount    — number of pod replicas
+#   image.repository — image name (without registry prefix)
+#   image.tag        — image tag
+#   image.pullPolicy — Always | IfNotPresent | Never
+#   service.port     — HTTP port exposed inside the cluster
+#   service.grpcPort — gRPC port (0 = not applicable)
+#   dbName           — per-service PostgreSQL database name ("" = no DB)
+#   resources        — override defaultResources for this service
+#   extraEnv         — additional env vars specific to this service
+#   probes           — override defaultProbes for this service
+# ---------------------------------------------------------------------------
+services:
+
+  # --------------------------------------------------------------------------
+  # product  --  HTTP 8001 / gRPC 9001
+  # --------------------------------------------------------------------------
+  product:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: ecommerce-go/product
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 8001
+      grpcPort: 9001
+    dbName: product_db
+    resources: {}
+    extraEnv: {}
+    probes: {}
+
+  # --------------------------------------------------------------------------
+  # cart  --  HTTP 8002 / gRPC 9002
+  # --------------------------------------------------------------------------
+  cart:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: ecommerce-go/cart
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 8002
+      grpcPort: 9002
+    dbName: cart_db
+    resources: {}
+    extraEnv:
+      REDIS_ADDR: "redis:6379"
+    probes: {}
+
+  # --------------------------------------------------------------------------
+  # order  --  HTTP 8003 / gRPC 9003
+  # --------------------------------------------------------------------------
+  order:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: ecommerce-go/order
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 8003
+      grpcPort: 9003
+    dbName: order_db
+    resources: {}
+    extraEnv: {}
+    probes: {}
+
+  # --------------------------------------------------------------------------
+  # checkout  --  HTTP 8004
+  # --------------------------------------------------------------------------
+  checkout:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: ecommerce-go/checkout
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 8004
+      grpcPort: 0
+    dbName: checkout_db
+    resources: {}
+    extraEnv: {}
+    probes: {}
+
+  # --------------------------------------------------------------------------
+  # payment  --  HTTP 8005 / gRPC 9005
+  # --------------------------------------------------------------------------
+  payment:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: ecommerce-go/payment
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 8005
+      grpcPort: 9005
+    dbName: payment_db
+    resources: {}
+    extraEnv:
+      PAYMENT_GATEWAY: mock
+    probes: {}
+
+  # --------------------------------------------------------------------------
+  # user  --  HTTP 8006 / gRPC 9006
+  # --------------------------------------------------------------------------
+  user:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: ecommerce-go/user
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 8006
+      grpcPort: 9006
+    dbName: user_db
+    resources: {}
+    extraEnv:
+      JWT_ACCESS_TOKEN_EXPIRY: 15m
+      JWT_REFRESH_TOKEN_EXPIRY: 168h
+    probes: {}
+
+  # --------------------------------------------------------------------------
+  # inventory  --  HTTP 8007 / gRPC 9007
+  # --------------------------------------------------------------------------
+  inventory:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: ecommerce-go/inventory
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 8007
+      grpcPort: 9007
+    dbName: inventory_db
+    resources: {}
+    extraEnv: {}
+    probes: {}
+
+  # --------------------------------------------------------------------------
+  # campaign  --  HTTP 8008 / gRPC 9008
+  # --------------------------------------------------------------------------
+  campaign:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: ecommerce-go/campaign
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 8008
+      grpcPort: 9008
+    dbName: campaign_db
+    resources: {}
+    extraEnv: {}
+    probes: {}
+
+  # --------------------------------------------------------------------------
+  # notification  --  HTTP 8009
+  # --------------------------------------------------------------------------
+  notification:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: ecommerce-go/notification
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 8009
+      grpcPort: 0
+    dbName: notification_db
+    resources: {}
+    extraEnv: {}
+    probes: {}
+
+  # --------------------------------------------------------------------------
+  # search  --  HTTP 8010
+  # --------------------------------------------------------------------------
+  search:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: ecommerce-go/search
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 8010
+      grpcPort: 0
+    dbName: ""
+    resources: {}
+    extraEnv:
+      SEARCH_ENGINE: elasticsearch
+      PRODUCT_SERVICE_URL: "http://gateway:8080"
+    probes: {}
+
+  # --------------------------------------------------------------------------
+  # media  --  HTTP 8011
+  # --------------------------------------------------------------------------
+  media:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: ecommerce-go/media
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 8011
+      grpcPort: 0
+    dbName: media_db
+    resources: {}
+    extraEnv: {}
+    probes: {}
+
+  # --------------------------------------------------------------------------
+  # gateway  --  HTTP 8080
+  # --------------------------------------------------------------------------
+  gateway:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: ecommerce-go/gateway
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 8080
+      grpcPort: 0
+    dbName: ""
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+    extraEnv:
+      PRODUCT_SERVICE_URL: "http://product:8001"
+      CART_SERVICE_URL: "http://cart:8002"
+      ORDER_SERVICE_URL: "http://order:8003"
+      CHECKOUT_SERVICE_URL: "http://checkout:8004"
+      PAYMENT_SERVICE_URL: "http://payment:8005"
+      USER_SERVICE_URL: "http://user:8006"
+      INVENTORY_SERVICE_URL: "http://inventory:8007"
+      CAMPAIGN_SERVICE_URL: "http://campaign:8008"
+      NOTIFICATION_SERVICE_URL: "http://notification:8009"
+      SEARCH_SERVICE_URL: "http://search:8010"
+      MEDIA_SERVICE_URL: "http://media:8011"
+    probes: {}
+
+  # --------------------------------------------------------------------------
+  # bff  --  Node/TypeScript  HTTP 3001
+  # --------------------------------------------------------------------------
+  bff:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: ecommerce-go/bff
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 3001
+      grpcPort: 0
+    dbName: ""
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    extraEnv:
+      NODE_ENV: production
+      GATEWAY_URL: "http://gateway:8080"
+    probes:
+      liveness:
+        path: /health
+        initialDelaySeconds: 15
+        periodSeconds: 20
+        timeoutSeconds: 5
+        failureThreshold: 3
+      readiness:
+        path: /health
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 3
+        failureThreshold: 3
+
+  # --------------------------------------------------------------------------
+  # web  --  Next.js storefront  HTTP 3000
+  # --------------------------------------------------------------------------
+  web:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: ecommerce-go/web
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      port: 3000
+      grpcPort: 0
+    dbName: ""
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+    extraEnv:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: "http://localhost:8080"
+      NEXT_PUBLIC_BFF_URL: "http://localhost:3001"
+    probes:
+      liveness:
+        path: /api/health
+        initialDelaySeconds: 20
+        periodSeconds: 20
+        timeoutSeconds: 5
+        failureThreshold: 3
+      readiness:
+        path: /api/health
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 3
+        failureThreshold: 3

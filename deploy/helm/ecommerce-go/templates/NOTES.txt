@@ -1,0 +1,84 @@
+EcommerceGo has been deployed successfully!
+
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+Chart version: {{ .Chart.Version }}
+App version: {{ .Chart.AppVersion }}
+
+=============================================================================
+ENABLED SERVICES
+=============================================================================
+{{- range $name, $svc := .Values.services }}
+{{- if $svc.enabled }}
+  {{ printf "%-16s" $name }} HTTP :{{ $svc.service.port }}{{- if gt (int $svc.service.grpcPort) 0 }}  gRPC :{{ $svc.service.grpcPort }}{{- end }}
+{{- end }}
+{{- end }}
+
+=============================================================================
+QUICK START
+=============================================================================
+
+1. Verify all pods are running:
+
+   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+2. Check service endpoints:
+
+   kubectl get svc -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+3. Forward the API Gateway to localhost for testing:
+
+   kubectl port-forward -n {{ .Release.Namespace }} \
+     svc/{{ include "ecommerce-go.fullname" . }}-gateway 8080:8080
+
+   Then visit: http://localhost:8080/healthz
+
+4. Forward the Web storefront:
+
+   kubectl port-forward -n {{ .Release.Namespace }} \
+     svc/{{ include "ecommerce-go.fullname" . }}-web 3000:3000
+
+   Then visit: http://localhost:3000
+
+=============================================================================
+INGRESS
+=============================================================================
+{{- if .Values.ingress.enabled }}
+  API Gateway : {{ if .Values.ingress.gateway.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.ingress.gateway.hostname }}
+  Web         : {{ if .Values.ingress.web.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.ingress.web.hostname }}
+{{- else }}
+  Ingress is DISABLED. Enable it by setting:
+
+    helm upgrade {{ .Release.Name }} ./ecommerce-go \
+      --set ingress.enabled=true \
+      --set ingress.gateway.hostname=api.yourdomain.com \
+      --set ingress.web.hostname=yourdomain.com
+{{- end }}
+
+=============================================================================
+PRODUCTION CHECKLIST
+=============================================================================
+  - Replace placeholder secrets:
+      helm upgrade {{ .Release.Name }} ./ecommerce-go \
+        --set secrets.postgresPassword=$(echo -n 'REAL_PW' | base64) \
+        --set secrets.jwtSecret=$(echo -n 'REAL_JWT_SECRET' | base64)
+
+  - Set your image registry:
+      --set global.imageRegistry=ghcr.io/utafrali
+
+  - Set a real image tag (never use 'latest' in production):
+      --set services.product.image.tag=v1.2.3
+
+  - Enable TLS on ingress:
+      --set ingress.enabled=true
+      --set ingress.gateway.tls.enabled=true
+      --set ingress.gateway.tls.secretName=gateway-tls
+
+  - Consider using an external secret manager (Vault, External Secrets Operator)
+    instead of the bundled Secret resource.
+
+=============================================================================
+DOCUMENTATION
+=============================================================================
+  Repository : https://github.com/utafrali/EcommerceGo
+  Helm chart : deploy/helm/ecommerce-go/
