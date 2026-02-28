@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -99,6 +99,8 @@ export function MobileDrawer({ isOpen, onClose, categories }: MobileDrawerProps)
   const { user, isAuthenticated } = useAuth();
   const { itemCount } = useCart();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   // Lock body scroll when drawer is open
   useEffect(() => {
@@ -110,6 +112,22 @@ export function MobileDrawer({ isOpen, onClose, categories }: MobileDrawerProps)
     return () => {
       document.body.style.overflow = '';
     };
+  }, [isOpen]);
+
+  // Focus management
+  useEffect(() => {
+    if (isOpen) {
+      // Store current focus
+      previousFocusRef.current = document.activeElement as HTMLElement;
+      // Focus first focusable element in drawer
+      const firstFocusable = drawerRef.current?.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      firstFocusable?.focus();
+    } else {
+      // Return focus to trigger element
+      previousFocusRef.current?.focus();
+    }
   }, [isOpen]);
 
   // Close on Escape
@@ -147,7 +165,10 @@ export function MobileDrawer({ isOpen, onClose, categories }: MobileDrawerProps)
       />
 
       {/* Panel */}
-      <div className="absolute inset-y-0 left-0 w-80 max-w-[80vw] bg-white shadow-xl animate-slide-in-left">
+      <div
+        ref={drawerRef}
+        className="absolute inset-y-0 left-0 w-80 max-w-[80vw] bg-white shadow-xl animate-slide-in-left"
+      >
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-stone-200 px-4 py-4">
@@ -156,7 +177,7 @@ export function MobileDrawer({ isOpen, onClose, categories }: MobileDrawerProps)
               className="text-lg font-bold text-stone-900"
               onClick={onClose}
             >
-              EcommerceGo
+              Ecommerce<span className="text-brand">Go</span>
             </Link>
             <button
               type="button"
@@ -317,16 +338,27 @@ export function MobileDrawer({ isOpen, onClose, categories }: MobileDrawerProps)
           {/* Bottom: Auth section */}
           <div className="border-t border-stone-200 px-4 py-4">
             {isAuthenticated && user ? (
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/10">
-                  <UserIcon className="h-5 w-5 text-brand" />
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/10">
+                    <UserIcon className="h-5 w-5 text-brand" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-stone-900">
+                      {user.first_name} {user.last_name}
+                    </p>
+                    <p className="truncate text-xs text-stone-500">{user.email}</p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-stone-900">
-                    {user.first_name} {user.last_name}
-                  </p>
-                  <p className="truncate text-xs text-stone-500">{user.email}</p>
-                </div>
+                <button
+                  onClick={() => {
+                    // TODO: Implement signOut from AuthContext
+                    window.location.href = '/auth/login';
+                  }}
+                  className="w-full rounded-lg border border-stone-300 px-4 py-2 text-center text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+                >
+                  Sign Out
+                </button>
               </div>
             ) : (
               <div className="flex gap-3">

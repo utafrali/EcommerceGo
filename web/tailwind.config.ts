@@ -39,6 +39,10 @@ const config: Config = {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
+        fadeInSlow: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
@@ -51,13 +55,19 @@ const config: Config = {
           '0%': { opacity: '0', transform: 'translateX(100%)' },
           '100%': { opacity: '1', transform: 'translateX(0)' },
         },
+        underlineExpand: {
+          '0%': { transform: 'scaleX(0)' },
+          '100%': { transform: 'scaleX(1)' },
+        },
       },
       animation: {
         shimmer: 'shimmer 3s ease-in-out infinite',
         'fade-in': 'fadeIn 200ms ease-out',
+        'fade-in-slow': 'fadeInSlow 800ms ease-out',
         'slide-up': 'slideUp 250ms ease-out',
         'slide-in-left': 'slideInLeft 300ms ease-out',
         'slide-in-right': 'slideInRight 300ms ease-out',
+        'underline-expand': 'underlineExpand 300ms ease-out',
       },
     },
   },
