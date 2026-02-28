@@ -51,7 +51,7 @@ function Chip({
       <button
         type="button"
         onClick={onRemove}
-        aria-label={`Remove filter: ${label}`}
+        aria-label={`Filtreyi kaldır: ${label}`}
         className="rounded-full text-stone-400 transition-colors hover:text-stone-700"
       >
         <RemoveIcon />
@@ -86,9 +86,9 @@ export function ActiveFilterChips({
     if (min !== undefined && max !== undefined) {
       priceLabel = `${formatPrice(min)} - ${formatPrice(max)}`;
     } else if (min !== undefined) {
-      priceLabel = `From ${formatPrice(min)}`;
+      priceLabel = `${formatPrice(min)} ve üzeri`;
     } else if (max !== undefined) {
-      priceLabel = `Up to ${formatPrice(max)}`;
+      priceLabel = `${formatPrice(max)} ve altı`;
     }
   }
 
@@ -134,7 +134,7 @@ export function ActiveFilterChips({
         onClick={onClearAll}
         className="shrink-0 text-sm font-medium text-brand underline decoration-brand/30 underline-offset-2 transition-colors hover:text-brand-light hover:decoration-brand"
       >
-        Clear All
+        Tümünü Temizle
       </button>
     </div>
   );

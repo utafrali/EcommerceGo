@@ -9,8 +9,8 @@ import { ProductListClient } from './ProductListClient';
 // ─── Metadata ────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = {
-  title: 'Products | EcommerceGo',
-  description: 'Browse our full catalog of products.',
+  title: 'Ürünler | EcommerceGo',
+  description: 'Tüm ürün kataloğumuza göz atın.',
 };
 
 // ─── Helper: parse a single string from searchParams ─────────────────────────
@@ -121,7 +121,7 @@ export default async function ProductsPage({
               href="/"
               className="transition-colors hover:text-brand"
             >
-              Home
+              Ana Sayfa
             </Link>
           </li>
           <li aria-hidden="true">
@@ -140,14 +140,14 @@ export default async function ProductsPage({
             </svg>
           </li>
           <li>
-            <span className="font-medium text-stone-900">Products</span>
+            <span className="font-medium text-stone-900">Ürünler</span>
           </li>
         </ol>
       </nav>
 
       {/* ── Page Title ──────────────────────────────────────────────────── */}
       <h1 className="mb-8 text-3xl font-bold tracking-tight text-stone-900">
-        {searchQuery ? `Results for "${searchQuery}"` : 'All Products'}
+        {searchQuery ? `"${searchQuery}" için sonuçlar` : 'Tüm Ürünler'}
       </h1>
 
       {/* ── Error Banner ────────────────────────────────────────────────── */}
@@ -170,8 +170,8 @@ export default async function ProductsPage({
               <line x1={12} y1={17} x2={12.01} y2={17} />
             </svg>
             <p className="text-sm text-amber-800">
-              Some data could not be loaded. You may see incomplete results.
-              Please try refreshing the page.
+              Bazı veriler yüklenemedi. Eksik sonuçlar görebilirsiniz.
+              Lütfen sayfayı yenilemeyi deneyin.
             </p>
           </div>
         </div>

@@ -247,10 +247,10 @@ export function FilterSidebar({
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-stone-900">Filters</h2>
+          <h2 className="text-base font-semibold text-stone-900">Filtreler</h2>
           {totalResults !== undefined && (
             <p className="text-xs text-stone-500">
-              {totalResults.toLocaleString()} result{totalResults !== 1 ? 's' : ''}
+              {totalResults.toLocaleString()} sonuç
             </p>
           )}
         </div>
@@ -260,7 +260,7 @@ export function FilterSidebar({
             onClick={handleClearAll}
             className="text-sm font-medium text-brand underline decoration-brand/30 underline-offset-2 transition-colors hover:text-brand-light hover:decoration-brand"
           >
-            Clear All
+            Tümünü Temizle
           </button>
         )}
       </div>
@@ -268,7 +268,7 @@ export function FilterSidebar({
       {/* ── Categories Section ──────────────────────────────────────────── */}
       {categories.length > 0 && (
         <FilterSection
-          title="Categories"
+          title="Kategoriler"
           activeCount={filters.categoryIds.length}
           defaultOpen
         >
@@ -288,7 +288,7 @@ export function FilterSidebar({
       {/* ── Brands Section ──────────────────────────────────────────────── */}
       {brands.length > 0 && (
         <FilterSection
-          title="Brands"
+          title="Markalar"
           activeCount={filters.brandIds.length}
           defaultOpen
         >
@@ -310,7 +310,7 @@ export function FilterSidebar({
             </svg>
             <input
               type="text"
-              placeholder="Search brands..."
+              placeholder="Marka ara..."
               value={brandSearch}
               onChange={(e) => setBrandSearch(e.target.value)}
               className="w-full rounded-md border border-stone-200 py-1.5 pl-8 pr-3 text-sm text-stone-700 placeholder:text-stone-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
@@ -346,7 +346,7 @@ export function FilterSidebar({
             })}
             {filteredBrands.length === 0 && (
               <p className="py-2 text-center text-xs text-stone-400">
-                No brands found
+                Marka bulunamadı
               </p>
             )}
           </div>
@@ -355,7 +355,7 @@ export function FilterSidebar({
 
       {/* ── Price Range Section ──────────────────────────────────────────── */}
       <FilterSection
-        title="Price Range"
+        title="Fiyat Aralığı"
         activeCount={
           (filters.minPrice !== undefined ? 1 : 0) +
           (filters.maxPrice !== undefined ? 1 : 0)
@@ -398,7 +398,7 @@ export function FilterSidebar({
           onClick={handlePriceApply}
           className="mt-3 w-full rounded-md bg-stone-100 px-3 py-1.5 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-200"
         >
-          Apply
+          Uygula
         </button>
       </FilterSection>
     </aside>
