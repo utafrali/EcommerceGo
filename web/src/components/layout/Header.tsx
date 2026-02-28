@@ -278,9 +278,10 @@ export default function Header() {
             {/* Mobile: Hamburger */}
             <button
               type="button"
-              className="rounded-lg p-2 text-stone-600 hover:bg-stone-50 transition-colors md:hidden"
+              className={`rounded-lg p-2 text-stone-600 hover:bg-stone-50 transition-colors md:hidden ${mobileDrawerOpen ? 'bg-stone-100' : ''}`}
               onClick={() => setMobileDrawerOpen(true)}
               aria-label="Open menu"
+              aria-expanded={mobileDrawerOpen}
             >
               <MenuIcon className="h-6 w-6" />
             </button>
@@ -409,11 +410,11 @@ export default function Header() {
               <Link
                 href="/cart"
                 className="relative rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200"
-                aria-label="Shopping cart"
+                aria-label={itemCount > 0 ? `Shopping cart with ${itemCount} item${itemCount > 1 ? 's' : ''}` : "Shopping cart"}
               >
                 <ShoppingBagIcon className="h-6 w-6" />
                 {itemCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white">
+                  <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white" aria-hidden="true">
                     {itemCount > 99 ? '99+' : itemCount}
                   </span>
                 )}

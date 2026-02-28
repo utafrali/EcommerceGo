@@ -181,7 +181,7 @@ export function SearchBar({
       {showSuggestions && suggestions.length > 0 && (
         <div
           id="search-suggestions"
-          className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-stone-200 bg-white shadow-lg"
+          className="absolute z-[51] mt-1 w-full overflow-hidden rounded-lg border border-stone-200 bg-white shadow-lg"
         >
           <ul role="listbox" className="py-1">
             {suggestions.map((suggestion, index) => (
