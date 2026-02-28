@@ -13,7 +13,7 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${E2E_PORT}`,
     headless: false,
-    slowMo: 500, // Slow down actions by 500ms for visibility
+    // slowMo: 500, // Commented out - causes TypeScript error (not in official types)
     screenshot: 'only-on-failure',
   },
   workers: 1, // Run tests serially so you can watch

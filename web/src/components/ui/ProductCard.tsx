@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/types';
 import { formatPrice, getProductImageUrl } from '@/lib/utils';
 import { RatingStars } from './RatingStars';
+import { useWishlist } from '@/contexts/WishlistContext';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -43,7 +43,8 @@ const COLOR_SWATCHES = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function ProductCard({ product }: ProductCardProps) {
-  const [wishlisted, setWishlisted] = useState(false);
+  const { toggle, isInWishlist } = useWishlist();
+  const wishlisted = isInWishlist(product.id);
 
   const imageUrl = getProductImageUrl(product);
   const imageAlt =
@@ -106,7 +107,7 @@ export function ProductCard({ product }: ProductCardProps) {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            setWishlisted((prev) => !prev);
+            toggle(product.id);
           }}
           className={`absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full backdrop-blur-sm transition-colors duration-200 ${
             wishlisted
