@@ -271,7 +271,7 @@ export function ProductListClient({
       <div className="mb-4">
         <SearchBar
           defaultValue={searchQuery}
-          placeholder="Search products..."
+          placeholder="Ürün ara..."
           onSearch={handleSearch}
         />
       </div>
@@ -288,9 +288,8 @@ export function ProductListClient({
       {/* ── Result Count + Sort Row ─────────────────────────────────── */}
       <div className="mb-6 flex items-center justify-between gap-4">
         <p className="text-sm text-stone-600">
-          Showing{' '}
           <span className="font-semibold text-stone-900">{totalCount}</span>{' '}
-          {totalCount === 1 ? 'product' : 'products'}
+          ürün gösteriliyor
         </p>
 
         <div className="flex items-center gap-3">
@@ -299,7 +298,7 @@ export function ProductListClient({
             value={selectedSort}
             onChange={handleSortChange}
             className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-700 transition-colors focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-            aria-label="Sort products"
+            aria-label="Ürünleri sırala"
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -316,7 +315,7 @@ export function ProductListClient({
               'flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 lg:hidden',
               'transition-colors hover:bg-stone-50',
             )}
-            aria-label="Open filters"
+            aria-label="Filtreleri aç"
           >
             <svg
               width={16}
@@ -330,7 +329,7 @@ export function ProductListClient({
             >
               <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
             </svg>
-            Filters
+            Filtreler
             {activeFilterCount > 0 && (
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand text-xs text-white">
                 {activeFilterCount}
@@ -364,13 +363,13 @@ export function ProductListClient({
             <div className="fixed inset-y-0 left-0 z-50 flex w-80 max-w-[85vw] animate-slide-in-left flex-col bg-white shadow-2xl">
               <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
                 <h2 className="text-lg font-semibold text-stone-900">
-                  Filters
+                  Filtreler
                 </h2>
                 <button
                   type="button"
                   onClick={() => setMobileFilterOpen(false)}
                   className="rounded-md p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
-                  aria-label="Close filters"
+                  aria-label="Filtreleri kapat"
                 >
                   <svg
                     width={20}
@@ -414,12 +413,12 @@ export function ProductListClient({
             <EmptyState
               icon={<SearchIcon className="text-stone-400" />}
               iconBgClass="bg-stone-100"
-              heading="No products found"
-              message="Try adjusting your search or filters to find what you're looking for. Check spelling or use different keywords."
+              heading="Ürün bulunamadı"
+              message="Ürün bulmak için arama veya filtrelerinizi ayarlamayı deneyin. Yazımı kontrol edin veya farklı anahtar kelimeler kullanın."
               primaryAction={
                 activeFilterCount > 0
                   ? {
-                      label: 'Clear All Filters',
+                      label: 'Tüm Filtreleri Temizle',
                       onClick: handleClearAll,
                     }
                   : undefined

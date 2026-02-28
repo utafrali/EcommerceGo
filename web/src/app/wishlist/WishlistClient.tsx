@@ -74,14 +74,14 @@ export function WishlistClient() {
       <EmptyState
         icon={<HeartIcon className="text-brand" />}
         iconBgClass="bg-brand/10"
-        heading="Sign in to view your wishlist"
-        message="Save your favorite products and access them anytime. Sign in to start building your personal collection."
+        heading="Favorilerinizi görüntülemek için giriş yapın"
+        message="En sevdiğiniz ürünleri kaydedin ve istediğiniz zaman erişin. Kişisel koleksiyonunuzu oluşturmaya başlayın."
         primaryAction={{
-          label: 'Sign In',
+          label: 'Giriş Yap',
           href: '/auth/login',
         }}
         secondaryAction={{
-          label: 'Create Account',
+          label: 'Üye Ol',
           href: '/auth/register',
         }}
       />
@@ -101,10 +101,10 @@ export function WishlistClient() {
       <EmptyState
         icon={<HeartIcon className="text-brand" />}
         iconBgClass="bg-brand/10"
-        heading="Your wishlist is empty"
-        message="Discover products you'll love and save them here. Start exploring our curated collection today!"
+        heading="Favori listeniz boş"
+        message="Sevebileceğiniz ürünleri keşfedin ve buraya kaydedin. Özenle hazırlanmış koleksiyonumuzu bugün inceleyin!"
         primaryAction={{
-          label: 'Explore Products',
+          label: 'Ürünleri Keşfet',
           href: '/products',
         }}
       />

@@ -41,7 +41,7 @@ export default function OrdersPage() {
         setTotalPages(response.total_pages);
         setCurrentPage(response.page);
       } catch {
-        toast.error('Failed to load orders. Please try again.');
+        toast.error('Siparişler yüklenemedi. Lütfen tekrar deneyin.');
         setOrders([]);
       } finally {
         setIsLoading(false);
@@ -69,7 +69,7 @@ export default function OrdersPage() {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold tracking-tight text-stone-900">
-          My Orders
+          Siparişlerim
         </h1>
         <OrdersListSkeleton />
       </div>
@@ -88,7 +88,7 @@ export default function OrdersPage() {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold tracking-tight text-stone-900">
-          My Orders
+          Siparişlerim
         </h1>
         <OrdersListSkeleton />
       </div>
@@ -101,7 +101,7 @@ export default function OrdersPage() {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold tracking-tight text-stone-900">
-          My Orders
+          Siparişlerim
         </h1>
         <EmptyOrders />
       </div>
@@ -113,7 +113,7 @@ export default function OrdersPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-bold tracking-tight text-stone-900">
-        My Orders
+        Siparişlerim
       </h1>
 
       <div className="mt-8 space-y-4">
@@ -153,7 +153,7 @@ function OrderRow({ order }: { order: Order }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-semibold text-stone-900">
-            Order{' '}
+            Sipariş{' '}
             <span title={order.id} className="cursor-help">
               #{truncatedId}
             </span>
@@ -180,7 +180,7 @@ function OrderRow({ order }: { order: Order }) {
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-6 text-sm text-stone-600">
           <span>
-            {itemCount} {itemCount === 1 ? 'item' : 'items'}
+            {itemCount} ürün
           </span>
           <span className="font-semibold text-stone-900">
             {formatPrice(order.total_amount, order.currency)}
@@ -191,7 +191,7 @@ function OrderRow({ order }: { order: Order }) {
           href={`/orders/${order.id}`}
           className="inline-flex items-center gap-1.5 rounded-md bg-brand-lighter px-3 py-1.5 text-sm font-medium text-brand transition-colors hover:bg-brand-lighter/80"
         >
-          View Details
+          Detayları Gör
           <svg
             width={14}
             height={14}
@@ -218,10 +218,10 @@ function EmptyOrders() {
     <EmptyState
       icon={<PackageIcon className="text-brand" />}
       iconBgClass="bg-brand/10"
-      heading="No orders yet"
-      message="Start your shopping journey today! Discover our latest collections and find something special."
+      heading="Henüz sipariş yok"
+      message="Alışverişe bugün başlayın! En yeni koleksiyonlarımızı keşfedin ve kendinize özel bir şeyler bulun."
       primaryAction={{
-        label: 'Explore Products',
+        label: 'Ürünleri Keşfet',
         href: '/products',
       }}
       className="mt-16"

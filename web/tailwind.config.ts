@@ -9,12 +9,12 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: '#b5705b',   // warm rose-gold primary
-          light: '#c98a77',     // lighter rose-gold
-          lighter: '#f5e1da',   // very light rose-gold tint
-          dark: '#8f5443',      // deeper rose-gold for hover states
-          accent: '#c8873e',    // warm amber accent
-          'accent-light': '#fdf3e7', // light amber tint
+          DEFAULT: '#d63384',   // hot pink (Modanisa-style)
+          light: '#e879aa',     // lighter pink
+          lighter: '#fce7f3',   // very light pink tint
+          dark: '#9d174d',      // deeper pink for hover
+          accent: '#f97316',    // orange accent
+          'accent-light': '#fff7ed', // light orange tint
         },
       },
       fontFamily: {

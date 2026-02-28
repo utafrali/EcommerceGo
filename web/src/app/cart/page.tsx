@@ -125,7 +125,7 @@ export default function CartPage() {
       try {
         await updateItem(productId, newQuantity);
       } catch {
-        toast.error('Failed to update quantity. Please try again.');
+        toast.error('Miktar güncellenemedi. Lütfen tekrar deneyin.');
       } finally {
         setUpdatingItems((prev) => {
           const next = new Set(prev);
@@ -142,9 +142,9 @@ export default function CartPage() {
       setUpdatingItems((prev) => new Set(prev).add(productId));
       try {
         await removeItem(productId);
-        toast.success('Item removed from cart.');
+        toast.success('Ürün sepetten kaldırıldı.');
       } catch {
-        toast.error('Failed to remove item. Please try again.');
+        toast.error('Ürün kaldırılamadı. Lütfen tekrar deneyin.');
       } finally {
         setUpdatingItems((prev) => {
           const next = new Set(prev);
@@ -168,16 +168,16 @@ export default function CartPage() {
       // Check minimum order amount
       if (campaign.min_order_amount > 0 && subtotal < campaign.min_order_amount) {
         toast.error(
-          `Minimum order of ${formatPrice(campaign.min_order_amount)} required for this coupon.`,
+          `Bu kupon için minimum ${formatPrice(campaign.min_order_amount)} sipariş tutarı gereklidir.`,
         );
         setCouponLoading(false);
         return;
       }
 
       setAppliedCampaign(campaign);
-      toast.success(`Coupon "${campaign.code}" applied successfully!`);
+      toast.success(`"${campaign.code}" kuponu başarıyla uygulandı!`);
     } catch {
-      toast.error('Invalid or expired coupon code.');
+      toast.error('Geçersiz veya süresi dolmuş kupon kodu.');
     } finally {
       setCouponLoading(false);
     }
@@ -186,7 +186,7 @@ export default function CartPage() {
   const handleRemoveCoupon = useCallback(() => {
     setAppliedCampaign(null);
     setCouponCode('');
-    toast.info('Coupon removed.');
+    toast.info('Kupon kaldırıldı.');
   }, [toast]);
 
   const handleProceedToCheckout = useCallback(() => {
@@ -203,7 +203,7 @@ export default function CartPage() {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold tracking-tight text-stone-900">
-          Shopping Cart
+          Sepetim
         </h1>
         <CartSkeleton />
       </div>
@@ -218,7 +218,7 @@ export default function CartPage() {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold tracking-tight text-stone-900">
-          Shopping Cart
+          Sepetim
         </h1>
         <EmptyCart />
       </div>
@@ -230,13 +230,13 @@ export default function CartPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-bold tracking-tight text-stone-900">
-        Shopping Cart
+        Sepetim
       </h1>
 
       <div className="mt-8 lg:grid lg:grid-cols-12 lg:gap-x-12">
         {/* Cart items list */}
-        <section aria-label="Shopping cart items" className="lg:col-span-7">
-          <ul aria-label="Shopping cart items" className="divide-y divide-stone-200 border-b border-t border-stone-200">
+        <section aria-label="Sepet ürünleri" className="lg:col-span-7">
+          <ul aria-label="Sepet ürünleri" className="divide-y divide-stone-200 border-b border-t border-stone-200">
             {cart.items.map((item) => {
               const product = products[item.product_id];
               const isUpdating = updatingItems.has(item.product_id);
@@ -263,7 +263,7 @@ export default function CartPage() {
               className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:text-brand-light transition-colors"
             >
               <ArrowLeftIcon />
-              Continue Shopping
+              Alışverişe Devam Et
             </Link>
           </div>
         </section>
@@ -275,7 +275,7 @@ export default function CartPage() {
         >
           <div className="rounded-lg bg-stone-50 px-6 py-6">
             <h2 className="text-lg font-semibold text-stone-900">
-              Order Summary
+              Sipariş Özeti
             </h2>
 
             {/* Coupon input */}
@@ -284,7 +284,7 @@ export default function CartPage() {
                 htmlFor="coupon-code"
                 className="block text-sm font-medium text-stone-700"
               >
-                Coupon / Campaign Code
+                Kupon / Kampanya Kodu
               </label>
               {appliedCampaign ? (
                 <div className="mt-2 flex items-center gap-2">
@@ -301,7 +301,7 @@ export default function CartPage() {
                     onClick={handleRemoveCoupon}
                     className="ml-auto text-sm text-stone-500 hover:text-red-600 transition-colors"
                   >
-                    Remove
+                    Kaldır
                   </button>
                 </div>
               ) : (
@@ -314,7 +314,7 @@ export default function CartPage() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleApplyCoupon();
                     }}
-                    placeholder="Enter code"
+                    placeholder="Kodu girin"
                     className="flex-1 rounded-md border border-stone-300 px-3 py-2.5 text-base sm:text-sm shadow-sm placeholder:text-stone-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                   />
                   <button
@@ -328,7 +328,7 @@ export default function CartPage() {
                         : 'bg-stone-900 text-white hover:bg-stone-800',
                     )}
                   >
-                    {couponLoading ? 'Applying...' : 'Apply'}
+                    {couponLoading ? 'Uygulanıyor...' : 'Uygula'}
                   </button>
                 </div>
               )}
@@ -337,7 +337,7 @@ export default function CartPage() {
             {/* Summary lines */}
             <dl className="mt-6 space-y-4" role="status" aria-live="polite">
               <div className="flex items-center justify-between">
-                <dt className="text-sm text-stone-600">Subtotal</dt>
+                <dt className="text-sm text-stone-600">Ara Toplam</dt>
                 <dd className="text-sm font-medium text-stone-900">
                   {formatPrice(subtotal)}
                 </dd>
@@ -345,7 +345,7 @@ export default function CartPage() {
 
               {discountAmount > 0 && (
                 <div className="flex items-center justify-between">
-                  <dt className="text-sm text-green-600">Discount</dt>
+                  <dt className="text-sm text-green-600">İndirim</dt>
                   <dd className="text-sm font-medium text-green-600">
                     -{formatPrice(discountAmount)}
                   </dd>
@@ -353,10 +353,10 @@ export default function CartPage() {
               )}
 
               <div className="flex items-center justify-between border-t border-stone-200 pt-4">
-                <dt className="text-sm text-stone-600">Shipping</dt>
+                <dt className="text-sm text-stone-600">Kargo</dt>
                 <dd className="text-sm font-medium text-stone-900">
                   {shippingCost === 0 ? (
-                    <span className="text-green-600">Free</span>
+                    <span className="text-green-600">Ücretsiz</span>
                   ) : (
                     formatPrice(shippingCost)
                   )}
@@ -365,13 +365,13 @@ export default function CartPage() {
 
               {shippingCost > 0 && (
                 <p className="text-xs text-stone-500">
-                  Free shipping on orders over {formatPrice(FREE_SHIPPING_THRESHOLD)}
+                  {formatPrice(FREE_SHIPPING_THRESHOLD)} üzeri siparişlerde ücretsiz kargo
                 </p>
               )}
 
               <div className="flex items-center justify-between border-t border-stone-200 pt-4">
                 <dt className="text-base font-semibold text-stone-900">
-                  Total
+                  Toplam
                 </dt>
                 <dd className="text-base font-semibold text-stone-900">
                   {formatPrice(total)}
@@ -391,12 +391,12 @@ export default function CartPage() {
                   : 'bg-brand hover:bg-brand-light focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2',
               )}
             >
-              {!isAuthenticated ? 'Sign in to Checkout' : 'Proceed to Checkout'}
+              {!isAuthenticated ? 'Ödemeye geçmek için giriş yap' : 'Ödemeye Geç'}
             </button>
 
             {!isAuthenticated && (
               <p className="mt-2 text-center text-xs text-stone-500">
-                You will be redirected to sign in before checkout.
+                Ödemeye geçmeden önce giriş yapmanız gerekecek.
               </p>
             )}
           </div>
@@ -519,10 +519,10 @@ function CartItemRow({
               type="button"
               onClick={() => onRemove(productId)}
               disabled={isUpdating}
-              aria-label="Remove item"
+              aria-label="Ürünü kaldır"
               className="text-sm font-medium text-red-600 hover:text-red-500 transition-colors disabled:cursor-not-allowed disabled:text-red-300"
             >
-              Remove
+              Kaldır
             </button>
           </div>
 
@@ -543,10 +543,10 @@ function EmptyCart() {
     <EmptyState
       icon={<CartIcon className="text-brand" />}
       iconBgClass="bg-brand/10"
-      heading="Your cart is empty"
-      message="Discover amazing products and start shopping today. Your perfect find is just a click away!"
+      heading="Sepetiniz boş"
+      message="Harika ürünleri keşfedin ve alışverişe başlayın. Aradığınız şey bir tık uzağınızda!"
       primaryAction={{
-        label: 'Explore Products',
+        label: 'Ürünleri Keşfet',
         href: '/products',
       }}
       className="mt-16"

@@ -7,7 +7,18 @@ const config: Config = {
     './src/contexts/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        brand: {
+          DEFAULT: '#d63384',
+          light: '#e879aa',
+          lighter: '#fce7f3',
+          dark: '#9d174d',
+          accent: '#f97316',
+          'accent-light': '#fff7ed',
+        },
+      },
+    },
   },
   plugins: [],
 };

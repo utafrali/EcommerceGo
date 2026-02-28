@@ -15,16 +15,16 @@ import type { Address, CheckoutSession } from '@/types';
 // ---- Country options for dropdown ------------------------------------------------
 
 const COUNTRIES = [
-  { code: 'US', name: 'United States' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'FR', name: 'France' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'JP', name: 'Japan' },
-  { code: 'BR', name: 'Brazil' },
-  { code: 'IN', name: 'India' },
-  { code: 'TR', name: 'Turkey' },
+  { code: 'TR', name: 'Türkiye' },
+  { code: 'DE', name: 'Almanya' },
+  { code: 'FR', name: 'Fransa' },
+  { code: 'GB', name: 'Birleşik Krallık' },
+  { code: 'US', name: 'Amerika Birleşik Devletleri' },
+  { code: 'CA', name: 'Kanada' },
+  { code: 'AU', name: 'Avustralya' },
+  { code: 'JP', name: 'Japonya' },
+  { code: 'BR', name: 'Brezilya' },
+  { code: 'IN', name: 'Hindistan' },
 ] as const;
 
 // ---- Form field error map --------------------------------------------------------
@@ -55,7 +55,7 @@ function StepIndicator({ currentIndex }: { currentIndex: number }) {
                   className={cn(
                     'flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold',
                     isCompleted && 'bg-green-600 text-white',
-                    isCurrent && 'bg-gray-900 text-white',
+                    isCurrent && 'bg-brand text-white',
                     !isCompleted && !isCurrent && 'bg-gray-200 text-gray-500',
                   )}
                 >
@@ -97,7 +97,7 @@ function StepIndicator({ currentIndex }: { currentIndex: number }) {
 // ---- Shared input class ----------------------------------------------------------
 
 const inputCls =
-  'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-base sm:text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500';
+  'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-base sm:text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand';
 
 const labelCls = 'block text-sm font-medium text-gray-700';
 
@@ -116,14 +116,14 @@ function ShippingStep({
 }) {
   return (
     <div className="mx-auto max-w-lg">
-      <h2 className="text-xl font-semibold text-gray-900">Shipping Address</h2>
-      <p className="mt-1 text-sm text-gray-500">Where should we deliver your order?</p>
+      <h2 className="text-xl font-semibold text-gray-900">Teslimat Adresi</h2>
+      <p className="mt-1 text-sm text-gray-500">Siparişinizi nereye teslim edelim?</p>
 
       <div className="mt-6 space-y-4">
         {/* Line 1 */}
         <div>
           <label htmlFor="line1" className={labelCls}>
-            Address Line 1 <span className="text-red-500">*</span>
+            Adres Satırı 1 <span className="text-red-500">*</span>
           </label>
           <input
             id="line1"
@@ -145,7 +145,7 @@ function ShippingStep({
         {/* Line 2 */}
         <div>
           <label htmlFor="line2" className={labelCls}>
-            Address Line 2 <span className="text-gray-400">(optional)</span>
+            Adres Satırı 2 <span className="text-gray-400">(isteğe bağlı)</span>
           </label>
           <input
             id="line2"
@@ -161,7 +161,7 @@ function ShippingStep({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="city" className={labelCls}>
-              City <span className="text-red-500">*</span>
+              Şehir <span className="text-red-500">*</span>
             </label>
             <input
               id="city"
@@ -181,7 +181,7 @@ function ShippingStep({
           </div>
           <div>
             <label htmlFor="state" className={labelCls}>
-              State / Province <span className="text-red-500">*</span>
+              İlçe / İl <span className="text-red-500">*</span>
             </label>
             <input
               id="state"
@@ -205,7 +205,7 @@ function ShippingStep({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="postal_code" className={labelCls}>
-              Postal Code <span className="text-red-500">*</span>
+              Posta Kodu <span className="text-red-500">*</span>
             </label>
             <input
               id="postal_code"
@@ -225,7 +225,7 @@ function ShippingStep({
           </div>
           <div>
             <label htmlFor="country" className={labelCls}>
-              Country <span className="text-red-500">*</span>
+              Ülke <span className="text-red-500">*</span>
             </label>
             <select
               id="country"
@@ -235,7 +235,7 @@ function ShippingStep({
               aria-describedby={errors.country ? 'error-country' : undefined}
               className={cn(inputCls, errors.country && 'border-red-500 focus:border-red-500 focus:ring-red-500')}
             >
-              <option value="">Select a country</option>
+              <option value="">Ülke seçin</option>
               {COUNTRIES.map((c) => (
                 <option key={c.code} value={c.code}>
                   {c.name}
@@ -254,9 +254,9 @@ function ShippingStep({
       <button
         type="button"
         onClick={onSubmit}
-        className="mt-8 w-full rounded-md bg-gray-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+        className="mt-8 w-full rounded-md bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
       >
-        Continue to Review
+        İncelemeye Devam Et
       </button>
     </div>
   );
@@ -280,18 +280,18 @@ function ReviewStep({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h2 className="text-xl font-semibold text-gray-900">Order Review</h2>
-      <p className="mt-1 text-sm text-gray-500">Review your order before payment.</p>
+      <h2 className="text-xl font-semibold text-gray-900">Sipariş İnceleme</h2>
+      <p className="mt-1 text-sm text-gray-500">Ödeme yapmadan önce siparişinizi inceleyin.</p>
 
       {/* Items table */}
       <div className="mt-6 rounded-lg border border-gray-200">
         <div className="divide-y divide-gray-200">
           {/* Header */}
           <div className="hidden grid-cols-12 gap-4 px-4 py-3 text-xs font-medium uppercase text-gray-500 sm:grid">
-            <span className="col-span-5">Item</span>
-            <span className="col-span-2 text-right">Price</span>
-            <span className="col-span-2 text-center">Qty</span>
-            <span className="col-span-3 text-right">Total</span>
+            <span className="col-span-5">Ürün</span>
+            <span className="col-span-2 text-right">Fiyat</span>
+            <span className="col-span-2 text-center">Adet</span>
+            <span className="col-span-3 text-right">Toplam</span>
           </div>
 
           {/* Items */}
@@ -320,13 +320,13 @@ function ReviewStep({
       {/* Shipping address */}
       <div className="mt-6 rounded-lg border border-gray-200 p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900">Shipping Address</h3>
+          <h3 className="text-sm font-semibold text-gray-900">Teslimat Adresi</h3>
           <button
             type="button"
             onClick={onEditShipping}
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 hover:underline"
+            className="text-sm font-medium text-brand hover:text-brand-dark hover:underline"
           >
-            Edit
+            Düzenle
           </button>
         </div>
         <p className="mt-2 text-sm text-gray-600">
@@ -343,7 +343,7 @@ function ReviewStep({
       {session.campaign_code && (
         <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-3">
           <p className="text-sm text-green-800">
-            Coupon applied: <span className="font-semibold">{session.campaign_code}</span>
+            Kupon uygulandı: <span className="font-semibold">{session.campaign_code}</span>
           </p>
         </div>
       )}
@@ -351,21 +351,21 @@ function ReviewStep({
       {/* Summary totals */}
       <div className="mt-6 space-y-2 border-t border-gray-200 pt-4">
         <div className="flex justify-between text-sm text-gray-600">
-          <span>Subtotal</span>
+          <span>Ara Toplam</span>
           <span>{formatPrice(session.subtotal)}</span>
         </div>
         {session.discount > 0 && (
           <div className="flex justify-between text-sm text-green-600">
-            <span>Discount</span>
+            <span>İndirim</span>
             <span>-{formatPrice(session.discount)}</span>
           </div>
         )}
         <div className="flex justify-between text-sm text-gray-600">
-          <span>Shipping</span>
-          <span>{session.shipping_cost === 0 ? 'Free' : formatPrice(session.shipping_cost)}</span>
+          <span>Kargo</span>
+          <span>{session.shipping_cost === 0 ? 'Ücretsiz' : formatPrice(session.shipping_cost)}</span>
         </div>
         <div className="flex justify-between border-t border-gray-200 pt-2 text-base font-semibold text-gray-900">
-          <span>Total</span>
+          <span>Toplam</span>
           <span>{formatPrice(session.total)}</span>
         </div>
       </div>
@@ -373,9 +373,9 @@ function ReviewStep({
       <button
         type="button"
         onClick={onPay}
-        className="mt-8 w-full rounded-md bg-gray-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+        className="mt-8 w-full rounded-md bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
       >
-        Continue to Payment
+        Ödemeye Devam Et
       </button>
     </div>
   );
@@ -404,17 +404,17 @@ function PaymentStep({
               d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          Test Mode -- No real charges
+          Test Modu — Gerçek ücret alınmaz
         </span>
       </div>
 
-      <h2 className="text-xl font-semibold text-gray-900">Payment Details</h2>
-      <p className="mt-1 text-sm text-gray-500">This is a mock payment for testing.</p>
+      <h2 className="text-xl font-semibold text-gray-900">Ödeme Bilgileri</h2>
+      <p className="mt-1 text-sm text-gray-500">Bu, test amaçlı bir örnek ödemedir.</p>
 
       <div className="mt-6 space-y-4">
         {/* Card number */}
         <div>
-          <label htmlFor="card_number" className={labelCls}>Card Number</label>
+          <label htmlFor="card_number" className={labelCls}>Kart Numarası</label>
           <input
             id="card_number"
             type="text"
@@ -427,7 +427,7 @@ function PaymentStep({
         {/* Expiry + CVV */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="expiry" className={labelCls}>Expiry</label>
+            <label htmlFor="expiry" className={labelCls}>Son Kullanma</label>
             <input
               id="expiry"
               type="text"
@@ -457,20 +457,19 @@ function PaymentStep({
           'mt-8 flex w-full items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-semibold text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2',
           isProcessing
             ? 'cursor-not-allowed bg-gray-400'
-            : 'bg-gray-900 hover:bg-gray-700',
+            : 'bg-brand hover:bg-brand-dark',
         )}
       >
         {isProcessing ? (
           <>
-            {/* Spinner */}
             <svg className="h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx={12} cy={12} r={10} stroke="currentColor" strokeWidth={4} />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
             </svg>
-            Processing...
+            İşleniyor...
           </>
         ) : (
-          `Pay ${formatPrice(total)}`
+          `${formatPrice(total)} Öde`
         )}
       </button>
     </div>
@@ -496,20 +495,20 @@ function ConfirmationStep({
         </svg>
       </div>
 
-      <h2 className="mt-4 text-2xl font-bold text-gray-900">Order placed successfully!</h2>
+      <h2 className="mt-4 text-2xl font-bold text-gray-900">Sipariş başarıyla verildi!</h2>
       <p className="mt-2 text-sm text-gray-600">
-        Thank you for your purchase. Your order has been confirmed.
+        Satın alımınız için teşekkürler. Siparişiniz onaylandı.
       </p>
 
       {/* Order ID */}
       <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-        <p className="text-xs font-medium uppercase text-gray-500">Order ID</p>
+        <p className="text-xs font-medium uppercase text-gray-500">Sipariş No</p>
         <p className="mt-1 break-all font-mono text-sm text-gray-900">{orderId}</p>
       </div>
 
       {/* Order summary */}
       <div className="mt-6 rounded-lg border border-gray-200 p-4 text-left">
-        <h3 className="text-sm font-semibold text-gray-900">Order Summary</h3>
+        <h3 className="text-sm font-semibold text-gray-900">Sipariş Özeti</h3>
         <div className="mt-3 divide-y divide-gray-100">
           {session.items.map((item) => (
             <div key={item.product_id} className="flex justify-between py-2 text-sm">
@@ -521,7 +520,7 @@ function ConfirmationStep({
           ))}
         </div>
         <div className="mt-3 flex justify-between border-t border-gray-200 pt-3 text-sm font-semibold text-gray-900">
-          <span>Total</span>
+          <span>Toplam</span>
           <span>{formatPrice(session.total)}</span>
         </div>
       </div>
@@ -530,15 +529,15 @@ function ConfirmationStep({
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
         <Link
           href={`/orders/${orderId}`}
-          className="inline-flex items-center justify-center rounded-md bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          className="inline-flex items-center justify-center rounded-md bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2"
         >
-          View Order
+          Siparişi Görüntüle
         </Link>
         <Link
           href="/products"
           className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
         >
-          Continue Shopping
+          Alışverişe Devam Et
         </Link>
       </div>
     </div>
@@ -605,11 +604,11 @@ function CheckoutContent() {
   // ---- Shipping form validation ----
   const validateShipping = useCallback((): boolean => {
     const errs: ShippingErrors = {};
-    if (!address.line1.trim()) errs.line1 = 'Address line 1 is required.';
-    if (!address.city.trim()) errs.city = 'City is required.';
-    if (!address.state.trim()) errs.state = 'State is required.';
-    if (!address.postal_code.trim()) errs.postal_code = 'Postal code is required.';
-    if (!address.country) errs.country = 'Please select a country.';
+    if (!address.line1.trim()) errs.line1 = 'Adres satırı 1 zorunludur.';
+    if (!address.city.trim()) errs.city = 'Şehir zorunludur.';
+    if (!address.state.trim()) errs.state = 'İlçe/İl zorunludur.';
+    if (!address.postal_code.trim()) errs.postal_code = 'Posta kodu zorunludur.';
+    if (!address.country) errs.country = 'Lütfen bir ülke seçin.';
     setShippingErrors(errs);
     return Object.keys(errs).length === 0;
   }, [address]);
@@ -654,7 +653,7 @@ function CheckoutContent() {
       setStepIndex(1);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Failed to initiate checkout. Please try again.';
+        err instanceof Error ? err.message : 'Ödeme başlatılamadı. Lütfen tekrar deneyin.';
       toast.error(message);
     } finally {
       setIsInitiating(false);
@@ -685,10 +684,10 @@ function CheckoutContent() {
 
       // Move to confirmation step
       setStepIndex(3);
-      toast.success('Payment processed successfully!');
+      toast.success('Ödeme başarıyla işlendi!');
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Payment failed. Please try again.';
+        err instanceof Error ? err.message : 'Ödeme başarısız oldu. Lütfen tekrar deneyin.';
       toast.error(message);
     } finally {
       setIsProcessing(false);
@@ -726,7 +725,7 @@ function CheckoutContent() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="mb-2 text-center text-3xl font-bold tracking-tight text-gray-900">
-        Checkout
+        Ödeme
       </h1>
 
       {/* Step indicator */}
@@ -741,7 +740,7 @@ function CheckoutContent() {
                 <circle className="opacity-25" cx={12} cy={12} r={10} stroke="currentColor" strokeWidth={4} />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
-              <p className="mt-4 text-sm text-gray-500">Setting up your checkout...</p>
+              <p className="mt-4 text-sm text-gray-500">Ödeme hazırlanıyor...</p>
             </div>
           ) : (
             <ShippingStep

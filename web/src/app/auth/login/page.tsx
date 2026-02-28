@@ -34,11 +34,11 @@ function LoginForm() {
 
     try {
       await login(email, password);
-      toast.success('Welcome back!');
+      toast.success('Hoş geldiniz!');
       router.push(returnUrl);
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : 'Invalid email or password.';
+        err instanceof Error ? err.message : 'Geçersiz e-posta veya şifre.';
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -49,7 +49,7 @@ function LoginForm() {
   if (authLoading || isAuthenticated) {
     return (
       <div className="flex min-h-[calc(100vh-12rem)] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-brand" />
       </div>
     );
   }
@@ -59,7 +59,7 @@ function LoginForm() {
       <div className="w-full max-w-md">
         {/* Logo / App Name */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-900">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand">
             <svg
               width={24}
               height={24}
@@ -76,10 +76,10 @@ function LoginForm() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-            Sign in to EcommerceGo
+            EcommerceGo&apos;ya Giriş Yap
           </h1>
           <p className="mt-2 text-sm text-gray-600">
-            Enter your credentials to access your account
+            Hesabınıza erişmek için bilgilerinizi girin
           </p>
         </div>
 
@@ -115,7 +115,7 @@ function LoginForm() {
                 htmlFor="email"
                 className="block text-sm font-medium text-gray-700"
               >
-                Email address
+                E-posta adresi
               </label>
               <input
                 id="email"
@@ -125,8 +125,8 @@ function LoginForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1.5 block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 sm:text-sm"
-                placeholder="you@example.com"
+                className="mt-1.5 block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm"
+                placeholder="siz@ornek.com"
                 disabled={isSubmitting}
               />
             </div>
@@ -137,7 +137,7 @@ function LoginForm() {
                 htmlFor="password"
                 className="block text-sm font-medium text-gray-700"
               >
-                Password
+                Şifre
               </label>
               <div className="relative mt-1.5">
                 <input
@@ -148,15 +148,15 @@ function LoginForm() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 pr-10 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500 sm:text-sm"
-                  placeholder="Enter your password"
+                  className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 pr-10 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand sm:text-sm"
+                  placeholder="Şifrenizi girin"
                   disabled={isSubmitting}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
                 >
                   {showPassword ? (
                     <svg
@@ -197,7 +197,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex w-full items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex w-full items-center justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? (
                 <>
@@ -220,10 +220,10 @@ function LoginForm() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                     />
                   </svg>
-                  Signing in...
+                  Giriş yapılıyor...
                 </>
               ) : (
-                'Sign In'
+                'Giriş Yap'
               )}
             </button>
           </form>
@@ -231,12 +231,12 @@ function LoginForm() {
 
         {/* Register Link */}
         <p className="mt-6 text-center text-sm text-gray-600">
-          Don&apos;t have an account?{' '}
+          Hesabınız yok mu?{' '}
           <Link
             href={`/auth/register${returnUrl !== '/' ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''}`}
-            className="font-medium text-gray-900 hover:underline"
+            className="font-medium text-brand hover:underline"
           >
-            Register
+            Üye Ol
           </Link>
         </p>
       </div>
@@ -249,7 +249,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="flex min-h-[calc(100vh-12rem)] items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-brand" />
         </div>
       }
     >

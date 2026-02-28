@@ -30,7 +30,7 @@ export default function AdminLayout({
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500 text-lg">Loading...</div>
+        <div className="text-gray-500 text-lg">Yükleniyor...</div>
       </div>
     );
   }
@@ -46,16 +46,16 @@ export default function AdminLayout({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Erişim Reddedildi</h1>
             <p className="text-gray-600 mb-6">
-              You do not have administrator privileges to access the CMS panel.
-              Please contact an administrator if you believe this is an error.
+              CMS paneline erişmek için yönetici ayrıcalıklarınız bulunmamaktadır.
+              Bunun bir hata olduğunu düşünüyorsanız bir yöneticiyle iletişime geçin.
             </p>
             <button
               onClick={logout}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              className="px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors"
             >
-              Sign Out
+              Çıkış Yap
             </button>
           </div>
         </div>
@@ -71,7 +71,7 @@ export default function AdminLayout({
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-gray-800">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+            <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center text-white font-bold text-sm">
               E
             </div>
             <span className="text-lg font-semibold tracking-tight">
@@ -93,7 +93,7 @@ export default function AdminLayout({
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-brand text-white'
                     : 'text-gray-300 hover:bg-gray-800 hover:text-white',
                 )}
               >
@@ -145,7 +145,7 @@ export default function AdminLayout({
               className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5
                        border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
             >
-              Logout
+              Çıkış Yap
             </button>
           </div>
         </header>

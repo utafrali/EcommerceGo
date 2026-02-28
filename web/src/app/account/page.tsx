@@ -2,15 +2,15 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'My Account | EcommerceGo',
-  description: 'Manage your account settings and preferences',
+  title: 'Hesabım | EcommerceGo',
+  description: 'Hesap ayarlarınızı ve tercihlerinizi yönetin',
 };
 
 export default function AccountPage() {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-stone-900 mb-8">My Account</h1>
+        <h1 className="text-3xl font-bold text-stone-900 mb-8">Hesabım</h1>
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Profile */}
@@ -25,8 +25,8 @@ export default function AccountPage() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-stone-900">Profile</h2>
-                <p className="text-sm text-stone-600">View and edit your personal information</p>
+                <h2 className="text-lg font-semibold text-stone-900">Profil</h2>
+                <p className="text-sm text-stone-600">Kişisel bilgilerinizi görüntüleyin ve düzenleyin</p>
               </div>
             </div>
           </Link>
@@ -43,8 +43,8 @@ export default function AccountPage() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-stone-900">Orders</h2>
-                <p className="text-sm text-stone-600">Track and manage your orders</p>
+                <h2 className="text-lg font-semibold text-stone-900">Siparişlerim</h2>
+                <p className="text-sm text-stone-600">Siparişlerinizi takip edin ve yönetin</p>
               </div>
             </div>
           </Link>
@@ -61,8 +61,8 @@ export default function AccountPage() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-stone-900">Wishlist</h2>
-                <p className="text-sm text-stone-600">View your saved items</p>
+                <h2 className="text-lg font-semibold text-stone-900">Favorilerim</h2>
+                <p className="text-sm text-stone-600">Kaydettiğiniz ürünleri görüntüleyin</p>
               </div>
             </div>
           </Link>
@@ -80,8 +80,8 @@ export default function AccountPage() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-stone-900">Settings</h2>
-                <p className="text-sm text-stone-600">Manage password and preferences</p>
+                <h2 className="text-lg font-semibold text-stone-900">Ayarlar</h2>
+                <p className="text-sm text-stone-600">Şifre ve tercihleri yönetin</p>
               </div>
             </div>
           </Link>
