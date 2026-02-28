@@ -1,0 +1,160 @@
+name: Frontend CI (web)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'web/**'
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  typecheck:
+    name: TypeScript Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: web/node_modules
+          key: web-node-modules-${{ hashFiles('web/package-lock.json', 'web/package.json') }}
+          restore-keys: |
+            web-node-modules-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: web/node_modules
+          key: web-node-modules-${{ hashFiles('web/package-lock.json', 'web/package.json') }}
+          restore-keys: |
+            web-node-modules-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npx next lint
+
+  build:
+    name: Next.js Build
+    runs-on: ubuntu-latest
+    needs: [typecheck, lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: web/node_modules
+          key: web-node-modules-${{ hashFiles('web/package-lock.json', 'web/package.json') }}
+          restore-keys: |
+            web-node-modules-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          NEXT_PUBLIC_BFF_URL: http://localhost:3001
+          NEXT_PUBLIC_GATEWAY_URL: http://localhost:8080
+          SKIP_ENV_VALIDATION: '1'
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: web/.next
+          retention-days: 1
+
+  e2e:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: web/node_modules
+          key: web-node-modules-${{ hashFiles('web/package-lock.json', 'web/package.json') }}
+          restore-keys: |
+            web-node-modules-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: web/.next
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        env:
+          # Use next start (built output) instead of next dev — more stable in CI
+          # Override the webServer command via env so playwright uses the built app
+          E2E_PORT: '3100'
+          NEXT_PUBLIC_BFF_URL: http://localhost:3001
+          NEXT_PUBLIC_GATEWAY_URL: http://localhost:8080
+          # CI_BACKEND_RUNNING is intentionally NOT set — api-health.spec.ts auto-skips
+        run: |
+          npx playwright test \
+            --config playwright.config.ts \
+            --reporter=list,html
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: web-playwright-report
+          path: web/playwright-report
+          retention-days: 7
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: web-test-results
+          path: web/test-results
+          retention-days: 7
