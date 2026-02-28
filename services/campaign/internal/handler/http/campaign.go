@@ -2,7 +2,6 @@ package http
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -11,7 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/repository"
@@ -115,17 +114,6 @@ type CreateStackingRuleRequest struct {
 
 // --- Response envelope ---
 
-type response struct {
-	Data  any            `json:"data,omitempty"`
-	Error *errorResponse `json:"error,omitempty"`
-}
-
-type errorResponse struct {
-	Code    string            `json:"code"`
-	Message string            `json:"message"`
-	Fields  map[string]string `json:"fields,omitempty"`
-}
-
 type listResponse struct {
 	Data       any `json:"data"`
 	TotalCount int `json:"total_count"`
@@ -142,43 +130,43 @@ func (h *CampaignHandler) CreateCampaign(w http.ResponseWriter, r *http.Request)
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	var req CreateCampaignRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
 	startDate, err := time.Parse(time.RFC3339, req.StartDate)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "start_date must be in RFC3339 format"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "start_date must be in RFC3339 format"},
 		})
 		return
 	}
 
 	endDate, err := time.Parse(time.RFC3339, req.EndDate)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "end_date must be in RFC3339 format"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "end_date must be in RFC3339 format"},
 		})
 		return
 	}
 
 	if !endDate.After(startDate) {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "end_date must be after start_date"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "end_date must be after start_date"},
 		})
 		return
 	}
 
 	if req.Code != "" && !campaignCodePattern.MatchString(req.Code) {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "code must be 2-50 uppercase alphanumeric characters or hyphens"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "code must be 2-50 uppercase alphanumeric characters or hyphens"},
 		})
 		return
 	}
@@ -203,11 +191,11 @@ func (h *CampaignHandler) CreateCampaign(w http.ResponseWriter, r *http.Request)
 
 	campaign, err := h.service.CreateCampaign(r.Context(), input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, response{Data: campaign})
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{Data: campaign})
 }
 
 // ListCampaigns handles GET /api/v1/campaigns
@@ -220,8 +208,8 @@ func (h *CampaignHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 	if v := r.URL.Query().Get("page"); v != "" {
 		page, err := strconv.Atoi(v)
 		if err != nil || page < 1 {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
 			})
 			return
 		}
@@ -230,8 +218,8 @@ func (h *CampaignHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 	if v := r.URL.Query().Get("per_page"); v != "" {
 		perPage, err := strconv.Atoi(v)
 		if err != nil || perPage < 1 || perPage > 100 {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
 			})
 			return
 		}
@@ -239,8 +227,8 @@ func (h *CampaignHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 	}
 	if v := r.URL.Query().Get("status"); v != "" {
 		if !domain.IsValidStatus(v) {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "status must be one of: draft, active, paused, expired, archived"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "status must be one of: draft, active, paused, expired, archived"},
 			})
 			return
 		}
@@ -252,7 +240,7 @@ func (h *CampaignHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 
 	campaigns, total, err := h.service.ListCampaigns(r.Context(), filter)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -261,7 +249,7 @@ func (h *CampaignHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 		totalPages++
 	}
 
-	writeJSON(w, http.StatusOK, listResponse{
+	httputil.WriteJSON(w, http.StatusOK, listResponse{
 		Data:       campaigns,
 		TotalCount: total,
 		Page:       filter.Page,
@@ -275,19 +263,19 @@ func (h *CampaignHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 func (h *CampaignHandler) GetCampaign(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
 		})
 		return
 	}
 
 	campaign, err := h.service.GetCampaign(r.Context(), id)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: campaign})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: campaign})
 }
 
 // UpdateCampaign handles PUT /api/v1/campaigns/{id}
@@ -295,22 +283,22 @@ func (h *CampaignHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request)
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
 		})
 		return
 	}
 
 	var req UpdateCampaignRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -334,8 +322,8 @@ func (h *CampaignHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request)
 	if req.StartDate != nil {
 		startDate, err := time.Parse(time.RFC3339, *req.StartDate)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_INPUT", Message: "start_date must be in RFC3339 format"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "start_date must be in RFC3339 format"},
 			})
 			return
 		}
@@ -345,8 +333,8 @@ func (h *CampaignHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request)
 	if req.EndDate != nil {
 		endDate, err := time.Parse(time.RFC3339, *req.EndDate)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_INPUT", Message: "end_date must be in RFC3339 format"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "end_date must be in RFC3339 format"},
 			})
 			return
 		}
@@ -354,45 +342,45 @@ func (h *CampaignHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request)
 	}
 
 	if input.StartDate != nil && input.EndDate != nil && !input.EndDate.After(*input.StartDate) {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "end_date must be after start_date"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "end_date must be after start_date"},
 		})
 		return
 	}
 
 	if req.Code != nil && *req.Code != "" && !campaignCodePattern.MatchString(*req.Code) {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "code must be 2-50 uppercase alphanumeric characters or hyphens"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "code must be 2-50 uppercase alphanumeric characters or hyphens"},
 		})
 		return
 	}
 
 	campaign, err := h.service.UpdateCampaign(r.Context(), id, input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: campaign})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: campaign})
 }
 
 // DeactivateCampaign handles POST /api/v1/campaigns/{id}/deactivate
 func (h *CampaignHandler) DeactivateCampaign(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
 		})
 		return
 	}
 
 	campaign, err := h.service.DeactivateCampaign(r.Context(), id)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: campaign})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: campaign})
 }
 
 // ValidateCoupon handles POST /api/v1/coupons/validate
@@ -400,14 +388,14 @@ func (h *CampaignHandler) ValidateCoupon(w http.ResponseWriter, r *http.Request)
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	var req ValidateCouponRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -421,11 +409,11 @@ func (h *CampaignHandler) ValidateCoupon(w http.ResponseWriter, r *http.Request)
 
 	validation, err := h.service.ValidateCoupon(r.Context(), req.Code, input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: validation})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: validation})
 }
 
 // ApplyCoupon handles POST /api/v1/coupons/apply
@@ -433,14 +421,14 @@ func (h *CampaignHandler) ApplyCoupon(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	var req ApplyCouponRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -455,11 +443,11 @@ func (h *CampaignHandler) ApplyCoupon(w http.ResponseWriter, r *http.Request) {
 
 	usage, err := h.service.ApplyCoupon(r.Context(), req.Code, input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, response{Data: usage})
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{Data: usage})
 }
 
 // ValidateMultipleCoupons handles POST /api/v1/coupons/validate-multiple
@@ -467,14 +455,14 @@ func (h *CampaignHandler) ValidateMultipleCoupons(w http.ResponseWriter, r *http
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	var req ValidateMultipleCouponsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -489,11 +477,11 @@ func (h *CampaignHandler) ValidateMultipleCoupons(w http.ResponseWriter, r *http
 
 	result, err := h.service.ValidateMultipleCoupons(r.Context(), input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: result})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: result})
 }
 
 // CreateStackingRule handles POST /api/v1/campaigns/{id}/stacking-rules
@@ -501,22 +489,22 @@ func (h *CampaignHandler) CreateStackingRule(w http.ResponseWriter, r *http.Requ
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	campaignID := chi.URLParam(r, "id")
 	if campaignID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
 		})
 		return
 	}
 
 	var req CreateStackingRuleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -528,113 +516,47 @@ func (h *CampaignHandler) CreateStackingRule(w http.ResponseWriter, r *http.Requ
 
 	rule, err := h.service.CreateStackingRule(r.Context(), input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, response{Data: rule})
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{Data: rule})
 }
 
 // GetStackingRules handles GET /api/v1/campaigns/{id}/stacking-rules
 func (h *CampaignHandler) GetStackingRules(w http.ResponseWriter, r *http.Request) {
 	campaignID := chi.URLParam(r, "id")
 	if campaignID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
 		})
 		return
 	}
 
 	rules, err := h.service.GetStackingRules(r.Context(), campaignID)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: rules})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: rules})
 }
 
 // DeleteStackingRule handles DELETE /api/v1/campaigns/stacking-rules/{ruleId}
 func (h *CampaignHandler) DeleteStackingRule(w http.ResponseWriter, r *http.Request) {
 	ruleID := chi.URLParam(r, "ruleId")
 	if ruleID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "rule id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "rule id is required"},
 		})
 		return
 	}
 
 	if err := h.service.DeleteStackingRule(r.Context(), ruleID); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusNoContent, nil)
+	httputil.WriteJSON(w, http.StatusNoContent, nil)
 }
 
-// --- Helpers ---
-
-func (h *CampaignHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
-		writeJSON(w, appErr.Status, response{
-			Error: &errorResponse{Code: appErr.Code, Message: appErr.Message},
-		})
-		return
-	}
-
-	status := apperrors.HTTPStatus(err)
-	code := "INTERNAL_ERROR"
-	message := "an internal error occurred"
-
-	switch {
-	case errors.Is(err, apperrors.ErrNotFound):
-		code = "NOT_FOUND"
-		message = "resource not found"
-		status = http.StatusNotFound
-	case errors.Is(err, apperrors.ErrAlreadyExists):
-		code = "ALREADY_EXISTS"
-		message = "resource already exists"
-		status = http.StatusConflict
-	case errors.Is(err, apperrors.ErrInvalidInput):
-		code = "INVALID_INPUT"
-		message = err.Error()
-		status = http.StatusBadRequest
-	}
-
-	if status == http.StatusInternalServerError {
-		h.logger.ErrorContext(r.Context(), "internal error",
-			slog.String("error", err.Error()),
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
-	}
-
-	writeJSON(w, status, response{
-		Error: &errorResponse{Code: code, Message: message},
-	})
-}
-
-func (h *CampaignHandler) writeValidationError(w http.ResponseWriter, err error) {
-	var valErr *validator.ValidationError
-	if errors.As(err, &valErr) {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{
-				Code:    "VALIDATION_ERROR",
-				Message: "request validation failed",
-				Fields:  valErr.Fields(),
-			},
-		})
-		return
-	}
-
-	writeJSON(w, http.StatusBadRequest, response{
-		Error: &errorResponse{Code: "INVALID_INPUT", Message: err.Error()},
-	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}

@@ -2,14 +2,13 @@ package http
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
-	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/services/media/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/media/internal/service"
 )
@@ -38,17 +37,6 @@ type UpdateMediaRequest struct {
 
 // --- Response envelope ---
 
-type response struct {
-	Data  any            `json:"data,omitempty"`
-	Error *errorResponse `json:"error,omitempty"`
-}
-
-type errorResponse struct {
-	Code    string            `json:"code"`
-	Message string            `json:"message"`
-	Fields  map[string]string `json:"fields,omitempty"`
-}
-
 type listResponse struct {
 	Data       any `json:"data"`
 	TotalCount int `json:"total_count"`
@@ -66,16 +54,16 @@ func (h *MediaHandler) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
 
 	if err := r.ParseMultipartForm(domain.MaxFileSize); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "failed to parse multipart form: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "failed to parse multipart form: " + err.Error()},
 		})
 		return
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "file is required: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "file is required: " + err.Error()},
 		})
 		return
 	}
@@ -102,30 +90,30 @@ func (h *MediaHandler) UploadMedia(w http.ResponseWriter, r *http.Request) {
 
 	media, err := h.service.UploadMedia(r.Context(), input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, response{Data: media})
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{Data: media})
 }
 
 // GetMedia handles GET /api/v1/media/{id}.
 func (h *MediaHandler) GetMedia(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "media id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "media id is required"},
 		})
 		return
 	}
 
 	media, err := h.service.GetMedia(r.Context(), id)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: media})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: media})
 }
 
 // ListMediaByOwner handles GET /api/v1/media/owner/{ownerType}/{ownerId}.
@@ -134,8 +122,8 @@ func (h *MediaHandler) ListMediaByOwner(w http.ResponseWriter, r *http.Request) 
 	ownerID := chi.URLParam(r, "ownerId")
 
 	if ownerType == "" || ownerID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "owner type and owner id are required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "owner type and owner id are required"},
 		})
 		return
 	}
@@ -146,8 +134,8 @@ func (h *MediaHandler) ListMediaByOwner(w http.ResponseWriter, r *http.Request) 
 	if v := r.URL.Query().Get("page"); v != "" {
 		p, err := strconv.Atoi(v)
 		if err != nil || p < 1 {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
 			})
 			return
 		}
@@ -156,8 +144,8 @@ func (h *MediaHandler) ListMediaByOwner(w http.ResponseWriter, r *http.Request) 
 	if v := r.URL.Query().Get("per_page"); v != "" {
 		pp, err := strconv.Atoi(v)
 		if err != nil || pp < 1 || pp > 100 {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
 			})
 			return
 		}
@@ -166,7 +154,7 @@ func (h *MediaHandler) ListMediaByOwner(w http.ResponseWriter, r *http.Request) 
 
 	mediaFiles, total, err := h.service.ListMediaByOwner(r.Context(), ownerID, ownerType, page, perPage)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -175,7 +163,7 @@ func (h *MediaHandler) ListMediaByOwner(w http.ResponseWriter, r *http.Request) 
 		totalPages++
 	}
 
-	writeJSON(w, http.StatusOK, listResponse{
+	httputil.WriteJSON(w, http.StatusOK, listResponse{
 		Data:       mediaFiles,
 		TotalCount: total,
 		Page:       page,
@@ -188,8 +176,8 @@ func (h *MediaHandler) ListMediaByOwner(w http.ResponseWriter, r *http.Request) 
 func (h *MediaHandler) UpdateMediaMetadata(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "media id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "media id is required"},
 		})
 		return
 	}
@@ -198,8 +186,8 @@ func (h *MediaHandler) UpdateMediaMetadata(w http.ResponseWriter, r *http.Reques
 
 	var req UpdateMediaRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
@@ -211,72 +199,28 @@ func (h *MediaHandler) UpdateMediaMetadata(w http.ResponseWriter, r *http.Reques
 
 	media, err := h.service.UpdateMediaMetadata(r.Context(), id, input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: media})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: media})
 }
 
 // DeleteMedia handles DELETE /api/v1/media/{id}.
 func (h *MediaHandler) DeleteMedia(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "media id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "media id is required"},
 		})
 		return
 	}
 
 	if err := h.service.DeleteMedia(r.Context(), id); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: map[string]string{"id": id, "status": "deleted"}})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id, "status": "deleted"}})
 }
 
-// --- Helpers ---
-
-func (h *MediaHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
-		writeJSON(w, appErr.Status, response{
-			Error: &errorResponse{Code: appErr.Code, Message: appErr.Message},
-		})
-		return
-	}
-
-	status := apperrors.HTTPStatus(err)
-	code := "INTERNAL_ERROR"
-	message := "an internal error occurred"
-
-	switch {
-	case errors.Is(err, apperrors.ErrNotFound):
-		code = "NOT_FOUND"
-		message = "resource not found"
-		status = http.StatusNotFound
-	case errors.Is(err, apperrors.ErrInvalidInput):
-		code = "INVALID_INPUT"
-		message = err.Error()
-		status = http.StatusBadRequest
-	}
-
-	if status == http.StatusInternalServerError {
-		h.logger.ErrorContext(r.Context(), "internal error",
-			slog.String("error", err.Error()),
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
-	}
-
-	writeJSON(w, status, response{
-		Error: &errorResponse{Code: code, Message: message},
-	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}

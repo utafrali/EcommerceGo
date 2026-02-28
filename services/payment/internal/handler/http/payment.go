@@ -2,14 +2,13 @@ package http
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
-	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/payment/internal/service"
 )
@@ -48,17 +47,6 @@ type RefundPaymentRequest struct {
 
 // --- Response envelope ---
 
-type response struct {
-	Data  any            `json:"data,omitempty"`
-	Error *errorResponse `json:"error,omitempty"`
-}
-
-type errorResponse struct {
-	Code    string            `json:"code"`
-	Message string            `json:"message"`
-	Fields  map[string]string `json:"fields,omitempty"`
-}
-
 type listResponse struct {
 	Data       any `json:"data"`
 	TotalCount int `json:"total_count"`
@@ -75,14 +63,14 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 
 	var req CreatePaymentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -97,30 +85,30 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 
 	payment, err := h.service.CreatePayment(r.Context(), input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, response{Data: payment})
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{Data: payment})
 }
 
 // GetPayment handles GET /api/v1/payments/{id}
 func (h *PaymentHandler) GetPayment(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "payment id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "payment id is required"},
 		})
 		return
 	}
 
 	payment, err := h.service.GetPayment(r.Context(), id)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: payment})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: payment})
 }
 
 // ProcessPayment handles POST /api/v1/payments/{id}/process
@@ -129,19 +117,19 @@ func (h *PaymentHandler) ProcessPayment(w http.ResponseWriter, r *http.Request) 
 
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "payment id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "payment id is required"},
 		})
 		return
 	}
 
 	payment, err := h.service.ProcessPayment(r.Context(), id)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: payment})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: payment})
 }
 
 // RefundPayment handles POST /api/v1/payments/{id}/refund
@@ -150,22 +138,22 @@ func (h *PaymentHandler) RefundPayment(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "payment id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "payment id is required"},
 		})
 		return
 	}
 
 	var req RefundPaymentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -176,38 +164,38 @@ func (h *PaymentHandler) RefundPayment(w http.ResponseWriter, r *http.Request) {
 
 	refund, err := h.service.RefundPayment(r.Context(), id, input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: refund})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: refund})
 }
 
 // GetPaymentByCheckoutID handles GET /api/v1/payments/checkout/{checkoutId}
 func (h *PaymentHandler) GetPaymentByCheckoutID(w http.ResponseWriter, r *http.Request) {
 	checkoutID := chi.URLParam(r, "checkoutId")
 	if checkoutID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "checkout id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "checkout id is required"},
 		})
 		return
 	}
 
 	payment, err := h.service.GetPaymentByCheckoutID(r.Context(), checkoutID)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: payment})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: payment})
 }
 
 // ListPaymentsByUser handles GET /api/v1/payments/user/{userId}
 func (h *PaymentHandler) ListPaymentsByUser(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userId")
 	if userID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "user id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "user id is required"},
 		})
 		return
 	}
@@ -218,8 +206,8 @@ func (h *PaymentHandler) ListPaymentsByUser(w http.ResponseWriter, r *http.Reque
 	if v := r.URL.Query().Get("page"); v != "" {
 		p, err := strconv.Atoi(v)
 		if err != nil || p < 1 {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
 			})
 			return
 		}
@@ -228,8 +216,8 @@ func (h *PaymentHandler) ListPaymentsByUser(w http.ResponseWriter, r *http.Reque
 	if v := r.URL.Query().Get("per_page"); v != "" {
 		pp, err := strconv.Atoi(v)
 		if err != nil || pp < 1 || pp > 100 {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
 			})
 			return
 		}
@@ -238,7 +226,7 @@ func (h *PaymentHandler) ListPaymentsByUser(w http.ResponseWriter, r *http.Reque
 
 	payments, total, err := h.service.ListPaymentsByUser(r.Context(), userID, page, perPage)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -247,7 +235,7 @@ func (h *PaymentHandler) ListPaymentsByUser(w http.ResponseWriter, r *http.Reque
 		totalPages++
 	}
 
-	writeJSON(w, http.StatusOK, listResponse{
+	httputil.WriteJSON(w, http.StatusOK, listResponse{
 		Data:       payments,
 		TotalCount: total,
 		Page:       page,
@@ -256,73 +244,3 @@ func (h *PaymentHandler) ListPaymentsByUser(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-// --- Helpers ---
-
-func (h *PaymentHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
-		writeJSON(w, appErr.Status, response{
-			Error: &errorResponse{Code: appErr.Code, Message: appErr.Message},
-		})
-		return
-	}
-
-	status := apperrors.HTTPStatus(err)
-	code := "INTERNAL_ERROR"
-	message := "an internal error occurred"
-
-	switch {
-	case errors.Is(err, apperrors.ErrNotFound):
-		code = "NOT_FOUND"
-		message = "resource not found"
-		status = http.StatusNotFound
-	case errors.Is(err, apperrors.ErrAlreadyExists):
-		code = "ALREADY_EXISTS"
-		message = "resource already exists"
-		status = http.StatusConflict
-	case errors.Is(err, apperrors.ErrInvalidInput):
-		code = "INVALID_INPUT"
-		message = err.Error()
-		status = http.StatusBadRequest
-	case errors.Is(err, apperrors.ErrPaymentFailed):
-		code = "PAYMENT_FAILED"
-		message = err.Error()
-		status = http.StatusUnprocessableEntity
-	}
-
-	if status == http.StatusInternalServerError {
-		h.logger.ErrorContext(r.Context(), "internal error",
-			slog.String("error", err.Error()),
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
-	}
-
-	writeJSON(w, status, response{
-		Error: &errorResponse{Code: code, Message: message},
-	})
-}
-
-func (h *PaymentHandler) writeValidationError(w http.ResponseWriter, err error) {
-	var valErr *validator.ValidationError
-	if errors.As(err, &valErr) {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{
-				Code:    "VALIDATION_ERROR",
-				Message: "request validation failed",
-				Fields:  valErr.Fields(),
-			},
-		})
-		return
-	}
-
-	writeJSON(w, http.StatusBadRequest, response{
-		Error: &errorResponse{Code: "INVALID_INPUT", Message: err.Error()},
-	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}

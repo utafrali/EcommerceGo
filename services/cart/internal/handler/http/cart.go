@@ -2,13 +2,12 @@ package http
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/cart/internal/service"
 )
@@ -45,46 +44,33 @@ type UpdateQuantityRequest struct {
 	Quantity int `json:"quantity" validate:"gte=0"`
 }
 
-// --- Response envelope ---
-
-type response struct {
-	Data  any            `json:"data,omitempty"`
-	Error *errorResponse `json:"error,omitempty"`
-}
-
-type errorResponse struct {
-	Code    string            `json:"code"`
-	Message string            `json:"message"`
-	Fields  map[string]string `json:"fields,omitempty"`
-}
-
 // --- Handlers ---
 
 // GetCart handles GET /api/v1/cart
 func (h *CartHandler) GetCart(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFromContext(r.Context())
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, response{
-			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
+		httputil.WriteJSON(w, http.StatusUnauthorized, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
 		})
 		return
 	}
 
 	cart, err := h.service.GetCart(r.Context(), userID)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: cart})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: cart})
 }
 
 // AddItem handles POST /api/v1/cart/items
 func (h *CartHandler) AddItem(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFromContext(r.Context())
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, response{
-			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
+		httputil.WriteJSON(w, http.StatusUnauthorized, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
 		})
 		return
 	}
@@ -94,14 +80,14 @@ func (h *CartHandler) AddItem(w http.ResponseWriter, r *http.Request) {
 
 	var req AddItemRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -117,19 +103,19 @@ func (h *CartHandler) AddItem(w http.ResponseWriter, r *http.Request) {
 
 	cart, err := h.service.AddItem(r.Context(), userID, input)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: cart})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: cart})
 }
 
 // UpdateItemQuantity handles PUT /api/v1/cart/items/{productId}/{variantId}
 func (h *CartHandler) UpdateItemQuantity(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFromContext(r.Context())
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, response{
-			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
+		httputil.WriteJSON(w, http.StatusUnauthorized, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
 		})
 		return
 	}
@@ -137,8 +123,8 @@ func (h *CartHandler) UpdateItemQuantity(w http.ResponseWriter, r *http.Request)
 	productID := chi.URLParam(r, "productId")
 	variantID := chi.URLParam(r, "variantId")
 	if productID == "" || variantID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "productId and variantId are required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "productId and variantId are required"},
 		})
 		return
 	}
@@ -148,32 +134,32 @@ func (h *CartHandler) UpdateItemQuantity(w http.ResponseWriter, r *http.Request)
 
 	var req UpdateQuantityRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
 	cart, err := h.service.UpdateItemQuantity(r.Context(), userID, productID, variantID, req.Quantity)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: cart})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: cart})
 }
 
 // RemoveItem handles DELETE /api/v1/cart/items/{productId}/{variantId}
 func (h *CartHandler) RemoveItem(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFromContext(r.Context())
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, response{
-			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
+		httputil.WriteJSON(w, http.StatusUnauthorized, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
 		})
 		return
 	}
@@ -181,98 +167,36 @@ func (h *CartHandler) RemoveItem(w http.ResponseWriter, r *http.Request) {
 	productID := chi.URLParam(r, "productId")
 	variantID := chi.URLParam(r, "variantId")
 	if productID == "" || variantID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "productId and variantId are required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "productId and variantId are required"},
 		})
 		return
 	}
 
 	cart, err := h.service.RemoveItem(r.Context(), userID, productID, variantID)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: cart})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: cart})
 }
 
 // ClearCart handles DELETE /api/v1/cart
 func (h *CartHandler) ClearCart(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFromContext(r.Context())
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, response{
-			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
+		httputil.WriteJSON(w, http.StatusUnauthorized, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
 		})
 		return
 	}
 
 	if err := h.service.ClearCart(r.Context(), userID); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: map[string]string{"status": "cleared"}})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"status": "cleared"}})
 }
 
-// --- Helpers ---
-
-func (h *CartHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
-		writeJSON(w, appErr.Status, response{
-			Error: &errorResponse{Code: appErr.Code, Message: appErr.Message},
-		})
-		return
-	}
-
-	status := apperrors.HTTPStatus(err)
-	code := "INTERNAL_ERROR"
-	message := "an internal error occurred"
-
-	if errors.Is(err, apperrors.ErrNotFound) {
-		code = "NOT_FOUND"
-		message = "resource not found"
-		status = http.StatusNotFound
-	} else if errors.Is(err, apperrors.ErrInvalidInput) {
-		code = "INVALID_INPUT"
-		message = err.Error()
-		status = http.StatusBadRequest
-	}
-
-	if status == http.StatusInternalServerError {
-		h.logger.ErrorContext(r.Context(), "internal error",
-			slog.String("error", err.Error()),
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
-	}
-
-	writeJSON(w, status, response{
-		Error: &errorResponse{Code: code, Message: message},
-	})
-}
-
-func (h *CartHandler) writeValidationError(w http.ResponseWriter, err error) {
-	var valErr *validator.ValidationError
-	if errors.As(err, &valErr) {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{
-				Code:    "VALIDATION_ERROR",
-				Message: "request validation failed",
-				Fields:  valErr.Fields(),
-			},
-		})
-		return
-	}
-
-	writeJSON(w, http.StatusBadRequest, response{
-		Error: &errorResponse{Code: "INVALID_INPUT", Message: err.Error()},
-	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	// Headers are already sent; nothing meaningful can be done if encoding fails.
-	_ = json.NewEncoder(w).Encode(v)
-}

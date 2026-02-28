@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/pkg/middleware"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/user/internal/service"
@@ -75,14 +76,14 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -95,11 +96,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, tokens, err := h.service.Register(r.Context(), input)
 	if err != nil {
-		writeAppError(w, r, err, h.logger)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, response{
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{
 		Data: AuthResponse{
 			User:   user,
 			Tokens: tokens,
@@ -113,14 +114,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -131,11 +132,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	user, tokens, err := h.service.Login(r.Context(), input)
 	if err != nil {
-		writeAppError(w, r, err, h.logger)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{
 		Data: AuthResponse{
 			User:   user,
 			Tokens: tokens,
@@ -149,24 +150,24 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 
 	var req RefreshTokenRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
 	tokens, err := h.service.RefreshToken(r.Context(), req.RefreshToken)
 	if err != nil {
-		writeAppError(w, r, err, h.logger)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: tokens})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: tokens})
 }
 
 // ForgotPassword handles POST /api/v1/auth/forgot-password
@@ -175,23 +176,23 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	var req ForgotPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
 	if err := h.service.ForgotPassword(r.Context(), req.Email); err != nil {
-		writeAppError(w, r, err, h.logger)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{
 		Data: map[string]string{"message": "if the email exists, a password reset link has been sent"},
 	})
 }
@@ -202,23 +203,23 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	var req ResetPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
 	if err := h.service.ResetPassword(r.Context(), req.Token, req.NewPassword); err != nil {
-		writeAppError(w, r, err, h.logger)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{
 		Data: map[string]string{"message": "password has been reset successfully"},
 	})
 }
@@ -229,32 +230,32 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	var req ChangePasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
 	// Extract user ID from context (set by auth middleware).
 	userID := middleware.UserIDFromContext(r.Context())
 	if userID == "" {
-		writeJSON(w, http.StatusUnauthorized, response{
-			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
+		httputil.WriteJSON(w, http.StatusUnauthorized, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
 		})
 		return
 	}
 
 	if err := h.service.ChangePassword(r.Context(), userID, req.CurrentPassword, req.NewPassword); err != nil {
-		writeAppError(w, r, err, h.logger)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{
 		Data: map[string]string{"message": "password has been changed successfully"},
 	})
 }

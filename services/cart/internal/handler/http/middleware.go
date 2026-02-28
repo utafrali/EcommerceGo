@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"strings"
+
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 )
 
 // contextKey is an unexported type for context keys to prevent collisions.
@@ -19,8 +21,8 @@ func UserIDFromHeader(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uid := r.Header.Get("X-User-ID")
 		if uid == "" {
-			writeJSON(w, http.StatusUnauthorized, response{
-				Error: &errorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
+			httputil.WriteJSON(w, http.StatusUnauthorized, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "UNAUTHORIZED", Message: "authentication required"},
 			})
 			return
 		}

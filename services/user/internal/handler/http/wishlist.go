@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/pkg/middleware"
 	"github.com/utafrali/EcommerceGo/services/user/internal/domain"
 )
@@ -43,26 +44,26 @@ type WishlistExistsResponse struct {
 func (h *WishlistHandler) Add(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserIDFromContext(r.Context())
 	if userID == "" {
-		writeJSON(w, http.StatusUnauthorized, response{
-			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "user not authenticated"},
+		httputil.WriteJSON(w, http.StatusUnauthorized, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "UNAUTHORIZED", Message: "user not authenticated"},
 		})
 		return
 	}
 
 	productID := chi.URLParam(r, "productId")
 	if productID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
 		})
 		return
 	}
 
 	if err := h.repo.Add(r.Context(), userID, productID); err != nil {
-		writeAppError(w, r, err, h.logger)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, response{
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{
 		Data: map[string]string{"product_id": productID, "status": "added"},
 	})
 }
@@ -71,26 +72,26 @@ func (h *WishlistHandler) Add(w http.ResponseWriter, r *http.Request) {
 func (h *WishlistHandler) Remove(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserIDFromContext(r.Context())
 	if userID == "" {
-		writeJSON(w, http.StatusUnauthorized, response{
-			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "user not authenticated"},
+		httputil.WriteJSON(w, http.StatusUnauthorized, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "UNAUTHORIZED", Message: "user not authenticated"},
 		})
 		return
 	}
 
 	productID := chi.URLParam(r, "productId")
 	if productID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
 		})
 		return
 	}
 
 	if err := h.repo.Remove(r.Context(), userID, productID); err != nil {
-		writeAppError(w, r, err, h.logger)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{
 		Data: map[string]string{"product_id": productID, "status": "removed"},
 	})
 }
@@ -99,8 +100,8 @@ func (h *WishlistHandler) Remove(w http.ResponseWriter, r *http.Request) {
 func (h *WishlistHandler) List(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserIDFromContext(r.Context())
 	if userID == "" {
-		writeJSON(w, http.StatusUnauthorized, response{
-			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "user not authenticated"},
+		httputil.WriteJSON(w, http.StatusUnauthorized, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "UNAUTHORIZED", Message: "user not authenticated"},
 		})
 		return
 	}
@@ -122,11 +123,11 @@ func (h *WishlistHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := h.repo.List(r.Context(), userID, page, perPage)
 	if err != nil {
-		writeAppError(w, r, err, h.logger)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{
 		Data: WishlistListResponse{
 			Items:   items,
 			Total:   total,
@@ -140,27 +141,27 @@ func (h *WishlistHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *WishlistHandler) Exists(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserIDFromContext(r.Context())
 	if userID == "" {
-		writeJSON(w, http.StatusUnauthorized, response{
-			Error: &errorResponse{Code: "UNAUTHORIZED", Message: "user not authenticated"},
+		httputil.WriteJSON(w, http.StatusUnauthorized, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "UNAUTHORIZED", Message: "user not authenticated"},
 		})
 		return
 	}
 
 	productID := chi.URLParam(r, "productId")
 	if productID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
 		})
 		return
 	}
 
 	exists, err := h.repo.Exists(r.Context(), userID, productID)
 	if err != nil {
-		writeAppError(w, r, err, h.logger)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{
 		Data: WishlistExistsResponse{Exists: exists},
 	})
 }

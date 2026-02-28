@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -12,7 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/services/search/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/search/internal/service"
 )
@@ -56,19 +55,6 @@ type BulkIndexRequest struct {
 	Products []IndexProductRequest `json:"products"`
 }
 
-// --- Response envelope ---
-
-type response struct {
-	Data  any            `json:"data,omitempty"`
-	Error *errorResponse `json:"error,omitempty"`
-}
-
-type errorResponse struct {
-	Code    string            `json:"code"`
-	Message string            `json:"message"`
-	Fields  map[string]string `json:"fields,omitempty"`
-}
-
 // --- Handlers ---
 
 // Search handles GET /api/v1/search
@@ -81,8 +67,8 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 	case "", "relevance", "price_asc", "price_desc", "newest", "name_asc", "name_desc":
 		// valid sort value
 	default:
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{
 				Code:    "INVALID_PARAMETER",
 				Message: "sort must be one of: relevance, price_asc, price_desc, newest, name_asc, name_desc",
 			},
@@ -109,14 +95,14 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("min_price"); v != "" {
 		price, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "min_price must be a valid number"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "min_price must be a valid number"},
 			})
 			return
 		}
 		if price < 0 {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "min_price must not be negative"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "min_price must not be negative"},
 			})
 			return
 		}
@@ -125,22 +111,22 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 	if v := r.URL.Query().Get("max_price"); v != "" {
 		price, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "max_price must be a valid number"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "max_price must be a valid number"},
 			})
 			return
 		}
 		if price < 0 {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "max_price must not be negative"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "max_price must not be negative"},
 			})
 			return
 		}
 		query.MaxPrice = &price
 	}
 	if query.MinPrice != nil && query.MaxPrice != nil && *query.MinPrice > *query.MaxPrice {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "min_price must not exceed max_price"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "min_price must not exceed max_price"},
 		})
 		return
 	}
@@ -157,11 +143,11 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.service.Search(r.Context(), query)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: result})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: result})
 }
 
 // IndexProduct handles POST /api/v1/search/index
@@ -170,21 +156,21 @@ func (h *SearchHandler) IndexProduct(w http.ResponseWriter, r *http.Request) {
 
 	var req IndexProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if req.ID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "id is required"},
 		})
 		return
 	}
 	if req.Name == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "name is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "name is required"},
 		})
 		return
 	}
@@ -207,29 +193,29 @@ func (h *SearchHandler) IndexProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.IndexProduct(r.Context(), input); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: map[string]string{"id": req.ID, "status": "indexed"}})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": req.ID, "status": "indexed"}})
 }
 
 // DeleteProduct handles DELETE /api/v1/search/{id}
 func (h *SearchHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "id is required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "id is required"},
 		})
 		return
 	}
 
 	if err := h.service.DeleteProduct(r.Context(), id); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: map[string]string{"id": id, "status": "deleted"}})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id, "status": "deleted"}})
 }
 
 // BulkIndex handles POST /api/v1/search/bulk
@@ -238,23 +224,23 @@ func (h *SearchHandler) BulkIndex(w http.ResponseWriter, r *http.Request) {
 
 	var req BulkIndexRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if len(req.Products) == 0 {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "products array must not be empty"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "products array must not be empty"},
 		})
 		return
 	}
 
 	const maxBulkSize = 500
 	if len(req.Products) > maxBulkSize {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{
 				Code:    "VALIDATION_ERROR",
 				Message: fmt.Sprintf("bulk index limited to %d products per request", maxBulkSize),
 			},
@@ -283,11 +269,11 @@ func (h *SearchHandler) BulkIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.BulkIndex(r.Context(), inputs); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: map[string]any{"indexed": len(inputs), "status": "ok"}})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]any{"indexed": len(inputs), "status": "ok"}})
 }
 
 // Reindex handles POST /api/v1/search/reindex
@@ -308,7 +294,7 @@ func (h *SearchHandler) Reindex(w http.ResponseWriter, r *http.Request) {
 func (h *SearchHandler) Suggest(w http.ResponseWriter, r *http.Request) {
 	prefix := strings.TrimSpace(r.URL.Query().Get("q"))
 	if prefix == "" {
-		writeJSON(w, http.StatusOK, response{Data: map[string]any{"suggestions": []string{}}})
+		httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]any{"suggestions": []string{}}})
 		return
 	}
 
@@ -321,54 +307,10 @@ func (h *SearchHandler) Suggest(w http.ResponseWriter, r *http.Request) {
 
 	suggestions, err := h.service.Suggest(r.Context(), prefix, limit)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: map[string]any{"suggestions": suggestions}})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]any{"suggestions": suggestions}})
 }
 
-// --- Helpers ---
-
-func (h *SearchHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
-		writeJSON(w, appErr.Status, response{
-			Error: &errorResponse{Code: appErr.Code, Message: appErr.Message},
-		})
-		return
-	}
-
-	status := apperrors.HTTPStatus(err)
-	code := "INTERNAL_ERROR"
-	message := "an internal error occurred"
-
-	switch {
-	case errors.Is(err, apperrors.ErrNotFound):
-		code = "NOT_FOUND"
-		message = "resource not found"
-		status = http.StatusNotFound
-	case errors.Is(err, apperrors.ErrInvalidInput):
-		code = "INVALID_INPUT"
-		message = err.Error()
-		status = http.StatusBadRequest
-	}
-
-	if status == http.StatusInternalServerError {
-		h.logger.ErrorContext(r.Context(), "internal error",
-			slog.String("error", err.Error()),
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
-	}
-
-	writeJSON(w, status, response{
-		Error: &errorResponse{Code: code, Message: message},
-	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}

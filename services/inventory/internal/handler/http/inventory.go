@@ -2,14 +2,13 @@ package http
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
-	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/inventory/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/inventory/internal/service"
@@ -77,17 +76,6 @@ type ConfirmReservationRequest struct {
 
 // --- Response envelope ---
 
-type response struct {
-	Data  any            `json:"data,omitempty"`
-	Error *errorResponse `json:"error,omitempty"`
-}
-
-type errorResponse struct {
-	Code    string            `json:"code"`
-	Message string            `json:"message"`
-	Fields  map[string]string `json:"fields,omitempty"`
-}
-
 type listResponse struct {
 	Data       any `json:"data"`
 	TotalCount int `json:"total_count"`
@@ -106,14 +94,14 @@ func (h *InventoryHandler) InitializeStock(w http.ResponseWriter, r *http.Reques
 
 	var req InitializeStockRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -132,11 +120,11 @@ func (h *InventoryHandler) InitializeStock(w http.ResponseWriter, r *http.Reques
 
 	result, err := h.service.InitializeStock(r.Context(), stock)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, response{Data: result})
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{Data: result})
 }
 
 // GetStock handles GET /api/v1/inventory/{productId}/variants/{variantId}
@@ -145,19 +133,19 @@ func (h *InventoryHandler) GetStock(w http.ResponseWriter, r *http.Request) {
 	variantID := chi.URLParam(r, "variantId")
 
 	if productID == "" || variantID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "product_id and variant_id are required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product_id and variant_id are required"},
 		})
 		return
 	}
 
 	stock, err := h.service.GetStock(r.Context(), productID, variantID)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: stock})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: stock})
 }
 
 // AdjustStock handles PUT /api/v1/inventory/{productId}/variants/{variantId}
@@ -166,8 +154,8 @@ func (h *InventoryHandler) AdjustStock(w http.ResponseWriter, r *http.Request) {
 	variantID := chi.URLParam(r, "variantId")
 
 	if productID == "" || variantID == "" {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "product_id and variant_id are required"},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product_id and variant_id are required"},
 		})
 		return
 	}
@@ -177,24 +165,24 @@ func (h *InventoryHandler) AdjustStock(w http.ResponseWriter, r *http.Request) {
 
 	var req AdjustStockRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
 	stock, err := h.service.AdjustStock(r.Context(), productID, variantID, req.Delta, req.Reason)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: stock})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: stock})
 }
 
 // CheckAvailability handles POST /api/v1/inventory/check
@@ -204,14 +192,14 @@ func (h *InventoryHandler) CheckAvailability(w http.ResponseWriter, r *http.Requ
 
 	var req CheckAvailabilityRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -226,11 +214,11 @@ func (h *InventoryHandler) CheckAvailability(w http.ResponseWriter, r *http.Requ
 
 	results, allAvailable, err := h.service.CheckAvailability(r.Context(), items)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: map[string]any{
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]any{
 		"items":         results,
 		"all_available": allAvailable,
 	}})
@@ -243,14 +231,14 @@ func (h *InventoryHandler) ReserveStock(w http.ResponseWriter, r *http.Request) 
 
 	var req ReserveStockRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -265,11 +253,11 @@ func (h *InventoryHandler) ReserveStock(w http.ResponseWriter, r *http.Request) 
 
 	reservationIDs, err := h.service.ReserveStock(r.Context(), req.CheckoutID, items, req.TTLSeconds)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, response{Data: map[string]any{
+	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{Data: map[string]any{
 		"reservation_ids": reservationIDs,
 		"checkout_id":     req.CheckoutID,
 	}})
@@ -282,23 +270,23 @@ func (h *InventoryHandler) ReleaseReservation(w http.ResponseWriter, r *http.Req
 
 	var req ReleaseReservationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
 	if err := h.service.ReleaseReservation(r.Context(), req.ReservationID); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: map[string]string{
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{
 		"reservation_id": req.ReservationID,
 		"status":         "released",
 	}})
@@ -311,23 +299,23 @@ func (h *InventoryHandler) ConfirmReservation(w http.ResponseWriter, r *http.Req
 
 	var req ConfirmReservationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
+		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "invalid request body: " + err.Error()},
 		})
 		return
 	}
 
 	if err := validator.Validate(req); err != nil {
-		h.writeValidationError(w, err)
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
 	if err := h.service.ConfirmReservation(r.Context(), req.ReservationID); err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, response{Data: map[string]string{
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{
 		"reservation_id": req.ReservationID,
 		"status":         "confirmed",
 	}})
@@ -341,8 +329,8 @@ func (h *InventoryHandler) ListLowStock(w http.ResponseWriter, r *http.Request) 
 	if v := r.URL.Query().Get("page"); v != "" {
 		p, err := strconv.Atoi(v)
 		if err != nil || p < 1 {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "page must be a valid positive integer"},
 			})
 			return
 		}
@@ -351,8 +339,8 @@ func (h *InventoryHandler) ListLowStock(w http.ResponseWriter, r *http.Request) 
 	if v := r.URL.Query().Get("per_page"); v != "" {
 		pp, err := strconv.Atoi(v)
 		if err != nil || pp < 1 || pp > 100 {
-			writeJSON(w, http.StatusBadRequest, response{
-				Error: &errorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
+			httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
+				Error: &httputil.ErrorResponse{Code: "INVALID_PARAMETER", Message: "per_page must be a valid integer between 1 and 100"},
 			})
 			return
 		}
@@ -361,7 +349,7 @@ func (h *InventoryHandler) ListLowStock(w http.ResponseWriter, r *http.Request) 
 
 	stocks, total, err := h.service.ListLowStock(r.Context(), page, perPage)
 	if err != nil {
-		h.writeError(w, r, err)
+		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
@@ -370,7 +358,7 @@ func (h *InventoryHandler) ListLowStock(w http.ResponseWriter, r *http.Request) 
 		totalPages++
 	}
 
-	writeJSON(w, http.StatusOK, listResponse{
+	httputil.WriteJSON(w, http.StatusOK, listResponse{
 		Data:       stocks,
 		TotalCount: total,
 		Page:       page,
@@ -380,70 +368,3 @@ func (h *InventoryHandler) ListLowStock(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// --- Helpers ---
-
-func (h *InventoryHandler) writeError(w http.ResponseWriter, r *http.Request, err error) {
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
-		writeJSON(w, appErr.Status, response{
-			Error: &errorResponse{Code: appErr.Code, Message: appErr.Message},
-		})
-		return
-	}
-
-	status := apperrors.HTTPStatus(err)
-	code := "INTERNAL_ERROR"
-	message := "an internal error occurred"
-
-	switch {
-	case errors.Is(err, apperrors.ErrNotFound):
-		code = "NOT_FOUND"
-		message = "resource not found"
-		status = http.StatusNotFound
-	case errors.Is(err, apperrors.ErrAlreadyExists):
-		code = "ALREADY_EXISTS"
-		message = "resource already exists"
-		status = http.StatusConflict
-	case errors.Is(err, apperrors.ErrInvalidInput):
-		code = "INVALID_INPUT"
-		message = err.Error()
-		status = http.StatusBadRequest
-	}
-
-	if status == http.StatusInternalServerError {
-		h.logger.ErrorContext(r.Context(), "internal error",
-			slog.String("error", err.Error()),
-			slog.String("method", r.Method),
-			slog.String("path", r.URL.Path),
-		)
-	}
-
-	writeJSON(w, status, response{
-		Error: &errorResponse{Code: code, Message: message},
-	})
-}
-
-func (h *InventoryHandler) writeValidationError(w http.ResponseWriter, err error) {
-	var valErr *validator.ValidationError
-	if errors.As(err, &valErr) {
-		writeJSON(w, http.StatusBadRequest, response{
-			Error: &errorResponse{
-				Code:    "VALIDATION_ERROR",
-				Message: "request validation failed",
-				Fields:  valErr.Fields(),
-			},
-		})
-		return
-	}
-
-	writeJSON(w, http.StatusBadRequest, response{
-		Error: &errorResponse{Code: "INVALID_INPUT", Message: err.Error()},
-	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	// Headers are already sent; nothing meaningful can be done if encoding fails.
-	_ = json.NewEncoder(w).Encode(v)
-}
