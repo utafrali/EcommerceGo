@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { MegaMenu } from './MegaMenu';
 import { MobileDrawer } from './MobileDrawer';
+import { MiniCart } from './MiniCart';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { api } from '@/lib/api';
@@ -145,6 +146,7 @@ export default function Header() {
   const [activeMegaMenuId, setActiveMegaMenuId] = useState<string | null>(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [miniCartOpen, setMiniCartOpen] = useState(false);
   const [topBarDismissed, setTopBarDismissed] = useState(false);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -402,8 +404,9 @@ export default function Header() {
               </div>
 
               {/* Cart */}
-              <Link
-                href="/cart"
+              <button
+                type="button"
+                onClick={() => setMiniCartOpen(true)}
                 className="relative rounded-lg p-2 text-stone-600 hover:bg-stone-50 hover:scale-110 transition-all duration-200 will-change-transform"
                 aria-label={itemCount > 0 ? `Shopping cart with ${itemCount} item${itemCount > 1 ? 's' : ''}` : "Shopping cart"}
               >
@@ -418,7 +421,7 @@ export default function Header() {
                     </span>
                   </>
                 )}
-              </Link>
+              </button>
             </div>
           </div>
 
@@ -517,6 +520,12 @@ export default function Header() {
         isOpen={mobileDrawerOpen}
         onClose={() => setMobileDrawerOpen(false)}
         categories={categories}
+      />
+
+      {/* ── Mini Cart ────────────────────────────────────────────────────── */}
+      <MiniCart
+        isOpen={miniCartOpen}
+        onClose={() => setMiniCartOpen(false)}
       />
     </header>
   );

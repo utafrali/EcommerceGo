@@ -156,6 +156,7 @@ export function ProductListClient({
           page: page === 1 ? undefined : String(page),
         }),
       );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     [router, buildUrl],
   );

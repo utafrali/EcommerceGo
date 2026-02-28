@@ -29,7 +29,7 @@ export function ProductCardSkeleton() {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       {/* Image placeholder */}
-      <Skeleton className="mb-4 aspect-square w-full rounded-lg" />
+      <Skeleton className="mb-4 aspect-[3/4] w-full rounded-lg" />
       {/* Category badge */}
       <Skeleton className="mb-2 h-5 w-16 rounded-full" />
       {/* Product name */}

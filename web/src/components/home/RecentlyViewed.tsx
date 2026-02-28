@@ -36,7 +36,7 @@ export function RecentlyViewed() {
     <section className="bg-white py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+          <h2 className="text-2xl font-bold tracking-tight text-stone-900">
             Recently Viewed
           </h2>
         </div>

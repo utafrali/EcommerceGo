@@ -100,7 +100,7 @@ function UserIcon({ className }: { className?: string }) {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function MobileDrawer({ isOpen, onClose, categories }: MobileDrawerProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const { itemCount } = useCart();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -407,9 +407,9 @@ export function MobileDrawer({ isOpen, onClose, categories }: MobileDrawerProps)
                   </div>
                 </div>
                 <button
-                  onClick={() => {
-                    // TODO: Implement signOut from AuthContext
-                    window.location.href = '/auth/login';
+                  onClick={async () => {
+                    await logout();
+                    onClose();
                   }}
                   className="w-full rounded-lg border border-stone-300 px-4 py-2 text-center text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
                 >
