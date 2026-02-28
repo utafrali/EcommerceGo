@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: product-config
+  namespace: ecommerce
+  labels:
+    app: product
+    app.kubernetes.io/name: product
+    app.kubernetes.io/component: backend
+data:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "info"
+  PRODUCT_HTTP_PORT: "8001"
+  PRODUCT_GRPC_PORT: "9001"
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  POSTGRES_USER: "ecommerce"
+  POSTGRES_SSL_MODE: "disable"
+  PRODUCT_DB_NAME: "product_db"
+  KAFKA_BROKERS: "kafka:9092"

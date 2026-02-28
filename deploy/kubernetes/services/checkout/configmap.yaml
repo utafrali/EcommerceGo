@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: checkout-config
+  namespace: ecommerce
+  labels:
+    app: checkout
+    app.kubernetes.io/name: checkout
+    app.kubernetes.io/component: backend
+data:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "info"
+  CHECKOUT_HTTP_PORT: "8004"
+  CHECKOUT_GRPC_PORT: "9004"
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  POSTGRES_USER: "ecommerce"
+  POSTGRES_SSL_MODE: "disable"
+  CHECKOUT_DB_NAME: "checkout_db"
+  KAFKA_BROKERS: "kafka:9092"
+  INVENTORY_SERVICE_URL: "http://inventory:8007"
+  ORDER_SERVICE_URL: "http://order:8003"
+  PAYMENT_SERVICE_URL: "http://payment:8005"

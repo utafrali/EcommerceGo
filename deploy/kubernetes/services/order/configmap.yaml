@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-config
+  namespace: ecommerce
+  labels:
+    app: order
+    app.kubernetes.io/name: order
+    app.kubernetes.io/component: backend
+data:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "info"
+  ORDER_HTTP_PORT: "8003"
+  ORDER_GRPC_PORT: "9003"
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  POSTGRES_USER: "ecommerce"
+  POSTGRES_SSL_MODE: "disable"
+  ORDER_DB_NAME: "order_db"
+  KAFKA_BROKERS: "kafka:9092"

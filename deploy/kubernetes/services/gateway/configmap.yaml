@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+  namespace: ecommerce
+  labels:
+    app: gateway
+    app.kubernetes.io/name: gateway
+    app.kubernetes.io/component: backend
+data:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "info"
+  GATEWAY_HTTP_PORT: "8080"
+  # Backend service URLs (in-cluster DNS)
+  PRODUCT_SERVICE_URL: "http://product:8001"
+  CART_SERVICE_URL: "http://cart:8002"
+  ORDER_SERVICE_URL: "http://order:8003"
+  CHECKOUT_SERVICE_URL: "http://checkout:8004"
+  PAYMENT_SERVICE_URL: "http://payment:8005"
+  USER_SERVICE_URL: "http://user:8006"
+  INVENTORY_SERVICE_URL: "http://inventory:8007"
+  CAMPAIGN_SERVICE_URL: "http://campaign:8008"
+  NOTIFICATION_SERVICE_URL: "http://notification:8009"
+  SEARCH_SERVICE_URL: "http://search:8010"
+  MEDIA_SERVICE_URL: "http://media:8011"
+  # Proxy transport settings
+  PROXY_DIAL_TIMEOUT: "5s"
+  PROXY_RESPONSE_TIMEOUT: "30s"
+  PROXY_IDLE_TIMEOUT: "90s"
+  PROXY_MAX_IDLE_CONNS: "100"
+  # Rate limiting
+  RATE_LIMIT_RPS: "100"
+  RATE_LIMIT_BURST: "200"

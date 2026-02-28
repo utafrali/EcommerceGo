@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search
+  namespace: ecommerce
+  labels:
+    app: search
+    app.kubernetes.io/name: search
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: search
+  template:
+    metadata:
+      labels:
+        app: search
+        app.kubernetes.io/name: search
+        app.kubernetes.io/component: backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+      containers:
+        - name: search
+          image: ghcr.io/utafrali/ecommercego/search:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8010
+              protocol: TCP
+            - name: grpc
+              containerPort: 9010
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: search-config
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8010
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8010
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL

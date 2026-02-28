@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: order
+  namespace: ecommerce
+  labels:
+    app: order
+    app.kubernetes.io/name: order
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: order
+  ports:
+    - name: http
+      port: 8003
+      targetPort: 8003
+      protocol: TCP
+    - name: grpc
+      port: 9003
+      targetPort: 9003
+      protocol: TCP
