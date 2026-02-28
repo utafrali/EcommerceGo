@@ -99,19 +99,22 @@ test.describe('Auth Flow - Cart Page (requires auth)', () => {
     await expect(page.getByText('Your cart is empty')).toBeVisible();
   });
 
-  test('cart page shows continue shopping link', async ({ page }) => {
+  test('cart page shows explore products link', async ({ page }) => {
     await page.goto('/cart');
-    const continueLink = page.getByRole('link', { name: 'Continue Shopping' });
-    await expect(continueLink).toBeVisible();
-    await expect(continueLink).toHaveAttribute('href', '/products');
+    const exploreLink = page.getByRole('link', { name: 'Explore Products' });
+    await expect(exploreLink).toBeVisible();
+    await expect(exploreLink).toHaveAttribute('href', '/products');
   });
 
   test('cart page displays empty state with helpful message', async ({
     page,
   }) => {
     await page.goto('/cart');
+    await expect(page.getByText('Your cart is empty')).toBeVisible();
     await expect(
-      page.getByText("Looks like you haven't added anything to your cart yet"),
+      page.getByText(
+        'Discover amazing products and start shopping today. Your perfect find is just a click away!',
+      ),
     ).toBeVisible();
   });
 
