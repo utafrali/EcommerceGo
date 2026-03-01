@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/utafrali/EcommerceGo/pkg/httputil"
+	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/search/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/search/internal/service"
 )
@@ -34,8 +34,8 @@ func NewSearchHandler(svc *service.SearchService, logger *slog.Logger) *SearchHa
 
 // IndexProductRequest is the JSON request body for indexing a product.
 type IndexProductRequest struct {
-	ID           string            `json:"id"`
-	Name         string            `json:"name"`
+	ID           string            `json:"id" validate:"required"`
+	Name         string            `json:"name" validate:"required,min=1"`
 	Slug         string            `json:"slug"`
 	Description  string            `json:"description"`
 	CategoryID   string            `json:"category_id"`
@@ -52,7 +52,7 @@ type IndexProductRequest struct {
 
 // BulkIndexRequest is the JSON request body for bulk indexing products.
 type BulkIndexRequest struct {
-	Products []IndexProductRequest `json:"products"`
+	Products []IndexProductRequest `json:"products" validate:"required,min=1,max=500,dive"`
 }
 
 // --- Handlers ---
@@ -162,16 +162,8 @@ func (h *SearchHandler) IndexProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "id is required"},
-		})
-		return
-	}
-	if req.Name == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "name is required"},
-		})
+	if err := validator.Validate(req); err != nil {
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -202,20 +194,17 @@ func (h *SearchHandler) IndexProduct(w http.ResponseWriter, r *http.Request) {
 
 // DeleteProduct handles DELETE /api/v1/search/{id}
 func (h *SearchHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	if err := h.service.DeleteProduct(r.Context(), id); err != nil {
+	if err := h.service.DeleteProduct(r.Context(), id.String()); err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id, "status": "deleted"}})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id.String(), "status": "deleted"}})
 }
 
 // BulkIndex handles POST /api/v1/search/bulk
@@ -230,21 +219,8 @@ func (h *SearchHandler) BulkIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(req.Products) == 0 {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "products array must not be empty"},
-		})
-		return
-	}
-
-	const maxBulkSize = 500
-	if len(req.Products) > maxBulkSize {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{
-				Code:    "VALIDATION_ERROR",
-				Message: fmt.Sprintf("bulk index limited to %d products per request", maxBulkSize),
-			},
-		})
+	if err := validator.Validate(req); err != nil {
+		httputil.WriteValidationError(w, err)
 		return
 	}
 
@@ -285,9 +261,7 @@ func (h *SearchHandler) Reindex(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]string{"status": "reindex started"})
+	httputil.WriteJSON(w, http.StatusAccepted, httputil.Response{Data: map[string]string{"status": "reindex started"}})
 }
 
 // Suggest handles GET /api/v1/search/suggest

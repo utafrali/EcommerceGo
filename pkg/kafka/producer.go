@@ -7,6 +7,10 @@ import (
 	"time"
 
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ProducerConfig holds Kafka producer configuration.
@@ -52,10 +56,26 @@ func NewProducer(cfg ProducerConfig, logger *slog.Logger) *Producer {
 	}
 }
 
-// Publish sends an event to the specified Kafka topic.
+// Publish sends an event to the specified Kafka topic. It injects the current
+// trace context into the Kafka message headers so consumers can continue the
+// trace.
 func (p *Producer) Publish(ctx context.Context, topic string, event *Event) error {
+	tracer := otel.Tracer("github.com/utafrali/EcommerceGo/pkg/kafka")
+	ctx, span := tracer.Start(ctx, "kafka.produce "+topic,
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(
+			attribute.String("messaging.system", "kafka"),
+			attribute.String("messaging.destination.name", topic),
+			attribute.String("messaging.operation", "publish"),
+			attribute.String("messaging.kafka.event_type", event.EventType),
+		),
+	)
+	defer span.End()
+
 	data, err := event.Marshal()
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "marshal event failed")
 		return fmt.Errorf("marshal event: %w", err)
 	}
 
@@ -75,7 +95,15 @@ func (p *Producer) Publish(ctx context.Context, topic string, event *Event) erro
 		})
 	}
 
+	// Inject trace context into Kafka message headers.
+	otel.GetTextMapPropagator().Inject(ctx, &KafkaHeaderCarrier{&msg.Headers})
+
+	publishStart := time.Now()
 	if err := p.writer.WriteMessages(ctx, msg); err != nil {
+		ProducerPublishDuration.WithLabelValues(topic).Observe(time.Since(publishStart).Seconds())
+		ProducerPublishErrors.WithLabelValues(topic).Inc()
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "publish failed")
 		p.logger.ErrorContext(ctx, "failed to publish event",
 			slog.String("topic", topic),
 			slog.String("event_type", event.EventType),
@@ -83,6 +111,8 @@ func (p *Producer) Publish(ctx context.Context, topic string, event *Event) erro
 		)
 		return fmt.Errorf("publish event to %s: %w", topic, err)
 	}
+	ProducerPublishDuration.WithLabelValues(topic).Observe(time.Since(publishStart).Seconds())
+	ProducerMessagesPublished.WithLabelValues(topic).Inc()
 
 	p.logger.DebugContext(ctx, "event published",
 		slog.String("topic", topic),
@@ -91,6 +121,42 @@ func (p *Producer) Publish(ctx context.Context, topic string, event *Event) erro
 	)
 
 	return nil
+}
+
+// KafkaHeaderCarrier adapts Kafka message headers for OpenTelemetry
+// propagation. It implements propagation.TextMapCarrier.
+type KafkaHeaderCarrier struct {
+	headers *[]kafka.Header
+}
+
+// Get returns the value for a key from Kafka headers.
+func (c *KafkaHeaderCarrier) Get(key string) string {
+	for _, h := range *c.headers {
+		if h.Key == key {
+			return string(h.Value)
+		}
+	}
+	return ""
+}
+
+// Set adds or replaces a key-value pair in Kafka headers.
+func (c *KafkaHeaderCarrier) Set(key, value string) {
+	for i, h := range *c.headers {
+		if h.Key == key {
+			(*c.headers)[i].Value = []byte(value)
+			return
+		}
+	}
+	*c.headers = append(*c.headers, kafka.Header{Key: key, Value: []byte(value)})
+}
+
+// Keys returns all header keys.
+func (c *KafkaHeaderCarrier) Keys() []string {
+	keys := make([]string, len(*c.headers))
+	for i, h := range *c.headers {
+		keys[i] = h.Key
+	}
+	return keys
 }
 
 // Ping checks Kafka broker connectivity by dialing the first reachable broker.

@@ -5,18 +5,17 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
 )
 
 // ReviewRepository implements review persistence operations using PostgreSQL.
 type ReviewRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewReviewRepository creates a new PostgreSQL-backed review repository.
-func NewReviewRepository(pool *pgxpool.Pool) *ReviewRepository {
+func NewReviewRepository(pool database.DBTX) *ReviewRepository {
 	return &ReviewRepository{pool: pool}
 }
 

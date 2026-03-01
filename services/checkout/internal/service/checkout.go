@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -25,15 +24,37 @@ const (
 	checkoutExpiryDuration = 30 * time.Minute
 )
 
+// CircuitOpenFallback is a fallback function for the checkout saga's circuit breaker.
+// When the circuit is open, it returns a structured error with a retry hint
+// instead of letting the raw ErrCircuitOpen propagate.
+func CircuitOpenFallback(_ context.Context, _ error) (*http.Response, error) {
+	return nil, apperrors.ServiceUnavailable("downstream service is temporarily unavailable, please retry after 30 seconds")
+}
+
+// HTTPDoer is the interface for executing HTTP requests.
+// Both httpclient.Client and httpclient.CircuitBreakerClient satisfy this.
+type HTTPDoer interface {
+	Do(ctx context.Context, req *http.Request) (*http.Response, error)
+}
+
+// SagaTimeouts holds per-step timeout configuration for the checkout saga.
+// A zero value means no per-step timeout (inherits the parent context timeout).
+type SagaTimeouts struct {
+	InventoryTimeout time.Duration
+	OrderTimeout     time.Duration
+	PaymentTimeout   time.Duration
+}
+
 // CheckoutService implements the business logic for checkout operations.
 type CheckoutService struct {
 	repo                repository.CheckoutRepository
 	producer            *event.Producer
 	logger              *slog.Logger
-	httpClient          *httpclient.Client
+	httpClient          HTTPDoer
 	inventoryServiceURL string
 	orderServiceURL     string
 	paymentServiceURL   string
+	sagaTimeouts        SagaTimeouts
 }
 
 // NewCheckoutService creates a new checkout service.
@@ -41,8 +62,9 @@ func NewCheckoutService(
 	repo repository.CheckoutRepository,
 	producer *event.Producer,
 	logger *slog.Logger,
-	httpClient *httpclient.Client,
+	httpClient HTTPDoer,
 	inventoryServiceURL, orderServiceURL, paymentServiceURL string,
+	sagaTimeouts SagaTimeouts,
 ) *CheckoutService {
 	return &CheckoutService{
 		repo:                repo,
@@ -52,6 +74,7 @@ func NewCheckoutService(
 		inventoryServiceURL: inventoryServiceURL,
 		orderServiceURL:     orderServiceURL,
 		paymentServiceURL:   paymentServiceURL,
+		sagaTimeouts:        sagaTimeouts,
 	}
 }
 
@@ -432,6 +455,12 @@ func (s *CheckoutService) CancelCheckout(ctx context.Context, sessionID string) 
 
 // reserveInventory calls the inventory service to reserve stock for all checkout items.
 func (s *CheckoutService) reserveInventory(ctx context.Context, session *domain.CheckoutSession) ([]string, error) {
+	if s.sagaTimeouts.InventoryTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.sagaTimeouts.InventoryTimeout)
+		defer cancel()
+	}
+
 	type reserveRequest struct {
 		Items []struct {
 			VariantID string `json:"variant_id"`
@@ -475,8 +504,7 @@ func (s *CheckoutService) reserveInventory(ctx context.Context, session *domain.
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("inventory service returned status %d: %s", resp.StatusCode, string(bodyBytes))
+		return nil, httpclient.ParseResponseError(resp, "inventory")
 	}
 
 	var reserveResp reserveResponse
@@ -494,6 +522,12 @@ func (s *CheckoutService) reserveInventory(ctx context.Context, session *domain.
 
 // createOrder calls the order service to create an order from the checkout session.
 func (s *CheckoutService) createOrder(ctx context.Context, session *domain.CheckoutSession) (string, error) {
+	if s.sagaTimeouts.OrderTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.sagaTimeouts.OrderTimeout)
+		defer cancel()
+	}
+
 	type orderItem struct {
 		ProductID string `json:"product_id"`
 		VariantID string `json:"variant_id"`
@@ -569,8 +603,7 @@ func (s *CheckoutService) createOrder(ctx context.Context, session *domain.Check
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("order service returned status %d: %s", resp.StatusCode, string(bodyBytes))
+		return "", httpclient.ParseResponseError(resp, "order")
 	}
 
 	var orderResp createOrderResponse
@@ -588,6 +621,12 @@ func (s *CheckoutService) createOrder(ctx context.Context, session *domain.Check
 
 // initiatePayment calls the payment service to start payment processing.
 func (s *CheckoutService) initiatePayment(ctx context.Context, session *domain.CheckoutSession) (string, error) {
+	if s.sagaTimeouts.PaymentTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.sagaTimeouts.PaymentTimeout)
+		defer cancel()
+	}
+
 	type initiatePaymentRequest struct {
 		OrderID       string `json:"order_id"`
 		UserID        string `json:"user_id"`
@@ -626,8 +665,7 @@ func (s *CheckoutService) initiatePayment(ctx context.Context, session *domain.C
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("payment service returned status %d: %s", resp.StatusCode, string(bodyBytes))
+		return "", httpclient.ParseResponseError(resp, "payment")
 	}
 
 	var paymentResp initiatePaymentResponse
@@ -674,12 +712,7 @@ func (s *CheckoutService) releaseInventoryReservations(ctx context.Context, rese
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		s.logger.ErrorContext(ctx, "inventory service release failed",
-			slog.Int("status", resp.StatusCode),
-			slog.String("body", string(bodyBytes)),
-		)
-		return fmt.Errorf("inventory service returned status %d: %s", resp.StatusCode, string(bodyBytes))
+		return httpclient.ParseResponseError(resp, "inventory")
 	}
 
 	s.logger.InfoContext(ctx, "inventory reservations released",
@@ -705,12 +738,7 @@ func (s *CheckoutService) cancelOrder(ctx context.Context, orderID string) error
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		s.logger.ErrorContext(ctx, "order service cancellation failed",
-			slog.Int("status", resp.StatusCode),
-			slog.String("body", string(bodyBytes)),
-		)
-		return fmt.Errorf("order service returned status %d: %s", resp.StatusCode, string(bodyBytes))
+		return httpclient.ParseResponseError(resp, "order")
 	}
 
 	s.logger.InfoContext(ctx, "order cancelled",

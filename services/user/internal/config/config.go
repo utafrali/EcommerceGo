@@ -25,6 +25,12 @@ type Config struct {
 	PostgresDB   string `env:"USER_DB_NAME" envDefault:"user_db"`
 	PostgresSSL  string `env:"POSTGRES_SSL_MODE" envDefault:"disable"`
 
+	// Database pool
+	DBMaxConns            int32 `env:"DB_MAX_CONNS" envDefault:"25"`
+	DBMinConns            int32 `env:"DB_MIN_CONNS" envDefault:"5"`
+	DBMaxConnLifetimeMins int `env:"DB_MAX_CONN_LIFETIME_MINUTES" envDefault:"60"`
+	DBMaxConnIdleTimeMins int `env:"DB_MAX_CONN_IDLE_TIME_MINUTES" envDefault:"30"`
+
 	// Kafka
 	KafkaBrokers []string `env:"KAFKA_BROKERS" envDefault:"localhost:9092" envSeparator:","`
 
@@ -33,8 +39,16 @@ type Config struct {
 	JWTAccessExpiry  string `env:"JWT_ACCESS_TOKEN_EXPIRY" envDefault:"15m"`
 	JWTRefreshExpiry string `env:"JWT_REFRESH_TOKEN_EXPIRY" envDefault:"168h"`
 
-	// CORS
-	CORSAllowedOrigins []string `env:"CORS_ALLOWED_ORIGINS" envDefault:"*" envSeparator:","`
+	// OpenTelemetry
+	OTELEnabled    bool    `env:"OTEL_ENABLED" envDefault:"false"`
+	OTELEndpoint   string  `env:"OTEL_EXPORTER_OTLP_ENDPOINT" envDefault:"localhost:4318"`
+	OTELSampleRate float64 `env:"OTEL_SAMPLE_RATE" envDefault:"1.0"`
+
+	// Pprof debug endpoints (IP allowlist in CIDR notation)
+	PprofAllowedCIDRs []string `env:"PPROF_ALLOWED_CIDRS" envDefault:"10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,::1/128" envSeparator:","`
+
+	// Slow query logging
+	SlowQueryThresholdMs int `env:"LOG_SLOW_QUERY_MS" envDefault:"500"`
 }
 
 // Load reads configuration from environment variables.
@@ -45,6 +59,18 @@ func Load() (*Config, error) {
 	}
 	if cfg.HTTPPort < 1 || cfg.HTTPPort > 65535 {
 		return nil, fmt.Errorf("invalid HTTP port: %d", cfg.HTTPPort)
+	}
+	if cfg.PostgresHost == "" {
+		return nil, fmt.Errorf("POSTGRES_HOST is required")
+	}
+	if cfg.PostgresUser == "" {
+		return nil, fmt.Errorf("POSTGRES_USER is required")
+	}
+	if len(cfg.KafkaBrokers) == 0 {
+		return nil, fmt.Errorf("KAFKA_BROKERS is required")
+	}
+	if cfg.OTELSampleRate < 0 || cfg.OTELSampleRate > 1.0 {
+		return nil, fmt.Errorf("OTEL_SAMPLE_RATE must be between 0.0 and 1.0, got %f", cfg.OTELSampleRate)
 	}
 
 	// In non-development environments, require an explicitly set, strong JWT secret.

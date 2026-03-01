@@ -323,6 +323,70 @@ func TestRateLimit_LastSeen_UpdatedViaHTTP(t *testing.T) {
 	}
 }
 
+// --- Rate limit header tests ---
+
+func TestRateLimit_SuccessfulRequest_HasRateLimitHeaders(t *testing.T) {
+	handler := RateLimit(10, 20, newTestLogger())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "10.100.0.1:12345"
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+	assert.NotEmpty(t, rr.Header().Get("X-RateLimit-Limit"), "should have X-RateLimit-Limit header")
+	assert.NotEmpty(t, rr.Header().Get("X-RateLimit-Remaining"), "should have X-RateLimit-Remaining header")
+	assert.NotEmpty(t, rr.Header().Get("X-RateLimit-Reset"), "should have X-RateLimit-Reset header")
+	assert.Equal(t, "20", rr.Header().Get("X-RateLimit-Limit"), "limit should equal burst")
+}
+
+func TestRateLimit_429Response_HasRetryAfterHeader(t *testing.T) {
+	handler := RateLimit(1, 1, newTestLogger())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// First request consumes the single token.
+	req1 := httptest.NewRequest(http.MethodGet, "/", nil)
+	req1.RemoteAddr = "10.100.0.2:12345"
+	rr1 := httptest.NewRecorder()
+	handler.ServeHTTP(rr1, req1)
+	assert.Equal(t, http.StatusOK, rr1.Code)
+
+	// Second request should be rate limited with Retry-After.
+	req2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	req2.RemoteAddr = "10.100.0.2:12345"
+	rr2 := httptest.NewRecorder()
+	handler.ServeHTTP(rr2, req2)
+
+	assert.Equal(t, http.StatusTooManyRequests, rr2.Code)
+	assert.NotEmpty(t, rr2.Header().Get("Retry-After"), "429 response should have Retry-After header")
+	assert.NotEmpty(t, rr2.Header().Get("X-RateLimit-Limit"), "429 response should have X-RateLimit-Limit header")
+	assert.Equal(t, "0", rr2.Header().Get("X-RateLimit-Remaining"), "remaining should be 0 when rate limited")
+}
+
+func TestRateLimit_RemainingDecreases(t *testing.T) {
+	handler := RateLimit(1, 5, newTestLogger())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	var lastRemaining string
+	for i := 0; i < 3; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.RemoteAddr = "10.100.0.3:12345"
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		remaining := rr.Header().Get("X-RateLimit-Remaining")
+		if i > 0 {
+			assert.NotEqual(t, lastRemaining, remaining, "remaining should change between requests")
+		}
+		lastRemaining = remaining
+	}
+}
+
 func TestClientIP_XForwardedFor_MultipleIPs(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("X-Forwarded-For", "203.0.113.50, 70.41.3.18, 150.172.238.178")

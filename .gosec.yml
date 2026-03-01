@@ -1,0 +1,53 @@
+# =============================================================================
+# gosec - Go Security Checker Configuration
+# =============================================================================
+# Severity/Confidence thresholds for CI failure
+# Only HIGH severity + MEDIUM or higher confidence will fail the build.
+
+global:
+  # Audit mode disables some more aggressive checks
+  audit: false
+  # Number of goroutines for analysis
+  concurrency: 4
+  # Show column information in output
+  show-column: true
+  # Severity threshold
+  severity: "medium"
+  # Confidence threshold
+  confidence: "medium"
+  # Exclude generated code and test files from scanning
+  exclude-generated: true
+  nosec: true
+  nosec-tag: "nosec"
+
+# Rule configuration
+rules:
+  # G101: Look for hard coded credentials — enabled
+  # G102: Bind to all interfaces — enabled
+  # G103: Audit the use of unsafe block — enabled
+  # G104: Audit errors not checked — enabled (LOW sev, but useful)
+  # G106: Audit the use of ssh.InsecureIgnoreHostKey — enabled
+  # G107: Url provided to HTTP request as taint input (SSRF) — enabled
+  # G108: Profiling endpoint automatically exposed — enabled
+  # G109: Potential Integer overflow — enabled
+  # G110: Potential DoS via decompression bomb — enabled
+  # G111: Potential directory traversal — enabled
+  # G112: Potential slowloris attack — enabled
+  # G113: Usage of Rat.SetString in math/big — enabled
+  # G114: Use of net/http serve function — enabled
+  # G115: Integer overflow conversion — enabled
+  # G201-G204: SQL injection variants — enabled
+  # G301-G307: File permission issues — enabled
+  # G401-G407: Crypto issues — enabled
+  # G501-G505: Blocklist imports — enabled
+  # G601: Implicit memory aliasing — enabled
+  # G602: Slice access out of bounds — enabled
+
+# Exclude test files by default (tests may use insecure patterns intentionally)
+exclude-dir:
+  - vendor
+  - node_modules
+  - web
+  - cms
+  - master-agent
+  - tests/integration

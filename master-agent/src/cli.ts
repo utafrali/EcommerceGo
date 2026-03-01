@@ -2,11 +2,7 @@
 /**
  * master-agent CLI — pretty printer & runner
  *
- * WORKFLOW (two terminals):
- *   Terminal 1:  npm run dev            ← server + live logs
- *   Terminal 2:  npm run decide         ← this CLI, calls the server
- *
- * Usage (Terminal 2):
+ * Usage:
  *   npm run decide                      # decide next iteration (interactive)
  *   npm run decide -- --extra "X"       # pass extra context
  *   npm run decide:execute              # decide + auto-run via claude
@@ -19,12 +15,11 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { log, section, step, printPlan, color, c } from "./logger.js";
-import type { DecideResponse, IterationPlan } from "./types.js";
+import { decideIteration } from "./decide.js";
+import type { IterationPlan } from "./types.js";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const PORT = Number(process.env.PORT) || 4001;
-const BASE_URL = `http://localhost:${PORT}`;
 const REPO_ROOT =
   process.env.REPO_ROOT ??
   path.resolve(fileURLToPath(import.meta.url), "../../../");
@@ -37,31 +32,6 @@ const extraContext = extraIdx !== -1 ? args[extraIdx + 1] : undefined;
 const shouldExecute = args.includes("--execute") || args.includes("-e");
 const watchIdx = args.indexOf("--watch");
 const watchMinutes = watchIdx !== -1 ? Number(args[watchIdx + 1]) || 15 : null;
-
-// ─── HTTP helpers ─────────────────────────────────────────────────────────────
-
-async function fetchJson<T>(url: string, body?: unknown): Promise<T> {
-  const res = await fetch(url, {
-    method: body !== undefined ? "POST" : "GET",
-    headers: body !== undefined ? { "Content-Type": "application/json" } : {},
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  const json = (await res.json()) as T;
-  if (!res.ok) {
-    const err = (json as { error?: string }).error ?? res.statusText;
-    throw new Error(`HTTP ${res.status}: ${err}`);
-  }
-  return json;
-}
-
-async function isServerUp(): Promise<boolean> {
-  try {
-    await fetchJson(`${BASE_URL}/health`);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // ─── Execution ────────────────────────────────────────────────────────────────
 
@@ -111,7 +81,48 @@ async function runExecution(plan: IterationPlan): Promise<void> {
   section("DONE");
   step("done", color(c.green, `Round ${plan.round_number} executed.`));
   log("");
-  log(`  ${color(c.gray, "Suggested commit:")}  git add -A && git commit -m "feat: pipeline round ${plan.round_number} — ${plan.title}"`);
+
+  // Auto-commit all changes
+  section("COMMITTING");
+  step("arrow", color(c.yellow, "Running git add -A && git commit..."));
+  const commitMsg = `feat: pipeline round ${plan.round_number} — ${plan.title}`;
+  const commitChild = spawn(
+    "bash",
+    ["-c", `git add -A && git commit -m "${commitMsg.replace(/"/g, '\\"')}"`],
+    { cwd: REPO_ROOT, env, stdio: ["ignore", "pipe", "pipe"] }
+  );
+  commitChild.stdout!.on("data", (chunk: Buffer) => process.stdout.write(chunk));
+  commitChild.stderr!.on("data", (chunk: Buffer) => process.stderr.write(chunk));
+  const committed = await new Promise<boolean>((resolve) => {
+    commitChild.on("close", (code) => {
+      if (code === 0) {
+        step("ok", color(c.green, `Committed: "${commitMsg}"`));
+        resolve(true);
+      } else {
+        step("arrow", color(c.yellow, "Nothing to commit or git error — skipping push."));
+        resolve(false);
+      }
+    });
+    commitChild.on("error", () => resolve(false));
+  });
+
+  if (committed) {
+    step("arrow", color(c.yellow, "Pushing to origin..."));
+    const pushChild = spawn("git", ["push"], { cwd: REPO_ROOT, env, stdio: ["ignore", "pipe", "pipe"] });
+    pushChild.stdout!.on("data", (chunk: Buffer) => process.stdout.write(chunk));
+    pushChild.stderr!.on("data", (chunk: Buffer) => process.stderr.write(chunk));
+    await new Promise<void>((resolve) => {
+      pushChild.on("close", (code) => {
+        if (code === 0) {
+          step("ok", color(c.green, "Pushed to origin."));
+        } else {
+          step("arrow", color(c.red, "git push failed — check remote/auth."));
+        }
+        resolve();
+      });
+      pushChild.on("error", () => resolve());
+    });
+  }
   log("");
 }
 
@@ -124,40 +135,21 @@ async function runOnce() {
   log(color(c.bold + c.cyan, "  ╚══════════════════════════════╝"));
   log(`  ${color(c.gray, `repo: ${REPO_ROOT}`)}`);
 
-  // Check server
-  section("SERVER");
-  if (!(await isServerUp())) {
-    log("");
-    log(color(c.red + c.bold, "  Server not running on port " + PORT));
-    log("");
-    log("  Start it first in another terminal:");
-    log(color(c.cyan + c.bold, "    cd master-agent && npm run dev"));
-    log("");
-    log("  That terminal will show live logs for each request.");
-    log("");
-    process.exit(1);
-  }
-  step("ok", `Server running on ${color(c.cyan, `localhost:${PORT}`)}`);
-
-  // Call /decide-iteration
   section("ASKING CLAUDE");
   if (extraContext) {
     step("arrow", `Extra context: ${color(c.yellow, extraContext)}`);
   }
-  step("thinking", color(c.yellow, "Calling claude-opus-4-6 via server (30–60s)..."));
+  step("thinking", color(c.yellow, "Calling claude-opus-4-6 (30–120s)..."));
   log("");
 
   const start = Date.now();
-  const response = await fetchJson<DecideResponse>(`${BASE_URL}/decide-iteration`, {
-    extra_context: extraContext,
-  });
+  const response = await decideIteration(extraContext);
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
 
   step("ok", `Response received in ${color(c.green, elapsed + "s")}`);
   step("ok", `Round ${color(c.cyan, String(response.plan.round_number))} — ${color(c.bold, response.plan.title)}`);
   step("ok", `Tasks: ${color(c.cyan, String(response.plan.tasks.length))}  Priority: ${response.plan.priority}  Scope: ${response.plan.estimated_scope}`);
 
-  // Print plan
   section("ITERATION PLAN");
   printPlan(response.plan);
 
@@ -166,7 +158,6 @@ async function runOnce() {
     return;
   }
 
-  // Execute?
   if (shouldExecute) {
     log("");
     log(color(c.bold + c.green, "  --execute flag set. Starting execution..."));

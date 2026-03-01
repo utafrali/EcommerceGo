@@ -38,6 +38,23 @@ type Config struct {
 	// Rate limiting
 	RateLimitRPS   int `env:"RATE_LIMIT_RPS" envDefault:"100"`
 	RateLimitBurst int `env:"RATE_LIMIT_BURST" envDefault:"200"`
+
+	// CORS
+	CORSAllowedOrigins []string `env:"CORS_ALLOWED_ORIGINS" envDefault:"*" envSeparator:","`
+	CORSAllowedMethods []string `env:"CORS_ALLOWED_METHODS" envDefault:"GET,POST,PUT,PATCH,DELETE,OPTIONS" envSeparator:","`
+	CORSAllowedHeaders []string `env:"CORS_ALLOWED_HEADERS" envDefault:"Accept,Authorization,Content-Type,X-Correlation-ID,X-User-ID" envSeparator:","`
+	CORSMaxAge         int      `env:"CORS_MAX_AGE" envDefault:"3600"`
+
+	// Metrics endpoint protection (IP allowlist in CIDR notation)
+	MetricsAllowedCIDRs []string `env:"METRICS_ALLOWED_CIDRS" envDefault:"10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,::1/128" envSeparator:","`
+
+	// OpenTelemetry
+	OTELEnabled    bool    `env:"OTEL_ENABLED" envDefault:"false"`
+	OTELEndpoint   string  `env:"OTEL_EXPORTER_OTLP_ENDPOINT" envDefault:"localhost:4318"`
+	OTELSampleRate float64 `env:"OTEL_SAMPLE_RATE" envDefault:"1.0"`
+
+	// Pprof debug endpoints (IP allowlist in CIDR notation)
+	PprofAllowedCIDRs []string `env:"PPROF_ALLOWED_CIDRS" envDefault:"10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,::1/128" envSeparator:","`
 }
 
 // Load reads configuration from environment variables.
@@ -59,6 +76,9 @@ func (c *Config) validate() error {
 	}
 	if c.Environment != "development" && c.JWTSecret == "your-secret-key-change-in-production" {
 		return fmt.Errorf("JWT_SECRET must be changed from default value in %s environment", c.Environment)
+	}
+	if c.OTELSampleRate < 0 || c.OTELSampleRate > 1.0 {
+		return fmt.Errorf("OTEL_SAMPLE_RATE must be between 0.0 and 1.0, got %f", c.OTELSampleRate)
 	}
 	return nil
 }

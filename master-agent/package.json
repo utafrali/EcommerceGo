@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "decide": "REPO_ROOT=.. npx tsx src/cli.ts",
     "decide:execute": "REPO_ROOT=.. npx tsx src/cli.ts --execute",
-    "decide:watch": "REPO_ROOT=.. npx tsx src/cli.ts --watch 15"
+    "decide:watch": "REPO_ROOT=.. npx tsx src/cli.ts --watch 15",
+    "decide:loop": "REPO_ROOT=.. npx tsx src/cli.ts --watch 15 --execute"
   },
   "dependencies": {
     "fastify": "^5.3.3",

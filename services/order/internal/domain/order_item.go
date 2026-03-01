@@ -10,6 +10,7 @@ type OrderItem struct {
 	SKU       string `json:"sku"`
 	Price     int64  `json:"price"`
 	Quantity  int    `json:"quantity"`
+	Subtotal  int64  `json:"subtotal"`
 }
 
 // LineTotal returns the total price for this line item.

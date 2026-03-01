@@ -4,7 +4,8 @@
 
 .PHONY: help setup build test lint proto-gen docker-up docker-down docker-infra \
         docker-infra-down docker-build docker-logs docker-backend docker-ps \
-        migrate migrate-down seed clean fmt vet build-all test-all
+        migrate migrate-down seed clean fmt vet build-all test-all \
+        security-scan vuln-check security-all
 
 # Default target
 help: ## Show this help
@@ -20,6 +21,8 @@ setup: ## Initial project setup (install tools, generate proto)
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install github.com/securego/gosec/v2/cmd/gosec@latest
+	go install golang.org/x/vuln/cmd/govulncheck@latest
 	@echo "==> Setup complete!"
 
 # -----------------------------------------------------------------------------
@@ -27,16 +30,22 @@ setup: ## Initial project setup (install tools, generate proto)
 # -----------------------------------------------------------------------------
 SERVICES := product cart order checkout payment user inventory campaign notification search media gateway
 
+# Build metadata embedded via ldflags
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS := -X github.com/utafrali/EcommerceGo/pkg/health.gitCommit=$(GIT_COMMIT) \
+           -X github.com/utafrali/EcommerceGo/pkg/health.buildTime=$(BUILD_TIME)
+
 build: ## Build all Go services (output to bin/)
 	@for svc in $(SERVICES); do \
 		echo "==> Building $$svc..."; \
-		cd services/$$svc && go build -o ../../bin/$$svc ./cmd/server && cd ../..; \
+		cd services/$$svc && go build -ldflags "$(LDFLAGS)" -o ../../bin/$$svc ./cmd/server && cd ../..; \
 	done
 	@echo "==> All services built successfully!"
 
 build-%: ## Build a specific service (e.g., make build-product)
 	@echo "==> Building $*..."
-	cd services/$* && go build -o ../../bin/$* ./cmd/server
+	cd services/$* && go build -ldflags "$(LDFLAGS)" -o ../../bin/$* ./cmd/server
 
 build-all: ## Build all Go services (compile check, no output binary)
 	@for svc in $(SERVICES); do \
@@ -158,6 +167,45 @@ docker-ps: ## Show running services
 seed: ## Seed sample data
 	@echo "==> Seeding data..."
 	./scripts/seed.sh
+
+# -----------------------------------------------------------------------------
+# Security Scanning
+# -----------------------------------------------------------------------------
+security-scan: ## Run gosec static security analysis on all Go code
+	@echo "==> Running gosec security scan..."
+	@failed=0; \
+	for target in pkg $(SERVICES); do \
+		if [ "$$target" = "pkg" ]; then \
+			dir=pkg; \
+		else \
+			dir=services/$$target; \
+		fi; \
+		echo "  Scanning $$target..."; \
+		(cd $$dir && gosec -quiet -exclude-dir=vendor -exclude-dir=testdata ./...) || failed=1; \
+	done; \
+	if [ $$failed -eq 1 ]; then \
+		echo "SECURITY SCAN FAILED"; exit 1; \
+	fi
+	@echo "SECURITY SCAN PASSED"
+
+vuln-check: ## Run govulncheck for dependency vulnerabilities on all Go modules
+	@echo "==> Running govulncheck..."
+	@failed=0; \
+	for target in pkg $(SERVICES); do \
+		if [ "$$target" = "pkg" ]; then \
+			dir=pkg; \
+		else \
+			dir=services/$$target; \
+		fi; \
+		echo "  Checking $$target..."; \
+		(cd $$dir && govulncheck ./...) || failed=1; \
+	done; \
+	if [ $$failed -eq 1 ]; then \
+		echo "VULNERABILITY CHECK FAILED"; exit 1; \
+	fi
+	@echo "VULNERABILITY CHECK PASSED"
+
+security-all: security-scan vuln-check ## Run all security checks (gosec + govulncheck)
 
 # -----------------------------------------------------------------------------
 # Clean

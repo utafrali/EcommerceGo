@@ -17,6 +17,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/utafrali/EcommerceGo/pkg/httpclient"
+	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	pkgkafka "github.com/utafrali/EcommerceGo/pkg/kafka"
 	"github.com/utafrali/EcommerceGo/services/checkout/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/checkout/internal/event"
@@ -73,15 +75,57 @@ func testEventProducer() *event.Producer {
 	return event.NewProducer(kafkaProducer, logger)
 }
 
-func testService(repo *mockCheckoutRepository) *service.CheckoutService {
+func testServiceWithURLs(repo *mockCheckoutRepository, inventoryURL, orderURL, paymentURL string) *service.CheckoutService {
 	logger := testLogger()
 	producer := testEventProducer()
-	return service.NewCheckoutService(repo, producer, logger)
+	cfg := httpclient.DefaultConfig()
+	cfg.MaxRetries = 0
+	httpClient := httpclient.New(cfg)
+	return service.NewCheckoutService(repo, producer, logger, httpClient,
+		inventoryURL, orderURL, paymentURL, service.SagaTimeouts{})
+}
+
+func testService(repo *mockCheckoutRepository) *service.CheckoutService {
+	return testServiceWithURLs(repo, "http://localhost:8007", "http://localhost:8003", "http://localhost:8005")
 }
 
 func testHandler(repo *mockCheckoutRepository) *CheckoutHandler {
 	svc := testService(repo)
 	return NewCheckoutHandler(svc, testLogger())
+}
+
+func testHandlerWithSagaServers(repo *mockCheckoutRepository, inventoryURL, orderURL, paymentURL string) *CheckoutHandler {
+	svc := testServiceWithURLs(repo, inventoryURL, orderURL, paymentURL)
+	return NewCheckoutHandler(svc, testLogger())
+}
+
+// mockSagaServers creates httptest servers that mock inventory, order, and payment services.
+func mockSagaServers(t *testing.T) (inventoryURL, orderURL, paymentURL string, cleanup func()) {
+	t.Helper()
+
+	inventorySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"reservation_ids":["res-001"]}`))
+	}))
+
+	orderSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"order_id":"order-001"}`))
+	}))
+
+	paymentSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"payment_id":"pay-001"}`))
+	}))
+
+	return inventorySrv.URL, orderSrv.URL, paymentSrv.URL, func() {
+		inventorySrv.Close()
+		orderSrv.Close()
+		paymentSrv.Close()
+	}
 }
 
 func activeSession() *domain.CheckoutSession {
@@ -124,9 +168,9 @@ func setupRouter(handler *CheckoutHandler) *chi.Mux {
 }
 
 // decodeResponse reads the response body into the response struct.
-func decodeResponse(t *testing.T, rec *httptest.ResponseRecorder) response {
+func decodeResponse(t *testing.T, rec *httptest.ResponseRecorder) httputil.Response {
 	t.Helper()
-	var resp response
+	var resp httputil.Response
 	err := json.NewDecoder(rec.Body).Decode(&resp)
 	require.NoError(t, err)
 	return resp
@@ -446,7 +490,9 @@ func TestSetPaymentMethod_ForbiddenDifferentUser(t *testing.T) {
 
 func TestProcessCheckout_AuthorizedUser(t *testing.T) {
 	repo := new(mockCheckoutRepository)
-	handler := testHandler(repo)
+	inventoryURL, orderURL, paymentURL, cleanup := mockSagaServers(t)
+	defer cleanup()
+	handler := testHandlerWithSagaServers(repo, inventoryURL, orderURL, paymentURL)
 	router := setupRouter(handler)
 
 	session := activeSession()
@@ -651,14 +697,14 @@ func TestInitiateCheckout_WithUserIDHeader(t *testing.T) {
 
 func TestWriteJSON_SetsContentType(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeJSON(rec, http.StatusTeapot, response{
-		Error: &errorResponse{Code: "TEST", Message: "teapot"},
+	httputil.WriteJSON(rec, http.StatusTeapot, httputil.Response{
+		Error: &httputil.ErrorResponse{Code: "TEST", Message: "teapot"},
 	})
 
 	assert.Equal(t, http.StatusTeapot, rec.Code)
 	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 
-	var resp response
+	var resp httputil.Response
 	err := json.NewDecoder(rec.Body).Decode(&resp)
 	require.NoError(t, err)
 	assert.Equal(t, "TEST", resp.Error.Code)

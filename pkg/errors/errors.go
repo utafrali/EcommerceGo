@@ -120,6 +120,16 @@ func Gone(message string) *AppError {
 	}
 }
 
+// ServiceUnavailable creates a 503 error for temporarily unavailable services.
+func ServiceUnavailable(message string) *AppError {
+	return &AppError{
+		Code:    "SERVICE_UNAVAILABLE",
+		Message: message,
+		Status:  http.StatusServiceUnavailable,
+		Err:     ErrServiceUnavail,
+	}
+}
+
 // Conflict creates a 409 error for concurrent modification conflicts.
 func Conflict(message string) *AppError {
 	return &AppError{
@@ -157,6 +167,8 @@ func HTTPStatus(err error) int {
 		return http.StatusUnprocessableEntity
 	case errors.Is(err, ErrGone):
 		return http.StatusGone
+	case errors.Is(err, ErrServiceUnavail):
+		return http.StatusServiceUnavailable
 	default:
 		return http.StatusInternalServerError
 	}

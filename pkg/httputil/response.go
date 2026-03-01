@@ -6,7 +6,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/logger"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 )
 
@@ -18,9 +21,10 @@ type Response struct {
 
 // ErrorResponse represents an error in the standard response format.
 type ErrorResponse struct {
-	Code    string            `json:"code"`
-	Message string            `json:"message"`
-	Fields  map[string]string `json:"fields,omitempty"`
+	Code      string            `json:"code"`
+	Message   string            `json:"message"`
+	Fields    map[string]string `json:"fields,omitempty"`
+	RequestID string            `json:"request_id,omitempty"`
 }
 
 // WriteJSON writes a JSON response with the given status code.
@@ -34,13 +38,24 @@ func WriteJSON(w http.ResponseWriter, status int, v any) {
 
 // WriteError writes a standardized error response based on the error type.
 // It handles AppError, standard errors (ErrNotFound, ErrAlreadyExists, ErrInvalidInput),
-// and logs internal server errors.
-func WriteError(w http.ResponseWriter, r *http.Request, err error, logger *slog.Logger) {
+// and logs internal server errors. It prefers the request-scoped logger from
+// context (set by the RequestLogger middleware) over the fallback logger.
+func WriteError(w http.ResponseWriter, r *http.Request, err error, fallback *slog.Logger) {
+	// Prefer the request-scoped logger (enriched with correlation_id, user_id,
+	// trace_id, span_id) if the RequestLogger middleware has been mounted.
+	l := logger.FromContext(r.Context())
+	if l == slog.Default() {
+		l = fallback
+	}
+
+	// Extract correlation ID from context to include in error responses.
+	requestID := logger.CorrelationIDFromContext(r.Context())
+
 	// Check if it's an AppError (custom error with code, message, and status)
 	var appErr *apperrors.AppError
 	if errors.As(err, &appErr) {
 		WriteJSON(w, appErr.Status, Response{
-			Error: &ErrorResponse{Code: appErr.Code, Message: appErr.Message},
+			Error: &ErrorResponse{Code: appErr.Code, Message: appErr.Message, RequestID: requestID},
 		})
 		return
 	}
@@ -67,7 +82,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error, logger *slog.
 
 	// Log internal errors
 	if status == http.StatusInternalServerError {
-		logger.ErrorContext(r.Context(), "internal error",
+		l.ErrorContext(r.Context(), "internal error",
 			slog.String("error", err.Error()),
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
@@ -75,8 +90,38 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error, logger *slog.
 	}
 
 	WriteJSON(w, status, Response{
-		Error: &ErrorResponse{Code: code, Message: message},
+		Error: &ErrorResponse{Code: code, Message: message, RequestID: requestID},
 	})
+}
+
+// PaginatedResponse is a generic paginated list response envelope.
+type PaginatedResponse[T any] struct {
+	Data       []T  `json:"data"`
+	TotalCount int  `json:"total_count"`
+	Page       int  `json:"page"`
+	PerPage    int  `json:"per_page"`
+	TotalPages int  `json:"total_pages"`
+	HasNext    bool `json:"has_next"`
+}
+
+// NewPaginatedResponse constructs a PaginatedResponse from the given data, total
+// count, page, and per-page values. It computes TotalPages and HasNext.
+func NewPaginatedResponse[T any](data []T, totalCount, page, perPage int) PaginatedResponse[T] {
+	totalPages := totalCount / perPage
+	if totalCount%perPage > 0 {
+		totalPages++
+	}
+	if data == nil {
+		data = []T{}
+	}
+	return PaginatedResponse[T]{
+		Data:       data,
+		TotalCount: totalCount,
+		Page:       page,
+		PerPage:    perPage,
+		TotalPages: totalPages,
+		HasNext:    page < totalPages,
+	}
 }
 
 // WriteValidationError writes a standardized validation error response.
@@ -97,4 +142,21 @@ func WriteValidationError(w http.ResponseWriter, err error) {
 	WriteJSON(w, http.StatusBadRequest, Response{
 		Error: &ErrorResponse{Code: "INVALID_INPUT", Message: err.Error()},
 	})
+}
+
+// ParseUUID validates that the given string is a valid UUID and returns it.
+// If invalid, it writes a 400 Bad Request response with code INVALID_PARAMETER
+// and returns uuid.Nil plus false, signaling the caller to return early.
+func ParseUUID(w http.ResponseWriter, param string) (uuid.UUID, bool) {
+	id, err := uuid.Parse(param)
+	if err != nil {
+		WriteJSON(w, http.StatusBadRequest, Response{
+			Error: &ErrorResponse{
+				Code:    "INVALID_PARAMETER",
+				Message: "invalid UUID: " + param,
+			},
+		})
+		return uuid.Nil, false
+	}
+	return id, true
 }

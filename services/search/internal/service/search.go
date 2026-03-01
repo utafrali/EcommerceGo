@@ -3,10 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"sync/atomic"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/utafrali/EcommerceGo/services/search/internal/domain"
@@ -15,7 +16,9 @@ import (
 
 // SearchService implements the business logic for search operations.
 type SearchService struct {
+	mu                sync.RWMutex
 	engine            engine.SearchEngine
+	engineType        string
 	reindexing        atomic.Bool
 	logger            *slog.Logger
 	productServiceURL string
@@ -26,9 +29,42 @@ type SearchService struct {
 func NewSearchService(eng engine.SearchEngine, logger *slog.Logger, productServiceURL string) *SearchService {
 	return &SearchService{
 		engine:            eng,
+		engineType:        engineTypeName(eng),
 		logger:            logger,
 		productServiceURL: productServiceURL,
 		httpClient:        &http.Client{Timeout: 30 * time.Second},
+	}
+}
+
+// SwapEngine atomically replaces the active search engine. This is used for
+// hot-swapping from an in-memory fallback to Elasticsearch when ES becomes available.
+func (s *SearchService) SwapEngine(eng engine.SearchEngine) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.engine = eng
+	s.engineType = engineTypeName(eng)
+}
+
+// SearchEngineType returns the type name of the currently active engine
+// (e.g. "elasticsearch", "memory") for observability.
+func (s *SearchService) SearchEngineType() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.engineType
+}
+
+// getEngine returns the current engine under read lock.
+func (s *SearchService) getEngine() engine.SearchEngine {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.engine
+}
+
+// engineTypeName returns a human-readable type name for a search engine.
+func engineTypeName(eng engine.SearchEngine) string {
+	switch eng.(type) {
+	default:
+		return fmt.Sprintf("%T", eng)
 	}
 }
 
@@ -86,7 +122,7 @@ func (s *SearchService) IndexProduct(ctx context.Context, input *IndexProductInp
 		product.Attributes = make(map[string]string)
 	}
 
-	if err := s.engine.Index(ctx, product); err != nil {
+	if err := s.getEngine().Index(ctx, product); err != nil {
 		return fmt.Errorf("index product: %w", err)
 	}
 
@@ -104,7 +140,7 @@ func (s *SearchService) DeleteProduct(ctx context.Context, id string) error {
 		return fmt.Errorf("delete product: id is required")
 	}
 
-	if err := s.engine.Delete(ctx, id); err != nil {
+	if err := s.getEngine().Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete product: %w", err)
 	}
 
@@ -130,7 +166,7 @@ func (s *SearchService) Search(ctx context.Context, query *domain.SearchQuery) (
 		query.SortBy = domain.SortRelevance
 	}
 
-	result, err := s.engine.Search(ctx, query)
+	result, err := s.getEngine().Search(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("search: %w", err)
 	}
@@ -183,7 +219,7 @@ func (s *SearchService) BulkIndex(ctx context.Context, inputs []IndexProductInpu
 		})
 	}
 
-	if err := s.engine.BulkIndex(ctx, products); err != nil {
+	if err := s.getEngine().BulkIndex(ctx, products); err != nil {
 		return fmt.Errorf("bulk index: %w", err)
 	}
 
@@ -222,7 +258,7 @@ func (s *SearchService) Reindex(ctx context.Context) error {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return fmt.Errorf("reindex: fetch products page %d: unexpected status %d", page, resp.StatusCode)
 		}
 
@@ -233,10 +269,10 @@ func (s *SearchService) Reindex(ctx context.Context) error {
 			TotalPages int               `json:"total_pages"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return fmt.Errorf("reindex: decode page %d: %w", page, err)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if len(result.Data) == 0 {
 			break
@@ -321,7 +357,8 @@ type Suggester interface {
 
 // Suggest returns autocomplete suggestions for a query prefix.
 func (s *SearchService) Suggest(ctx context.Context, prefix string, limit int) ([]string, error) {
-	if suggester, ok := s.engine.(Suggester); ok {
+	eng := s.getEngine()
+	if suggester, ok := eng.(Suggester); ok {
 		return suggester.Suggest(ctx, prefix, limit)
 	}
 	// Fallback: no suggestions for engines that don't support it

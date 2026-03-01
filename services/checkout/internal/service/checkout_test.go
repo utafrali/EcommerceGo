@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
+	"github.com/utafrali/EcommerceGo/pkg/httpclient"
 	pkgkafka "github.com/utafrali/EcommerceGo/pkg/kafka"
 	"github.com/utafrali/EcommerceGo/services/checkout/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/checkout/internal/event"
@@ -69,9 +72,57 @@ func newTestEventProducer() *event.Producer {
 }
 
 func newTestService(repo *mockCheckoutRepository) *CheckoutService {
+	return newTestServiceWithURLs(repo, "http://localhost:8007", "http://localhost:8003", "http://localhost:8005")
+}
+
+func newTestServiceWithURLs(repo *mockCheckoutRepository, inventoryURL, orderURL, paymentURL string) *CheckoutService {
 	logger := newTestLogger()
 	producer := newTestEventProducer()
-	return NewCheckoutService(repo, producer, logger)
+	cfg := httpclient.DefaultConfig()
+	cfg.MaxRetries = 0
+	httpClient := httpclient.New(cfg)
+	return NewCheckoutService(repo, producer, logger, httpClient,
+		inventoryURL, orderURL, paymentURL, SagaTimeouts{})
+}
+
+func newTestServiceWithTimeouts(repo *mockCheckoutRepository, inventoryURL, orderURL, paymentURL string, timeouts SagaTimeouts) *CheckoutService {
+	logger := newTestLogger()
+	producer := newTestEventProducer()
+	cfg := httpclient.DefaultConfig()
+	cfg.MaxRetries = 0
+	httpClient := httpclient.New(cfg)
+	return NewCheckoutService(repo, producer, logger, httpClient,
+		inventoryURL, orderURL, paymentURL, timeouts)
+}
+
+// mockSagaServers creates httptest servers that mock inventory, order, and payment services
+// returning successful responses for the checkout saga.
+func mockSagaServers(t *testing.T) (inventoryURL, orderURL, paymentURL string, cleanup func()) {
+	t.Helper()
+
+	inventorySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"reservation_ids":["res-001"]}`))
+	}))
+
+	orderSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"order_id":"order-001"}`))
+	}))
+
+	paymentSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"payment_id":"pay-001"}`))
+	}))
+
+	return inventorySrv.URL, orderSrv.URL, paymentSrv.URL, func() {
+		inventorySrv.Close()
+		orderSrv.Close()
+		paymentSrv.Close()
+	}
 }
 
 func validCheckoutInput() *InitiateCheckoutInput {
@@ -546,7 +597,9 @@ func TestSetPaymentMethod_ExpiredSession_UpdateFails(t *testing.T) {
 
 func TestProcessCheckout_Success(t *testing.T) {
 	repo := new(mockCheckoutRepository)
-	svc := newTestService(repo)
+	inventoryURL, orderURL, paymentURL, cleanup := mockSagaServers(t)
+	defer cleanup()
+	svc := newTestServiceWithURLs(repo, inventoryURL, orderURL, paymentURL)
 	ctx := context.Background()
 
 	existing := activeSession()
@@ -572,7 +625,9 @@ func TestProcessCheckout_Success(t *testing.T) {
 
 func TestProcessCheckout_SubtotalRevalidation(t *testing.T) {
 	repo := new(mockCheckoutRepository)
-	svc := newTestService(repo)
+	inventoryURL, orderURL, paymentURL, cleanup := mockSagaServers(t)
+	defer cleanup()
+	svc := newTestServiceWithURLs(repo, inventoryURL, orderURL, paymentURL)
 	ctx := context.Background()
 
 	existing := activeSession()
@@ -877,4 +932,229 @@ func TestIsValidStatus(t *testing.T) {
 	assert.True(t, domain.IsValidStatus(domain.StatusFailed))
 	assert.False(t, domain.IsValidStatus("unknown"))
 	assert.False(t, domain.IsValidStatus(""))
+}
+
+// --- Circuit Breaker Integration Tests ---
+
+func newTestServiceWithCircuitBreaker(repo *mockCheckoutRepository, inventoryURL, orderURL, paymentURL string) *CheckoutService {
+	logger := newTestLogger()
+	producer := newTestEventProducer()
+	cfg := httpclient.DefaultConfig()
+	cfg.MaxRetries = 0
+	baseClient := httpclient.New(cfg)
+
+	cbCfg := httpclient.CircuitBreakerConfig{
+		Name:         "checkout-test",
+		MaxRequests:  1,
+		Interval:     60 * time.Second,
+		Timeout:      1 * time.Second,
+		FailureRatio: 0.5,
+		MinRequests:  3,
+	}
+	cbClient := httpclient.NewCircuitBreakerClient(baseClient, cbCfg, logger)
+
+	return NewCheckoutService(repo, producer, logger, cbClient,
+		inventoryURL, orderURL, paymentURL, SagaTimeouts{})
+}
+
+func TestProcessCheckout_CircuitBreakerOpen_FastFails(t *testing.T) {
+	// Create a server that always returns 500 to trip the breaker.
+	failServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"service unavailable"}`))
+	}))
+	defer failServer.Close()
+
+	repo := new(mockCheckoutRepository)
+	// Use the failing server for inventory (first saga step).
+	svc := newTestServiceWithCircuitBreaker(repo, failServer.URL, "http://localhost:8003", "http://localhost:8005")
+	ctx := context.Background()
+
+	// First, trip the circuit breaker by making 3 failing calls.
+	// We do this by processing checkouts that will fail at the inventory step.
+	for i := 0; i < 3; i++ {
+		session := activeSession()
+		session.ID = fmt.Sprintf("trip-session-%d", i)
+		session.ShippingAddress = validAddress()
+		session.PaymentMethod = "credit_card"
+
+		repo.On("GetByID", ctx, session.ID).Return(session, nil)
+
+		_, err := svc.ProcessCheckout(ctx, session.ID)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "reserve inventory")
+	}
+
+	// Now the breaker should be open. The next request should fail immediately
+	// with a circuit breaker error, NOT reaching the server.
+	session := activeSession()
+	session.ID = "fast-fail-session"
+	session.ShippingAddress = validAddress()
+	session.PaymentMethod = "credit_card"
+
+	repo.On("GetByID", ctx, "fast-fail-session").Return(session, nil)
+
+	_, err := svc.ProcessCheckout(ctx, "fast-fail-session")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reserve inventory")
+	// The error should originate from the circuit breaker.
+	assert.ErrorIs(t, err, httpclient.ErrCircuitOpen)
+}
+
+func TestProcessCheckout_WithCircuitBreaker_Success(t *testing.T) {
+	repo := new(mockCheckoutRepository)
+	inventoryURL, orderURL, paymentURL, cleanup := mockSagaServers(t)
+	defer cleanup()
+
+	svc := newTestServiceWithCircuitBreaker(repo, inventoryURL, orderURL, paymentURL)
+	ctx := context.Background()
+
+	existing := activeSession()
+	existing.ShippingAddress = validAddress()
+	existing.PaymentMethod = "credit_card"
+
+	repo.On("GetByID", ctx, "session-123").Return(existing, nil)
+	repo.On("Update", ctx, mock.AnythingOfType("*domain.CheckoutSession")).Return(nil)
+
+	session, err := svc.ProcessCheckout(ctx, "session-123")
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.StatusCompleted, session.Status)
+	assert.NotEmpty(t, session.OrderID)
+	assert.NotEmpty(t, session.PaymentID)
+
+	repo.AssertExpectations(t)
+}
+
+// --- Per-Step Saga Timeout Tests ---
+
+func TestProcessCheckout_SagaInventoryTimeout(t *testing.T) {
+	// Create a slow inventory server that exceeds the step timeout.
+	slowInventory := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(2 * time.Second)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"reservation_ids":["res-001"]}`))
+	}))
+	defer slowInventory.Close()
+
+	repo := new(mockCheckoutRepository)
+	svc := newTestServiceWithTimeouts(repo, slowInventory.URL, "http://localhost:8003", "http://localhost:8005", SagaTimeouts{
+		InventoryTimeout: 100 * time.Millisecond,
+		OrderTimeout:     5 * time.Second,
+		PaymentTimeout:   10 * time.Second,
+	})
+	ctx := context.Background()
+
+	existing := activeSession()
+	existing.ShippingAddress = validAddress()
+	existing.PaymentMethod = "credit_card"
+
+	repo.On("GetByID", ctx, "session-123").Return(existing, nil)
+
+	session, err := svc.ProcessCheckout(ctx, "session-123")
+
+	assert.Nil(t, session)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reserve inventory")
+}
+
+func TestProcessCheckout_SagaPaymentTimeout(t *testing.T) {
+	// Normal inventory and order servers, slow payment server.
+	inventorySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"reservation_ids":["res-001"]}`))
+	}))
+	defer inventorySrv.Close()
+
+	orderSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"order_id":"order-001"}`))
+	}))
+	defer orderSrv.Close()
+
+	slowPayment := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(2 * time.Second)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"payment_id":"pay-001"}`))
+	}))
+	defer slowPayment.Close()
+
+	repo := new(mockCheckoutRepository)
+	svc := newTestServiceWithTimeouts(repo, inventorySrv.URL, orderSrv.URL, slowPayment.URL, SagaTimeouts{
+		InventoryTimeout: 5 * time.Second,
+		OrderTimeout:     5 * time.Second,
+		PaymentTimeout:   100 * time.Millisecond,
+	})
+	ctx := context.Background()
+
+	existing := activeSession()
+	existing.ShippingAddress = validAddress()
+	existing.PaymentMethod = "credit_card"
+
+	repo.On("GetByID", ctx, "session-123").Return(existing, nil)
+	repo.On("Update", ctx, mock.AnythingOfType("*domain.CheckoutSession")).Return(nil)
+
+	session, err := svc.ProcessCheckout(ctx, "session-123")
+
+	assert.Nil(t, session)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "initiate payment")
+}
+
+func TestProcessCheckout_WithTimeouts_Success(t *testing.T) {
+	// All services respond within the configured timeouts.
+	inventoryURL, orderURL, paymentURL, cleanup := mockSagaServers(t)
+	defer cleanup()
+
+	repo := new(mockCheckoutRepository)
+	svc := newTestServiceWithTimeouts(repo, inventoryURL, orderURL, paymentURL, SagaTimeouts{
+		InventoryTimeout: 5 * time.Second,
+		OrderTimeout:     5 * time.Second,
+		PaymentTimeout:   10 * time.Second,
+	})
+	ctx := context.Background()
+
+	existing := activeSession()
+	existing.ShippingAddress = validAddress()
+	existing.PaymentMethod = "credit_card"
+
+	repo.On("GetByID", ctx, "session-123").Return(existing, nil)
+	repo.On("Update", ctx, mock.AnythingOfType("*domain.CheckoutSession")).Return(nil)
+
+	session, err := svc.ProcessCheckout(ctx, "session-123")
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.StatusCompleted, session.Status)
+	assert.NotEmpty(t, session.OrderID)
+	assert.NotEmpty(t, session.PaymentID)
+
+	repo.AssertExpectations(t)
+}
+
+func TestProcessCheckout_ZeroTimeouts_NoPerStepLimit(t *testing.T) {
+	// Zero timeouts should work like the original behavior (no per-step limit).
+	inventoryURL, orderURL, paymentURL, cleanup := mockSagaServers(t)
+	defer cleanup()
+
+	repo := new(mockCheckoutRepository)
+	svc := newTestServiceWithTimeouts(repo, inventoryURL, orderURL, paymentURL, SagaTimeouts{})
+	ctx := context.Background()
+
+	existing := activeSession()
+	existing.ShippingAddress = validAddress()
+	existing.PaymentMethod = "credit_card"
+
+	repo.On("GetByID", ctx, "session-123").Return(existing, nil)
+	repo.On("Update", ctx, mock.AnythingOfType("*domain.CheckoutSession")).Return(nil)
+
+	session, err := svc.ProcessCheckout(ctx, "session-123")
+
+	require.NoError(t, err)
+	assert.Equal(t, domain.StatusCompleted, session.Status)
+
+	repo.AssertExpectations(t)
 }

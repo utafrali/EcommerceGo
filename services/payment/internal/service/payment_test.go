@@ -45,6 +45,14 @@ func (m *mockRepository) GetByCheckoutID(ctx context.Context, checkoutID string)
 	return args.Get(0).(*domain.Payment), args.Error(1)
 }
 
+func (m *mockRepository) GetByIdempotencyKey(ctx context.Context, key string) (*domain.Payment, error) {
+	args := m.Called(ctx, key)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Payment), args.Error(1)
+}
+
 func (m *mockRepository) Update(ctx context.Context, payment *domain.Payment) error {
 	args := m.Called(ctx, payment)
 	return args.Error(0)

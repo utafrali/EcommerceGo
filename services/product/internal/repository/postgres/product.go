@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/product/internal/repository"
@@ -18,11 +18,11 @@ import (
 
 // ProductRepository implements repository.ProductRepository using PostgreSQL.
 type ProductRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewProductRepository creates a new PostgreSQL-backed product repository.
-func NewProductRepository(pool *pgxpool.Pool) *ProductRepository {
+func NewProductRepository(pool database.DBTX) *ProductRepository {
 	return &ProductRepository{pool: pool}
 }
 

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
 )
@@ -19,11 +19,11 @@ const categoryColumns = `id, name, slug, parent_id, sort_order, is_active,
 
 // CategoryRepository implements category persistence operations using PostgreSQL.
 type CategoryRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewCategoryRepository creates a new PostgreSQL-backed category repository.
-func NewCategoryRepository(pool *pgxpool.Pool) *CategoryRepository {
+func NewCategoryRepository(pool database.DBTX) *CategoryRepository {
 	return &CategoryRepository{pool: pool}
 }
 

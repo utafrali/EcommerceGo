@@ -41,17 +41,6 @@ type SendNotificationRequest struct {
 	Metadata map[string]any `json:"metadata"`
 }
 
-// --- Response envelope ---
-
-type listResponse struct {
-	Data       any `json:"data"`
-	TotalCount int `json:"total_count"`
-	Page       int `json:"page"`
-	PerPage    int `json:"per_page"`
-	TotalPages int  `json:"total_pages"`
-	HasNext    bool `json:"has_next"`
-}
-
 // --- Handlers ---
 
 // SendNotification handles POST /api/v1/notifications
@@ -93,15 +82,12 @@ func (h *NotificationHandler) SendNotification(w http.ResponseWriter, r *http.Re
 
 // GetNotification handles GET /api/v1/notifications/{id}
 func (h *NotificationHandler) GetNotification(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "notification id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	notification, err := h.service.GetNotification(r.Context(), id)
+	notification, err := h.service.GetNotification(r.Context(), id.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -112,11 +98,8 @@ func (h *NotificationHandler) GetNotification(w http.ResponseWriter, r *http.Req
 
 // ListNotificationsByUser handles GET /api/v1/notifications/user/{userId}
 func (h *NotificationHandler) ListNotificationsByUser(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userId")
-	if userID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "user id is required"},
-		})
+	userID, ok := httputil.ParseUUID(w, chi.URLParam(r, "userId"))
+	if !ok {
 		return
 	}
 
@@ -144,42 +127,23 @@ func (h *NotificationHandler) ListNotificationsByUser(w http.ResponseWriter, r *
 		perPage = pp
 	}
 
-	notifications, total, err := h.service.ListNotificationsByUser(r.Context(), userID, page, perPage)
+	notifications, total, err := h.service.ListNotificationsByUser(r.Context(), userID.String(), page, perPage)
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	if notifications == nil {
-		notifications = []domain.Notification{}
-	}
-
-	totalPages := total / perPage
-	if total%perPage > 0 {
-		totalPages++
-	}
-
-	httputil.WriteJSON(w, http.StatusOK, listResponse{
-		Data:       notifications,
-		TotalCount: total,
-		Page:       page,
-		PerPage:    perPage,
-		TotalPages: totalPages,
-		HasNext:    page < totalPages,
-	})
+	httputil.WriteJSON(w, http.StatusOK, httputil.NewPaginatedResponse[domain.Notification](notifications, total, page, perPage))
 }
 
 // MarkAsRead handles PUT /api/v1/notifications/{id}/read
 func (h *NotificationHandler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "notification id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	notification, err := h.service.MarkAsRead(r.Context(), id)
+	notification, err := h.service.MarkAsRead(r.Context(), id.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -190,15 +154,12 @@ func (h *NotificationHandler) MarkAsRead(w http.ResponseWriter, r *http.Request)
 
 // RetryNotification handles POST /api/v1/notifications/{id}/retry
 func (h *NotificationHandler) RetryNotification(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "notification id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	notification, err := h.service.RetryNotification(r.Context(), id)
+	notification, err := h.service.RetryNotification(r.Context(), id.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return

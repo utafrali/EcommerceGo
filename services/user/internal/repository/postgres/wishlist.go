@@ -4,19 +4,18 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/user/internal/domain"
 )
 
 // WishlistRepository implements domain.WishlistRepository using PostgreSQL.
 type WishlistRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewWishlistRepository creates a new PostgreSQL-backed wishlist repository.
-func NewWishlistRepository(pool *pgxpool.Pool) *WishlistRepository {
+func NewWishlistRepository(pool database.DBTX) *WishlistRepository {
 	return &WishlistRepository{pool: pool}
 }
 

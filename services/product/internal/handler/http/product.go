@@ -55,17 +55,6 @@ type UpdateProductRequest struct {
 	Metadata    map[string]any `json:"metadata"`
 }
 
-// --- Response envelope ---
-
-type listResponse struct {
-	Data       any `json:"data"`
-	TotalCount int `json:"total_count"`
-	Page       int `json:"page"`
-	PerPage    int `json:"per_page"`
-	TotalPages int  `json:"total_pages"`
-	HasNext    bool `json:"has_next"`
-}
-
 // --- Handlers ---
 
 // ListProducts handles GET /api/v1/products
@@ -157,19 +146,7 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	totalPages := total / filter.PerPage
-	if total%filter.PerPage > 0 {
-		totalPages++
-	}
-
-	httputil.WriteJSON(w, http.StatusOK, listResponse{
-		Data:       products,
-		TotalCount: total,
-		Page:       filter.Page,
-		PerPage:    filter.PerPage,
-		TotalPages: totalPages,
-		HasNext:    filter.Page < totalPages,
-	})
+	httputil.WriteJSON(w, http.StatusOK, httputil.NewPaginatedResponse(products, total, filter.Page, filter.PerPage))
 }
 
 // GetProduct handles GET /api/v1/products/{idOrSlug}
@@ -242,11 +219,8 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 
 // UpdateProduct handles PUT /api/v1/products/{id}
 func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
@@ -277,7 +251,7 @@ func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		Metadata:    req.Metadata,
 	}
 
-	product, err := h.service.UpdateProduct(r.Context(), id, input)
+	product, err := h.service.UpdateProduct(r.Context(), id.String(), input)
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -288,18 +262,15 @@ func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 // DeleteProduct handles DELETE /api/v1/products/{id}
 func (h *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	if err := h.service.DeleteProduct(r.Context(), id); err != nil {
+	if err := h.service.DeleteProduct(r.Context(), id.String()); err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id, "status": "deleted"}})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id.String(), "status": "deleted"}})
 }

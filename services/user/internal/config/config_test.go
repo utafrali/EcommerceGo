@@ -1,7 +1,6 @@
 package config
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -115,33 +114,6 @@ func TestLoad_Production_AcceptsExactly32CharSecret(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, secret, cfg.JWTSecret)
-}
-
-func TestLoad_CORSAllowedOrigins_Default(t *testing.T) {
-	// Unset CORS_ALLOWED_ORIGINS to trigger the default "*".
-	os.Unsetenv("CORS_ALLOWED_ORIGINS")
-
-	setEnvs(t, map[string]string{
-		"ENVIRONMENT": "development",
-	})
-
-	cfg, err := Load()
-
-	require.NoError(t, err)
-	assert.Contains(t, cfg.CORSAllowedOrigins, "*")
-}
-
-func TestLoad_CORSAllowedOrigins_CustomList(t *testing.T) {
-	setEnvs(t, map[string]string{
-		"ENVIRONMENT":          "production",
-		"JWT_SECRET":           "this-is-a-very-secure-secret-key-for-production-use-1234",
-		"CORS_ALLOWED_ORIGINS": "https://example.com,https://admin.example.com",
-	})
-
-	cfg, err := Load()
-
-	require.NoError(t, err)
-	assert.Equal(t, []string{"https://example.com", "https://admin.example.com"}, cfg.CORSAllowedOrigins)
 }
 
 func TestLoad_DefaultPorts(t *testing.T) {

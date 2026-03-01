@@ -14,17 +14,16 @@ import (
 	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
-	"github.com/utafrali/EcommerceGo/services/product/internal/repository/postgres"
 )
 
 // BannerHandler handles HTTP requests for banner endpoints.
 type BannerHandler struct {
-	repo   *postgres.BannerRepository
+	repo   domain.BannerRepository
 	logger *slog.Logger
 }
 
 // NewBannerHandler creates a new banner HTTP handler.
-func NewBannerHandler(repo *postgres.BannerRepository, logger *slog.Logger) *BannerHandler {
+func NewBannerHandler(repo domain.BannerRepository, logger *slog.Logger) *BannerHandler {
 	return &BannerHandler{
 		repo:   repo,
 		logger: logger,
@@ -94,18 +93,7 @@ func (h *BannerHandler) ListBanners(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	totalPages := total / filter.PerPage
-	if total%filter.PerPage > 0 {
-		totalPages++
-	}
-
-	httputil.WriteJSON(w, http.StatusOK, listResponse{
-		Data:       banners,
-		TotalCount: total,
-		Page:       filter.Page,
-		PerPage:    filter.PerPage,
-		TotalPages: totalPages,
-	})
+	httputil.WriteJSON(w, http.StatusOK, httputil.NewPaginatedResponse(banners, total, filter.Page, filter.PerPage))
 }
 
 // GetBanner handles GET /api/v1/banners/{id}

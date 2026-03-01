@@ -9,19 +9,19 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/inventory/internal/domain"
 )
 
 // InventoryRepository implements both StockRepository and ReservationRepository using PostgreSQL.
 type InventoryRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewInventoryRepository creates a new PostgreSQL-backed inventory repository.
-func NewInventoryRepository(pool *pgxpool.Pool) *InventoryRepository {
+func NewInventoryRepository(pool database.DBTX) *InventoryRepository {
 	return &InventoryRepository{pool: pool}
 }
 
@@ -466,6 +466,6 @@ func (r *InventoryRepository) GetExpired(ctx context.Context) ([]domain.StockRes
 // ---------------------------------------------------------------------------
 
 // Pool returns the underlying connection pool for transactional operations in the service layer.
-func (r *InventoryRepository) Pool() *pgxpool.Pool {
+func (r *InventoryRepository) Pool() database.DBTX {
 	return r.pool
 }

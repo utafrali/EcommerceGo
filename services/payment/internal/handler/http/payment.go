@@ -10,6 +10,7 @@ import (
 
 	"github.com/utafrali/EcommerceGo/pkg/httputil"
 	"github.com/utafrali/EcommerceGo/pkg/validator"
+	"github.com/utafrali/EcommerceGo/services/payment/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/payment/internal/service"
 )
 
@@ -43,16 +44,6 @@ type CreatePaymentRequest struct {
 type RefundPaymentRequest struct {
 	Amount int64  `json:"amount" validate:"required,gt=0"`
 	Reason string `json:"reason" validate:"required,min=3"`
-}
-
-// --- Response envelope ---
-
-type listResponse struct {
-	Data       any `json:"data"`
-	TotalCount int `json:"total_count"`
-	Page       int `json:"page"`
-	PerPage    int `json:"per_page"`
-	TotalPages int `json:"total_pages"`
 }
 
 // --- Handlers ---
@@ -94,15 +85,12 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 
 // GetPayment handles GET /api/v1/payments/{id}
 func (h *PaymentHandler) GetPayment(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "payment id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	payment, err := h.service.GetPayment(r.Context(), id)
+	payment, err := h.service.GetPayment(r.Context(), id.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -113,17 +101,12 @@ func (h *PaymentHandler) GetPayment(w http.ResponseWriter, r *http.Request) {
 
 // ProcessPayment handles POST /api/v1/payments/{id}/process
 func (h *PaymentHandler) ProcessPayment(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "payment id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	payment, err := h.service.ProcessPayment(r.Context(), id)
+	payment, err := h.service.ProcessPayment(r.Context(), id.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -136,11 +119,8 @@ func (h *PaymentHandler) ProcessPayment(w http.ResponseWriter, r *http.Request) 
 func (h *PaymentHandler) RefundPayment(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "payment id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
@@ -162,7 +142,7 @@ func (h *PaymentHandler) RefundPayment(w http.ResponseWriter, r *http.Request) {
 		Reason: req.Reason,
 	}
 
-	refund, err := h.service.RefundPayment(r.Context(), id, input)
+	refund, err := h.service.RefundPayment(r.Context(), id.String(), input)
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -173,15 +153,12 @@ func (h *PaymentHandler) RefundPayment(w http.ResponseWriter, r *http.Request) {
 
 // GetPaymentByCheckoutID handles GET /api/v1/payments/checkout/{checkoutId}
 func (h *PaymentHandler) GetPaymentByCheckoutID(w http.ResponseWriter, r *http.Request) {
-	checkoutID := chi.URLParam(r, "checkoutId")
-	if checkoutID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "checkout id is required"},
-		})
+	checkoutID, ok := httputil.ParseUUID(w, chi.URLParam(r, "checkoutId"))
+	if !ok {
 		return
 	}
 
-	payment, err := h.service.GetPaymentByCheckoutID(r.Context(), checkoutID)
+	payment, err := h.service.GetPaymentByCheckoutID(r.Context(), checkoutID.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -192,11 +169,8 @@ func (h *PaymentHandler) GetPaymentByCheckoutID(w http.ResponseWriter, r *http.R
 
 // ListPaymentsByUser handles GET /api/v1/payments/user/{userId}
 func (h *PaymentHandler) ListPaymentsByUser(w http.ResponseWriter, r *http.Request) {
-	userID := chi.URLParam(r, "userId")
-	if userID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "user id is required"},
-		})
+	userID, ok := httputil.ParseUUID(w, chi.URLParam(r, "userId"))
+	if !ok {
 		return
 	}
 
@@ -224,23 +198,12 @@ func (h *PaymentHandler) ListPaymentsByUser(w http.ResponseWriter, r *http.Reque
 		perPage = pp
 	}
 
-	payments, total, err := h.service.ListPaymentsByUser(r.Context(), userID, page, perPage)
+	payments, total, err := h.service.ListPaymentsByUser(r.Context(), userID.String(), page, perPage)
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	totalPages := total / perPage
-	if total%perPage > 0 {
-		totalPages++
-	}
-
-	httputil.WriteJSON(w, http.StatusOK, listResponse{
-		Data:       payments,
-		TotalCount: total,
-		Page:       page,
-		PerPage:    perPage,
-		TotalPages: totalPages,
-	})
+	httputil.WriteJSON(w, http.StatusOK, httputil.NewPaginatedResponse[domain.Payment](payments, total, page, perPage))
 }
 

@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_checkout_sessions_user_status_created;

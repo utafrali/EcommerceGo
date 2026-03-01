@@ -1,9 +1,12 @@
 package middleware
 
 import (
+	"fmt"
 	"log/slog"
+	"math"
 	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -104,7 +107,8 @@ func (s *visitorStore) getLastSeen(ip string) (time.Time, bool) {
 
 // RateLimit returns middleware that enforces per-IP token bucket rate limiting.
 // rps is the number of requests per second allowed, and burst is the maximum burst size.
-// Returns HTTP 429 Too Many Requests when the limit is exceeded.
+// Returns HTTP 429 Too Many Requests with Retry-After when the limit is exceeded.
+// All responses include X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset headers.
 func RateLimit(rps, burst int, logger *slog.Logger) func(http.Handler) http.Handler {
 	const cleanupInterval = 3 * time.Minute
 	store := newVisitorStore(rps, burst, cleanupInterval)
@@ -114,18 +118,54 @@ func RateLimit(rps, burst int, logger *slog.Logger) func(http.Handler) http.Hand
 			ip := clientIP(r)
 			limiter := store.getVisitor(ip)
 
-			if !limiter.Allow() {
+			reservation := limiter.Reserve()
+			if !reservation.OK() {
 				logger.Warn("rate limit exceeded",
 					slog.String("ip", ip),
 					slog.String("path", r.URL.Path),
 				)
+				writeRateLimitHeaders(w, burst, 0, time.Now().Add(time.Second))
+				w.Header().Set("Retry-After", "1")
 				writeJSONError(w, http.StatusTooManyRequests, "RATE_LIMITED", "too many requests")
 				return
 			}
 
+			delay := reservation.Delay()
+			if delay > 0 {
+				// Would need to wait — cancel and reject.
+				reservation.Cancel()
+				retryAfter := int(math.Ceil(delay.Seconds()))
+				if retryAfter < 1 {
+					retryAfter = 1
+				}
+				logger.Warn("rate limit exceeded",
+					slog.String("ip", ip),
+					slog.String("path", r.URL.Path),
+				)
+				writeRateLimitHeaders(w, burst, 0, time.Now().Add(delay))
+				w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+				writeJSONError(w, http.StatusTooManyRequests, "RATE_LIMITED", "too many requests")
+				return
+			}
+
+			// Request allowed — estimate remaining tokens.
+			remaining := int(limiter.Tokens())
+			if remaining < 0 {
+				remaining = 0
+			}
+			resetTime := time.Now().Add(time.Duration(float64(time.Second) / float64(rps)))
+			writeRateLimitHeaders(w, burst, remaining, resetTime)
+
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// writeRateLimitHeaders sets standard rate limit headers on the response.
+func writeRateLimitHeaders(w http.ResponseWriter, limit, remaining int, reset time.Time) {
+	w.Header().Set("X-RateLimit-Limit", strconv.Itoa(limit))
+	w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", remaining))
+	w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(reset.Unix(), 10))
 }
 
 // clientIP extracts the client IP address from the request.

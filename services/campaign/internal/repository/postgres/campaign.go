@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/repository"
@@ -18,11 +18,11 @@ import (
 
 // CampaignRepository implements repository.CampaignRepository using PostgreSQL.
 type CampaignRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewCampaignRepository creates a new PostgreSQL-backed campaign repository.
-func NewCampaignRepository(pool *pgxpool.Pool) *CampaignRepository {
+func NewCampaignRepository(pool database.DBTX) *CampaignRepository {
 	return &CampaignRepository{pool: pool}
 }
 

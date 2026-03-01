@@ -1,0 +1,61 @@
+# Prometheus scrape configuration for EcommerceGo microservices.
+# All 12 services expose /metrics via prometheus/client_golang.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Backend microservices
+  - job_name: "product"
+    static_configs:
+      - targets: ["product:8001"]
+
+  - job_name: "cart"
+    static_configs:
+      - targets: ["cart:8002"]
+
+  - job_name: "order"
+    static_configs:
+      - targets: ["order:8003"]
+
+  - job_name: "checkout"
+    static_configs:
+      - targets: ["checkout:8004"]
+
+  - job_name: "payment"
+    static_configs:
+      - targets: ["payment:8005"]
+
+  - job_name: "user"
+    static_configs:
+      - targets: ["user:8006"]
+
+  - job_name: "inventory"
+    static_configs:
+      - targets: ["inventory:8007"]
+
+  - job_name: "campaign"
+    static_configs:
+      - targets: ["campaign:8008"]
+
+  - job_name: "notification"
+    static_configs:
+      - targets: ["notification:8009"]
+
+  - job_name: "search"
+    static_configs:
+      - targets: ["search:8010"]
+
+  - job_name: "media"
+    static_configs:
+      - targets: ["media:8011"]
+
+  - job_name: "gateway"
+    static_configs:
+      - targets: ["gateway:8080"]

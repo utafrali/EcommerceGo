@@ -8,19 +8,19 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/checkout/internal/domain"
 )
 
 // CheckoutRepository implements repository.CheckoutRepository using PostgreSQL.
 type CheckoutRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewCheckoutRepository creates a new PostgreSQL-backed checkout repository.
-func NewCheckoutRepository(pool *pgxpool.Pool) *CheckoutRepository {
+func NewCheckoutRepository(pool database.DBTX) *CheckoutRepository {
 	return &CheckoutRepository{pool: pool}
 }
 
@@ -249,7 +249,7 @@ func (r *CheckoutRepository) scanSession(ctx context.Context, query string, args
 	}
 
 	if err := r.unmarshalFields(&session, itemsJSON, shippingJSON, billingJSON); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("scan checkout session: %w", err)
 	}
 
 	if paymentMethod != nil {
@@ -305,7 +305,7 @@ func (r *CheckoutRepository) scanRow(rows pgx.Rows) (*domain.CheckoutSession, er
 	}
 
 	if err := r.unmarshalFields(&session, itemsJSON, shippingJSON, billingJSON); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("scan checkout session row: %w", err)
 	}
 
 	if paymentMethod != nil {

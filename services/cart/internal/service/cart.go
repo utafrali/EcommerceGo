@@ -103,7 +103,7 @@ func (s *CartService) AddItem(ctx context.Context, userID string, input AddItemI
 
 	cart, err := s.getOrCreateCart(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("add item: %w", err)
 	}
 
 	expectedVersion := cart.Version

@@ -112,17 +112,6 @@ type CreateStackingRuleRequest struct {
 	RuleType    string `json:"rule_type" validate:"required,oneof=compatible exclusive"`
 }
 
-// --- Response envelope ---
-
-type listResponse struct {
-	Data       any `json:"data"`
-	TotalCount int `json:"total_count"`
-	Page       int `json:"page"`
-	PerPage    int `json:"per_page"`
-	TotalPages int  `json:"total_pages"`
-	HasNext    bool `json:"has_next"`
-}
-
 // --- Handlers ---
 
 // CreateCampaign handles POST /api/v1/campaigns
@@ -244,32 +233,17 @@ func (h *CampaignHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	totalPages := total / filter.PerPage
-	if total%filter.PerPage > 0 {
-		totalPages++
-	}
-
-	httputil.WriteJSON(w, http.StatusOK, listResponse{
-		Data:       campaigns,
-		TotalCount: total,
-		Page:       filter.Page,
-		PerPage:    filter.PerPage,
-		TotalPages: totalPages,
-		HasNext:    filter.Page < totalPages,
-	})
+	httputil.WriteJSON(w, http.StatusOK, httputil.NewPaginatedResponse(campaigns, total, filter.Page, filter.PerPage))
 }
 
 // GetCampaign handles GET /api/v1/campaigns/{id}
 func (h *CampaignHandler) GetCampaign(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	campaign, err := h.service.GetCampaign(r.Context(), id)
+	campaign, err := h.service.GetCampaign(r.Context(), id.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -281,11 +255,8 @@ func (h *CampaignHandler) GetCampaign(w http.ResponseWriter, r *http.Request) {
 // UpdateCampaign handles PUT /api/v1/campaigns/{id}
 func (h *CampaignHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
@@ -355,7 +326,7 @@ func (h *CampaignHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	campaign, err := h.service.UpdateCampaign(r.Context(), id, input)
+	campaign, err := h.service.UpdateCampaign(r.Context(), id.String(), input)
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -366,15 +337,12 @@ func (h *CampaignHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request)
 
 // DeactivateCampaign handles POST /api/v1/campaigns/{id}/deactivate
 func (h *CampaignHandler) DeactivateCampaign(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	campaign, err := h.service.DeactivateCampaign(r.Context(), id)
+	campaign, err := h.service.DeactivateCampaign(r.Context(), id.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -487,11 +455,8 @@ func (h *CampaignHandler) ValidateMultipleCoupons(w http.ResponseWriter, r *http
 // CreateStackingRule handles POST /api/v1/campaigns/{id}/stacking-rules
 func (h *CampaignHandler) CreateStackingRule(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
-	campaignID := chi.URLParam(r, "id")
-	if campaignID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
-		})
+	campaignID, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
@@ -509,7 +474,7 @@ func (h *CampaignHandler) CreateStackingRule(w http.ResponseWriter, r *http.Requ
 	}
 
 	input := &service.CreateStackingRuleInput{
-		CampaignAID: campaignID,
+		CampaignAID: campaignID.String(),
 		CampaignBID: req.CampaignBID,
 		RuleType:    req.RuleType,
 	}
@@ -525,15 +490,12 @@ func (h *CampaignHandler) CreateStackingRule(w http.ResponseWriter, r *http.Requ
 
 // GetStackingRules handles GET /api/v1/campaigns/{id}/stacking-rules
 func (h *CampaignHandler) GetStackingRules(w http.ResponseWriter, r *http.Request) {
-	campaignID := chi.URLParam(r, "id")
-	if campaignID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "campaign id is required"},
-		})
+	campaignID, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	rules, err := h.service.GetStackingRules(r.Context(), campaignID)
+	rules, err := h.service.GetStackingRules(r.Context(), campaignID.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -544,15 +506,12 @@ func (h *CampaignHandler) GetStackingRules(w http.ResponseWriter, r *http.Reques
 
 // DeleteStackingRule handles DELETE /api/v1/campaigns/stacking-rules/{ruleId}
 func (h *CampaignHandler) DeleteStackingRule(w http.ResponseWriter, r *http.Request) {
-	ruleID := chi.URLParam(r, "ruleId")
-	if ruleID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "rule id is required"},
-		})
+	ruleID, ok := httputil.ParseUUID(w, chi.URLParam(r, "ruleId"))
+	if !ok {
 		return
 	}
 
-	if err := h.service.DeleteStackingRule(r.Context(), ruleID); err != nil {
+	if err := h.service.DeleteStackingRule(r.Context(), ruleID.String()); err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
 	}

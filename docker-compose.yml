@@ -29,6 +29,11 @@ x-go-service-defaults: &go-service-defaults
       SERVICE_PATH: placeholder
   env_file:
     - .env
+  environment:
+    # OpenTelemetry tracing (shared across all Go services)
+    OTEL_ENABLED: ${OTEL_ENABLED:-false}
+    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-jaeger:4318}
+    OTEL_SAMPLE_RATE: ${OTEL_SAMPLE_RATE:-1.0}
   restart: unless-stopped
   networks:
     - ecommerce-net

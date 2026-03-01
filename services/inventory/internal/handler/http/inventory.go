@@ -74,17 +74,6 @@ type ConfirmReservationRequest struct {
 	ReservationID string `json:"reservation_id" validate:"required,uuid"`
 }
 
-// --- Response envelope ---
-
-type listResponse struct {
-	Data       any `json:"data"`
-	TotalCount int `json:"total_count"`
-	Page       int `json:"page"`
-	PerPage    int `json:"per_page"`
-	TotalPages int  `json:"total_pages"`
-	HasNext    bool `json:"has_next"`
-}
-
 // --- Handlers ---
 
 // InitializeStock handles POST /api/v1/inventory
@@ -129,17 +118,16 @@ func (h *InventoryHandler) InitializeStock(w http.ResponseWriter, r *http.Reques
 
 // GetStock handles GET /api/v1/inventory/{productId}/variants/{variantId}
 func (h *InventoryHandler) GetStock(w http.ResponseWriter, r *http.Request) {
-	productID := chi.URLParam(r, "productId")
-	variantID := chi.URLParam(r, "variantId")
-
-	if productID == "" || variantID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product_id and variant_id are required"},
-		})
+	productID, ok := httputil.ParseUUID(w, chi.URLParam(r, "productId"))
+	if !ok {
+		return
+	}
+	variantID, ok := httputil.ParseUUID(w, chi.URLParam(r, "variantId"))
+	if !ok {
 		return
 	}
 
-	stock, err := h.service.GetStock(r.Context(), productID, variantID)
+	stock, err := h.service.GetStock(r.Context(), productID.String(), variantID.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -150,13 +138,12 @@ func (h *InventoryHandler) GetStock(w http.ResponseWriter, r *http.Request) {
 
 // AdjustStock handles PUT /api/v1/inventory/{productId}/variants/{variantId}
 func (h *InventoryHandler) AdjustStock(w http.ResponseWriter, r *http.Request) {
-	productID := chi.URLParam(r, "productId")
-	variantID := chi.URLParam(r, "variantId")
-
-	if productID == "" || variantID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "product_id and variant_id are required"},
-		})
+	productID, ok := httputil.ParseUUID(w, chi.URLParam(r, "productId"))
+	if !ok {
+		return
+	}
+	variantID, ok := httputil.ParseUUID(w, chi.URLParam(r, "variantId"))
+	if !ok {
 		return
 	}
 
@@ -176,7 +163,7 @@ func (h *InventoryHandler) AdjustStock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stock, err := h.service.AdjustStock(r.Context(), productID, variantID, req.Delta, req.Reason)
+	stock, err := h.service.AdjustStock(r.Context(), productID.String(), variantID.String(), req.Delta, req.Reason)
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -353,18 +340,6 @@ func (h *InventoryHandler) ListLowStock(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	totalPages := total / perPage
-	if total%perPage > 0 {
-		totalPages++
-	}
-
-	httputil.WriteJSON(w, http.StatusOK, listResponse{
-		Data:       stocks,
-		TotalCount: total,
-		Page:       page,
-		PerPage:    perPage,
-		TotalPages: totalPages,
-		HasNext:    page < totalPages,
-	})
+	httputil.WriteJSON(w, http.StatusOK, httputil.NewPaginatedResponse[domain.Stock](stocks, total, page, perPage))
 }
 

@@ -8,19 +8,19 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/payment/internal/domain"
 )
 
 // PaymentRepository implements repository.PaymentRepository using PostgreSQL.
 type PaymentRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewPaymentRepository creates a new PostgreSQL-backed payment repository.
-func NewPaymentRepository(pool *pgxpool.Pool) *PaymentRepository {
+func NewPaymentRepository(pool database.DBTX) *PaymentRepository {
 	return &PaymentRepository{pool: pool}
 }
 

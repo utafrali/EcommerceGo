@@ -120,12 +120,12 @@ func (h *CartHandler) UpdateItemQuantity(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	productID := chi.URLParam(r, "productId")
-	variantID := chi.URLParam(r, "variantId")
-	if productID == "" || variantID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "productId and variantId are required"},
-		})
+	productID, ok2 := httputil.ParseUUID(w, chi.URLParam(r, "productId"))
+	if !ok2 {
+		return
+	}
+	variantID, ok3 := httputil.ParseUUID(w, chi.URLParam(r, "variantId"))
+	if !ok3 {
 		return
 	}
 
@@ -145,7 +145,7 @@ func (h *CartHandler) UpdateItemQuantity(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	cart, err := h.service.UpdateItemQuantity(r.Context(), userID, productID, variantID, req.Quantity)
+	cart, err := h.service.UpdateItemQuantity(r.Context(), userID, productID.String(), variantID.String(), req.Quantity)
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -164,16 +164,16 @@ func (h *CartHandler) RemoveItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	productID := chi.URLParam(r, "productId")
-	variantID := chi.URLParam(r, "variantId")
-	if productID == "" || variantID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "productId and variantId are required"},
-		})
+	productID, ok2 := httputil.ParseUUID(w, chi.URLParam(r, "productId"))
+	if !ok2 {
+		return
+	}
+	variantID, ok3 := httputil.ParseUUID(w, chi.URLParam(r, "variantId"))
+	if !ok3 {
 		return
 	}
 
-	cart, err := h.service.RemoveItem(r.Context(), userID, productID, variantID)
+	cart, err := h.service.RemoveItem(r.Context(), userID, productID.String(), variantID.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return

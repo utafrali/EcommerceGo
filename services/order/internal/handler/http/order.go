@@ -33,8 +33,8 @@ func NewOrderHandler(svc *service.OrderService, logger *slog.Logger) *OrderHandl
 
 // CreateOrderItemRequest is the JSON request body for an order line item.
 type CreateOrderItemRequest struct {
-	ProductID string `json:"product_id" validate:"required"`
-	VariantID string `json:"variant_id"`
+	ProductID string `json:"product_id" validate:"required,uuid"`
+	VariantID string `json:"variant_id" validate:"omitempty,uuid"`
 	Name      string `json:"name" validate:"required"`
 	SKU       string `json:"sku"`
 	Price     int64  `json:"price" validate:"required,gte=0"`
@@ -43,7 +43,7 @@ type CreateOrderItemRequest struct {
 
 // CreateOrderRequest is the JSON request body for creating an order.
 type CreateOrderRequest struct {
-	UserID          string                   `json:"user_id" validate:"required"`
+	UserID          string                   `json:"user_id" validate:"required,uuid"`
 	Items           []CreateOrderItemRequest `json:"items" validate:"required,min=1,dive"`
 	DiscountAmount  int64                    `json:"discount_amount" validate:"gte=0"`
 	ShippingAmount  int64                    `json:"shipping_amount" validate:"gte=0"`
@@ -55,24 +55,13 @@ type CreateOrderRequest struct {
 
 // UpdateStatusRequest is the JSON request body for updating order status.
 type UpdateStatusRequest struct {
-	Status string `json:"status" validate:"required"`
+	Status string `json:"status" validate:"required,oneof=pending confirmed processing shipped delivered canceled refunded"`
 	Reason string `json:"reason"`
 }
 
 // CancelOrderRequest is the JSON request body for canceling an order.
 type CancelOrderRequest struct {
 	Reason string `json:"reason"`
-}
-
-// --- Response envelope ---
-
-type listResponse struct {
-	Data       any `json:"data"`
-	TotalCount int `json:"total_count"`
-	Page       int `json:"page"`
-	PerPage    int `json:"per_page"`
-	TotalPages int  `json:"total_pages"`
-	HasNext    bool `json:"has_next"`
 }
 
 // --- Handlers ---
@@ -167,32 +156,17 @@ func (h *OrderHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	totalPages := total / filter.PerPage
-	if total%filter.PerPage > 0 {
-		totalPages++
-	}
-
-	httputil.WriteJSON(w, http.StatusOK, listResponse{
-		Data:       orders,
-		TotalCount: total,
-		Page:       filter.Page,
-		PerPage:    filter.PerPage,
-		TotalPages: totalPages,
-		HasNext:    filter.Page < totalPages,
-	})
+	httputil.WriteJSON(w, http.StatusOK, httputil.NewPaginatedResponse(orders, total, filter.Page, filter.PerPage))
 }
 
 // GetOrder handles GET /api/v1/orders/{id}
 func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "order id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	order, err := h.service.GetOrder(r.Context(), id)
+	order, err := h.service.GetOrder(r.Context(), id.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -203,11 +177,8 @@ func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 
 // UpdateOrderStatus handles PUT /api/v1/orders/{id}/status
 func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "order id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
@@ -227,7 +198,7 @@ func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	order, err := h.service.UpdateOrderStatus(r.Context(), id, req.Status, req.Reason)
+	order, err := h.service.UpdateOrderStatus(r.Context(), id.String(), req.Status, req.Reason)
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -238,11 +209,8 @@ func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 
 // CancelOrder handles POST /api/v1/orders/{id}/cancel
 func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "order id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
@@ -255,7 +223,7 @@ func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 		req = CancelOrderRequest{}
 	}
 
-	order, err := h.service.CancelOrder(r.Context(), id, req.Reason)
+	order, err := h.service.CancelOrder(r.Context(), id.String(), req.Reason)
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return

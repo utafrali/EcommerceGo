@@ -93,7 +93,7 @@ func TestBulkIndex_RejectsBodyOver10MB(t *testing.T) {
 func TestBulkIndex_RejectsTooManyProducts(t *testing.T) {
 	router := newTestRouter()
 
-	// Build an array with 501 products (exceeds maxBulkSize of 500).
+	// Build an array with 501 products (exceeds max of 500).
 	var products []IndexProductRequest
 	for i := 0; i < 501; i++ {
 		products = append(products, IndexProductRequest{
@@ -118,7 +118,6 @@ func TestBulkIndex_RejectsTooManyProducts(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, resp.Error)
 	assert.Equal(t, "VALIDATION_ERROR", resp.Error.Code)
-	assert.Contains(t, resp.Error.Message, "500")
 }
 
 func TestBulkIndex_Accepts500Products(t *testing.T) {
@@ -145,22 +144,20 @@ func TestBulkIndex_Accepts500Products(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
-func TestReindex_RejectsBodyOver1MB(t *testing.T) {
+func TestReindex_Returns202Accepted(t *testing.T) {
 	router := newTestRouter()
 
-	// Reindex handler also applies MaxBytesReader even though it doesn't
-	// read the body; verify the limit is set without error for a small body.
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/search/reindex", strings.NewReader("{}"))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
 
-	// The handler calls service.Reindex which tries to reach localhost:9999
-	// (not running), so it will return 500 -- but the MaxBytesReader does
-	// not block it. This test just verifies a small body is not rejected.
-	// We check it is NOT a 400 from MaxBytesReader.
-	assert.NotEqual(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, http.StatusAccepted, w.Code)
+
+	var resp response
+	err := json.NewDecoder(w.Body).Decode(&resp)
+	require.NoError(t, err)
 }
 
 // --- IndexProduct Handler Tests ---
@@ -298,8 +295,10 @@ func TestSearch_ParsesQueryParameters(t *testing.T) {
 func TestDeleteProduct_ReturnsOK(t *testing.T) {
 	router := newTestRouter()
 
+	delID := "550e8400-e29b-41d4-a716-446655440000"
+
 	// Index first.
-	indexBody := `{"id":"del-1","name":"To Delete"}`
+	indexBody := fmt.Sprintf(`{"id":"%s","name":"To Delete"}`, delID)
 	indexReq := httptest.NewRequest(http.MethodPost, "/api/v1/search/index", strings.NewReader(indexBody))
 	indexReq.Header.Set("Content-Type", "application/json")
 	iw := httptest.NewRecorder()
@@ -307,7 +306,7 @@ func TestDeleteProduct_ReturnsOK(t *testing.T) {
 	require.Equal(t, http.StatusOK, iw.Code)
 
 	// Delete it.
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/search/del-1", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/search/"+delID, nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

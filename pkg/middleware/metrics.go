@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"bufio"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -37,7 +39,9 @@ var (
 	)
 )
 
-// metricsResponseWriter wraps http.ResponseWriter to capture status code for metrics
+// metricsResponseWriter wraps http.ResponseWriter to capture status code for metrics.
+// It delegates Flush and Hijack to the underlying ResponseWriter when supported,
+// preventing SSE/WebSocket breakage.
 type metricsResponseWriter struct {
 	http.ResponseWriter
 	statusCode int
@@ -46,6 +50,21 @@ type metricsResponseWriter struct {
 func (rw *metricsResponseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+// Flush delegates to the underlying ResponseWriter if it implements http.Flusher.
+func (rw *metricsResponseWriter) Flush() {
+	if f, ok := rw.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Hijack delegates to the underlying ResponseWriter if it implements http.Hijacker.
+func (rw *metricsResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := rw.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, http.ErrNotSupported
 }
 
 // PrometheusMetrics returns middleware that collects HTTP metrics.

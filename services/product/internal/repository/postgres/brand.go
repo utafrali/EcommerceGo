@@ -4,18 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
 )
 
 // BrandRepository implements brand persistence operations using PostgreSQL.
 type BrandRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewBrandRepository creates a new PostgreSQL-backed brand repository.
-func NewBrandRepository(pool *pgxpool.Pool) *BrandRepository {
+func NewBrandRepository(pool database.DBTX) *BrandRepository {
 	return &BrandRepository{pool: pool}
 }
 

@@ -3,8 +3,10 @@ package http
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/utafrali/EcommerceGo/pkg/health"
@@ -17,14 +19,18 @@ func NewRouter(
 	checkoutService *service.CheckoutService,
 	healthHandler *health.Handler,
 	logger *slog.Logger,
+	pprofCIDRs []string,
 ) http.Handler {
 	r := chi.NewRouter()
 
 	// Global middleware
-	r.Use(CORS)
 	r.Use(middleware.Recovery(logger))
+	r.Use(chimw.Compress(5))
+	r.Use(chimw.Timeout(30 * time.Second))
 	r.Use(middleware.RequestLogging(logger))
 	r.Use(middleware.PrometheusMetrics("checkout"))
+	r.Use(middleware.Tracing("checkout"))
+	r.Use(middleware.RequestLogger(logger))
 
 	// Health check endpoints
 	r.Get("/health/live", healthHandler.LivenessHandler())
@@ -32,6 +38,9 @@ func NewRouter(
 	r.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		promhttp.Handler().ServeHTTP(w, r)
 	})
+
+	// Pprof debug endpoints with IP allowlist.
+	middleware.RegisterPprof(r, pprofCIDRs, logger)
 
 	// Checkout API endpoints
 	checkoutHandler := NewCheckoutHandler(checkoutService, logger)

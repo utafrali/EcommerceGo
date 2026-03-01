@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"time"
@@ -70,11 +71,12 @@ func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, err
 
 	for attempt := 0; attempt <= c.config.MaxRetries; attempt++ {
 		if attempt > 0 {
-			// Exponential backoff
+			// Exponential backoff with ±25% jitter to prevent thundering herd.
 			wait := c.config.RetryWaitMin * time.Duration(1<<uint(attempt-1))
 			if wait > c.config.RetryWaitMax {
 				wait = c.config.RetryWaitMax
 			}
+			wait = addJitter(wait)
 
 			select {
 			case <-time.After(wait):
@@ -83,7 +85,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, err
 			}
 		}
 
-		resp, err = c.httpClient.Do(req)
+		resp, err = c.httpClient.Do(req) // #nosec G704 -- URL is constructed from trusted service config, not user input
 		if err != nil {
 			// Retry on network errors
 			if isRetryableError(err) && attempt < c.config.MaxRetries {
@@ -94,7 +96,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, err
 
 		// Retry on 5xx errors (except 501 Not Implemented)
 		if resp.StatusCode >= 500 && resp.StatusCode != 501 && attempt < c.config.MaxRetries {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			continue
 		}
 
@@ -121,6 +123,13 @@ func (c *Client) Post(ctx context.Context, url string, contentType string, body 
 	}
 	req.Header.Set("Content-Type", contentType)
 	return c.Do(ctx, req)
+}
+
+// addJitter applies ±25% random jitter to a duration to prevent thundering herd.
+func addJitter(d time.Duration) time.Duration {
+	// jitter in range [-0.25, +0.25]
+	jitter := (rand.Float64() - 0.5) * 0.5 // #nosec G404 -- non-cryptographic jitter for retry backoff
+	return time.Duration(float64(d) * (1.0 + jitter))
 }
 
 // isRetryableError determines if an error is retryable

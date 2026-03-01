@@ -54,13 +54,17 @@ function extractJson(text: string): string {
 }
 
 /**
- * Calls the claude CLI via async spawn (not execSync).
- * execSync / spawnSync hits ETIMEDOUT on macOS/Node 23 when piping large input.
- * Async spawn + manual stdin.end() is reliable.
+ * Calls the claude CLI via async spawn.
+ *
+ * Key fixes vs the previous version:
+ *  1. `--allowedTools ""` (empty string) caused the CLI to hang indefinitely —
+ *     omit the flag entirely when no tools are needed.
+ *  2. The full prompt (system + user) is written to stdin; `-p` with no
+ *     argument puts the CLI in non-interactive stdin-read mode.
  */
 function callClaude(prompt: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Remove CLAUDECODE so nested-session guard doesn't fire
+    // Strip CLAUDECODE so the nested-session guard doesn't fire.
     const env: Record<string, string> = {};
     for (const [k, v] of Object.entries(process.env)) {
       if (k !== "CLAUDECODE" && v !== undefined) env[k] = v;
@@ -68,15 +72,7 @@ function callClaude(prompt: string): Promise<string> {
 
     const child = spawn(
       "claude",
-      [
-        "-p",
-        "--output-format",
-        "json",
-        "--model",
-        "claude-opus-4-6",
-        "--allowedTools",
-        "",
-      ],
+      ["-p", "--output-format", "json", "--model", "claude-opus-4-6"],
       { env, stdio: ["pipe", "pipe", "pipe"] }
     );
 
@@ -88,8 +84,8 @@ function callClaude(prompt: string): Promise<string> {
 
     const timeout = setTimeout(() => {
       child.kill("SIGTERM");
-      reject(new Error("claude CLI timed out after 180s"));
-    }, 180_000);
+      reject(new Error("claude CLI timed out after 300s"));
+    }, 300_000);
 
     child.on("close", (code) => {
       clearTimeout(timeout);
@@ -109,7 +105,6 @@ function callClaude(prompt: string): Promise<string> {
       reject(err);
     });
 
-    // Write prompt to stdin then close it
     child.stdin.write(prompt, "utf-8", (err) => {
       if (err) {
         clearTimeout(timeout);

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/order/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/order/internal/repository"
@@ -18,11 +18,11 @@ import (
 
 // OrderRepository implements repository.OrderRepository using PostgreSQL.
 type OrderRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewOrderRepository creates a new PostgreSQL-backed order repository.
-func NewOrderRepository(pool *pgxpool.Pool) *OrderRepository {
+func NewOrderRepository(pool database.DBTX) *OrderRepository {
 	return &OrderRepository{pool: pool}
 }
 
@@ -121,7 +121,7 @@ func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order
 						'sku', oi.sku,
 						'price', oi.price,
 						'quantity', oi.quantity,
-						'subtotal', oi.subtotal
+						'subtotal', oi.price * oi.quantity
 					) ORDER BY oi.created_at
 				) FILTER (WHERE oi.id IS NOT NULL),
 				'[]'::jsonb
@@ -306,7 +306,7 @@ func (r *OrderRepository) List(ctx context.Context, filter repository.OrderFilte
 		}
 
 		itemsQuery := `
-			SELECT id, order_id, product_id, variant_id, name, sku, price, quantity
+			SELECT id, order_id, product_id, variant_id, name, sku, price, quantity, price * quantity AS subtotal
 			FROM order_items
 			WHERE order_id = ANY($1)
 			ORDER BY id`
@@ -330,6 +330,7 @@ func (r *OrderRepository) List(ctx context.Context, filter repository.OrderFilte
 				&item.SKU,
 				&item.Price,
 				&item.Quantity,
+				&item.Subtotal,
 			); err != nil {
 				return nil, 0, fmt.Errorf("scan order item: %w", err)
 			}

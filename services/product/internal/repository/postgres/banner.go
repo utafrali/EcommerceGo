@@ -8,19 +8,19 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/product/internal/domain"
 )
 
 // BannerRepository implements domain.BannerRepository using PostgreSQL.
 type BannerRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewBannerRepository creates a new PostgreSQL-backed banner repository.
-func NewBannerRepository(pool *pgxpool.Pool) *BannerRepository {
+func NewBannerRepository(pool database.DBTX) *BannerRepository {
 	return &BannerRepository{pool: pool}
 }
 

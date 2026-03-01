@@ -117,10 +117,104 @@ jobs:
           name: ${{ matrix.service }}-coverage
           path: services/${{ matrix.service }}/coverage.out
 
+  security-scan:
+    name: Security Scan (gosec)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - path: pkg
+            name: pkg
+          - path: services/product
+            name: product
+          - path: services/user
+            name: user
+          - path: services/inventory
+            name: inventory
+          - path: services/cart
+            name: cart
+          - path: services/order
+            name: order
+          - path: services/checkout
+            name: checkout
+          - path: services/payment
+            name: payment
+          - path: services/campaign
+            name: campaign
+          - path: services/notification
+            name: notification
+          - path: services/search
+            name: search
+          - path: services/media
+            name: media
+          - path: services/gateway
+            name: gateway
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: gosec (${{ matrix.module.name }})
+        working-directory: ${{ matrix.module.path }}
+        run: gosec -quiet -exclude-dir=vendor -exclude-dir=testdata ./...
+
+  vuln-check:
+    name: Vulnerability Check (govulncheck)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - path: pkg
+            name: pkg
+          - path: services/product
+            name: product
+          - path: services/user
+            name: user
+          - path: services/inventory
+            name: inventory
+          - path: services/cart
+            name: cart
+          - path: services/order
+            name: order
+          - path: services/checkout
+            name: checkout
+          - path: services/payment
+            name: payment
+          - path: services/campaign
+            name: campaign
+          - path: services/notification
+            name: notification
+          - path: services/search
+            name: search
+          - path: services/media
+            name: media
+          - path: services/gateway
+            name: gateway
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: govulncheck (${{ matrix.module.name }})
+        working-directory: ${{ matrix.module.path }}
+        run: govulncheck ./...
+
   build:
     name: Build Services
     runs-on: ubuntu-latest
-    needs: [lint, test-pkg, test-services]
+    needs: [lint, test-pkg, test-services, security-scan, vuln-check]
     strategy:
       fail-fast: false
       matrix:

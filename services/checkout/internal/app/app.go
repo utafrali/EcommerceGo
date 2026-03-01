@@ -13,6 +13,7 @@ import (
 	"github.com/utafrali/EcommerceGo/pkg/database"
 	"github.com/utafrali/EcommerceGo/pkg/health"
 	"github.com/utafrali/EcommerceGo/pkg/httpclient"
+	"github.com/utafrali/EcommerceGo/pkg/tracing"
 	"github.com/utafrali/EcommerceGo/services/checkout/migrations"
 	pkgkafka "github.com/utafrali/EcommerceGo/pkg/kafka"
 	"github.com/utafrali/EcommerceGo/services/checkout/internal/config"
@@ -24,17 +25,31 @@ import (
 
 // App wires together all dependencies and runs the checkout service.
 type App struct {
-	cfg        *config.Config
-	logger     *slog.Logger
-	pool       *pgxpool.Pool
-	producer   *pkgkafka.Producer
-	httpServer *http.Server
+	cfg            *config.Config
+	logger         *slog.Logger
+	pool           *pgxpool.Pool
+	producer       *pkgkafka.Producer
+	httpServer     *http.Server
+	tracerShutdown func(context.Context) error
 }
 
 // NewApp creates a new application instance, initializing all dependencies.
 func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	// Initialize OpenTelemetry tracing.
+	tracerShutdown, err := tracing.InitTracer(ctx, tracing.Config{
+		ServiceName:    "checkout",
+		ServiceVersion: "0.1.0",
+		Environment:    cfg.Environment,
+		OTLPEndpoint:   cfg.OTELEndpoint,
+		SampleRate:     cfg.OTELSampleRate,
+		Enabled:        cfg.OTELEnabled,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("init tracer: %w", err)
+	}
 
 	// Initialize PostgreSQL connection pool.
 	pgCfg := database.PostgresConfig{
@@ -44,10 +59,10 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		Password:        cfg.PostgresPass,
 		DBName:          cfg.PostgresDB,
 		SSLMode:         cfg.PostgresSSL,
-		MaxConns:        25,
-		MinConns:        5,
-		MaxConnLifetime: time.Hour,
-		MaxConnIdleTime: 30 * time.Minute,
+		MaxConns:        cfg.DBMaxConns,
+		MinConns:        cfg.DBMinConns,
+		MaxConnLifetime: time.Duration(cfg.DBMaxConnLifetimeMins) * time.Minute,
+		MaxConnIdleTime: time.Duration(cfg.DBMaxConnIdleTimeMins) * time.Minute,
 	}
 
 	pool, err := database.NewPostgresPool(ctx, &pgCfg)
@@ -59,6 +74,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		slog.Int("port", cfg.PostgresPort),
 		slog.String("database", cfg.PostgresDB),
 	)
+	database.RegisterPoolMetrics(pool, "checkout")
 
 	// Run database migrations.
 	if err := database.RunMigrations(ctx, pool, migrations.FS, logger); err != nil {
@@ -66,6 +82,11 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 	logger.Info("database migrations completed")
+
+	// Configure slow query logging.
+	if cfg.SlowQueryThresholdMs > 0 {
+		database.SetSlowQueryLogging(time.Duration(cfg.SlowQueryThresholdMs)*time.Millisecond, logger)
+	}
 
 	// Initialize Kafka producer.
 	kafkaCfg := pkgkafka.DefaultProducerConfig(cfg.KafkaBrokers)
@@ -76,8 +97,8 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	repo := postgres.NewCheckoutRepository(pool)
 	eventProducer := event.NewProducer(producer, logger)
 
-	// Create HTTP client for inter-service communication.
-	httpClient := httpclient.New(httpclient.Config{
+	// Create HTTP client with circuit breaker for inter-service communication.
+	baseClient := httpclient.New(httpclient.Config{
 		Timeout:         10 * time.Second,
 		MaxRetries:      3,
 		RetryWaitMin:    500 * time.Millisecond,
@@ -85,42 +106,66 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		MaxConnsPerHost: 100,
 	})
 
+	cbCfg := httpclient.CircuitBreakerConfig{
+		Name:         "checkout-downstream",
+		MaxRequests:  cfg.CBMaxRequests,
+		Interval:     time.Duration(cfg.CBInterval) * time.Second,
+		Timeout:      time.Duration(cfg.CBTimeout) * time.Second,
+		FailureRatio: cfg.CBFailureRatio,
+		MinRequests:  cfg.CBMinRequests,
+	}
+	cbClient := httpclient.NewCircuitBreakerClient(baseClient, cbCfg, logger).
+		WithFallback(service.CircuitOpenFallback)
+	logger.Info("circuit breaker initialized",
+		slog.String("name", cbCfg.Name),
+		slog.Uint64("max_requests", uint64(cbCfg.MaxRequests)),
+		slog.Int("timeout_seconds", cfg.CBTimeout),
+		slog.Uint64("min_requests", uint64(cbCfg.MinRequests)),
+	)
+
 	checkoutService := service.NewCheckoutService(
 		repo,
 		eventProducer,
 		logger,
-		httpClient,
+		cbClient,
 		cfg.InventoryServiceURL,
 		cfg.OrderServiceURL,
 		cfg.PaymentServiceURL,
+		service.SagaTimeouts{
+			InventoryTimeout: time.Duration(cfg.SagaInventoryTimeout) * time.Second,
+			OrderTimeout:     time.Duration(cfg.SagaOrderTimeout) * time.Second,
+			PaymentTimeout:   time.Duration(cfg.SagaPaymentTimeout) * time.Second,
+		},
 	)
 
 	// Health checks.
 	healthHandler := health.NewHandler()
-	healthHandler.Register("postgres", func(ctx context.Context) error {
+	healthHandler.RegisterCritical("postgres", func(ctx context.Context) error {
 		return pool.Ping(ctx)
 	})
-	healthHandler.Register("kafka", func(ctx context.Context) error {
+	healthHandler.RegisterNonCritical("kafka", func(ctx context.Context) error {
 		return producer.Ping(ctx)
 	})
 
 	// HTTP router.
-	router := handler.NewRouter(checkoutService, healthHandler, logger)
+	router := handler.NewRouter(checkoutService, healthHandler, logger, cfg.PprofAllowedCIDRs)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.HTTPPort),
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	return &App{
-		cfg:        cfg,
-		logger:     logger,
-		pool:       pool,
-		producer:   producer,
-		httpServer: httpServer,
+		cfg:            cfg,
+		logger:         logger,
+		pool:           pool,
+		producer:       producer,
+		httpServer:     httpServer,
+		tracerShutdown: tracerShutdown,
 	}, nil
 }
 
@@ -147,28 +192,41 @@ func (a *App) Run(ctx context.Context) error {
 	return a.Shutdown()
 }
 
-// Shutdown gracefully stops all components.
+// Shutdown gracefully stops all components in the correct order:
+// 1. HTTP server (drain in-flight requests)
+// 2. Tracer (flush pending spans from drained requests)
+// 3. Kafka producer
+// 4. PostgreSQL pool
 func (a *App) Shutdown() error {
 	a.logger.Info("shutting down application...")
 
 	var errs []error
 
-	// Graceful HTTP server shutdown with a 10-second deadline.
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := a.httpServer.Shutdown(shutdownCtx); err != nil {
+	// 1. Drain in-flight HTTP requests (5s budget).
+	httpCtx, httpCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer httpCancel()
+	if err := a.httpServer.Shutdown(httpCtx); err != nil {
 		a.logger.Error("http server shutdown error", slog.String("error", err.Error()))
 		errs = append(errs, err)
 	}
 
-	// Close Kafka producer.
+	// 2. Flush pending spans after HTTP drain so in-flight request spans are captured.
+	if a.tracerShutdown != nil {
+		tracerCtx, tracerCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer tracerCancel()
+		if err := a.tracerShutdown(tracerCtx); err != nil {
+			a.logger.Error("tracer shutdown error", slog.String("error", err.Error()))
+			errs = append(errs, err)
+		}
+	}
+
+	// 3. Close Kafka producer (2s budget).
 	if err := a.producer.Close(); err != nil {
 		a.logger.Error("kafka producer close error", slog.String("error", err.Error()))
 		errs = append(errs, err)
 	}
 
-	// Close PostgreSQL pool.
+	// 4. Close PostgreSQL pool.
 	a.pool.Close()
 
 	a.logger.Info("application shutdown complete")

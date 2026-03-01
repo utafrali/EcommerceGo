@@ -8,19 +8,19 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/media/internal/domain"
 )
 
 // MediaRepository implements repository.MediaRepository using PostgreSQL.
 type MediaRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewMediaRepository creates a new PostgreSQL-backed media repository.
-func NewMediaRepository(pool *pgxpool.Pool) *MediaRepository {
+func NewMediaRepository(pool database.DBTX) *MediaRepository {
 	return &MediaRepository{pool: pool}
 }
 

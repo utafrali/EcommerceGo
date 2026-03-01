@@ -8,19 +8,19 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/notification/internal/domain"
 )
 
 // NotificationRepository implements repository.NotificationRepository using PostgreSQL.
 type NotificationRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewNotificationRepository creates a new PostgreSQL-backed notification repository.
-func NewNotificationRepository(pool *pgxpool.Pool) *NotificationRepository {
+func NewNotificationRepository(pool database.DBTX) *NotificationRepository {
 	return &NotificationRepository{pool: pool}
 }
 

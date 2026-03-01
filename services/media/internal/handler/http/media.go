@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/utafrali/EcommerceGo/pkg/httputil"
+	"github.com/utafrali/EcommerceGo/pkg/validator"
 	"github.com/utafrali/EcommerceGo/services/media/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/media/internal/service"
 )
@@ -33,16 +34,6 @@ func NewMediaHandler(svc *service.MediaService, logger *slog.Logger) *MediaHandl
 type UpdateMediaRequest struct {
 	AltText   *string `json:"alt_text"`
 	SortOrder *int    `json:"sort_order"`
-}
-
-// --- Response envelope ---
-
-type listResponse struct {
-	Data       any `json:"data"`
-	TotalCount int `json:"total_count"`
-	Page       int `json:"page"`
-	PerPage    int `json:"per_page"`
-	TotalPages int `json:"total_pages"`
 }
 
 // --- Handlers ---
@@ -99,15 +90,12 @@ func (h *MediaHandler) UploadMedia(w http.ResponseWriter, r *http.Request) {
 
 // GetMedia handles GET /api/v1/media/{id}.
 func (h *MediaHandler) GetMedia(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "media id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	media, err := h.service.GetMedia(r.Context(), id)
+	media, err := h.service.GetMedia(r.Context(), id.String())
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -158,27 +146,13 @@ func (h *MediaHandler) ListMediaByOwner(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	totalPages := total / perPage
-	if total%perPage > 0 {
-		totalPages++
-	}
-
-	httputil.WriteJSON(w, http.StatusOK, listResponse{
-		Data:       mediaFiles,
-		TotalCount: total,
-		Page:       page,
-		PerPage:    perPage,
-		TotalPages: totalPages,
-	})
+	httputil.WriteJSON(w, http.StatusOK, httputil.NewPaginatedResponse(mediaFiles, total, page, perPage))
 }
 
 // UpdateMediaMetadata handles PUT /api/v1/media/{id}.
 func (h *MediaHandler) UpdateMediaMetadata(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "media id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
@@ -192,12 +166,17 @@ func (h *MediaHandler) UpdateMediaMetadata(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if err := validator.Validate(req); err != nil {
+		httputil.WriteValidationError(w, err)
+		return
+	}
+
 	input := &service.UpdateMediaInput{
 		AltText:   req.AltText,
 		SortOrder: req.SortOrder,
 	}
 
-	media, err := h.service.UpdateMediaMetadata(r.Context(), id, input)
+	media, err := h.service.UpdateMediaMetadata(r.Context(), id.String(), input)
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -208,19 +187,16 @@ func (h *MediaHandler) UpdateMediaMetadata(w http.ResponseWriter, r *http.Reques
 
 // DeleteMedia handles DELETE /api/v1/media/{id}.
 func (h *MediaHandler) DeleteMedia(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "media id is required"},
-		})
+	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok {
 		return
 	}
 
-	if err := h.service.DeleteMedia(r.Context(), id); err != nil {
+	if err := h.service.DeleteMedia(r.Context(), id.String()); err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id, "status": "deleted"}})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id.String(), "status": "deleted"}})
 }
 

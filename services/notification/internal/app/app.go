@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 	"github.com/utafrali/EcommerceGo/pkg/database"
 	"github.com/utafrali/EcommerceGo/pkg/health"
+	"github.com/utafrali/EcommerceGo/pkg/tracing"
 	"github.com/utafrali/EcommerceGo/services/notification/migrations"
 	pkgkafka "github.com/utafrali/EcommerceGo/pkg/kafka"
 	"github.com/utafrali/EcommerceGo/services/notification/internal/config"
@@ -45,18 +47,32 @@ func (a *notificationSenderAdapter) SendNotification(ctx context.Context, input 
 
 // App wires together all dependencies and runs the notification service.
 type App struct {
-	cfg        *config.Config
-	logger     *slog.Logger
-	pool       *pgxpool.Pool
-	producer   *pkgkafka.Producer
-	consumers  []*pkgkafka.Consumer
-	httpServer *http.Server
+	cfg            *config.Config
+	logger         *slog.Logger
+	pool           *pgxpool.Pool
+	producer       *pkgkafka.Producer
+	consumers      []*pkgkafka.Consumer
+	httpServer     *http.Server
+	tracerShutdown func(context.Context) error
 }
 
 // NewApp creates a new application instance, initializing all dependencies.
 func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	// Initialize OpenTelemetry tracing.
+	tracerShutdown, err := tracing.InitTracer(ctx, tracing.Config{
+		ServiceName:    "notification",
+		ServiceVersion: "0.1.0",
+		Environment:    cfg.Environment,
+		OTLPEndpoint:   cfg.OTELEndpoint,
+		SampleRate:     cfg.OTELSampleRate,
+		Enabled:        cfg.OTELEnabled,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("init tracer: %w", err)
+	}
 
 	// Initialize PostgreSQL connection pool.
 	pgCfg := database.PostgresConfig{
@@ -66,10 +82,10 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		Password:        cfg.PostgresPass,
 		DBName:          cfg.PostgresDB,
 		SSLMode:         cfg.PostgresSSL,
-		MaxConns:        25,
-		MinConns:        5,
-		MaxConnLifetime: time.Hour,
-		MaxConnIdleTime: 30 * time.Minute,
+		MaxConns:        cfg.DBMaxConns,
+		MinConns:        cfg.DBMinConns,
+		MaxConnLifetime: time.Duration(cfg.DBMaxConnLifetimeMins) * time.Minute,
+		MaxConnIdleTime: time.Duration(cfg.DBMaxConnIdleTimeMins) * time.Minute,
 	}
 
 	pool, err := database.NewPostgresPool(ctx, &pgCfg)
@@ -81,6 +97,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		slog.Int("port", cfg.PostgresPort),
 		slog.String("database", cfg.PostgresDB),
 	)
+	database.RegisterPoolMetrics(pool, "notification")
 
 	// Run database migrations.
 	if err := database.RunMigrations(ctx, pool, migrations.FS, logger); err != nil {
@@ -89,10 +106,21 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	}
 	logger.Info("database migrations completed")
 
-	// Initialize Kafka producer.
+	// Configure slow query logging.
+	if cfg.SlowQueryThresholdMs > 0 {
+		database.SetSlowQueryLogging(time.Duration(cfg.SlowQueryThresholdMs)*time.Millisecond, logger)
+	}
+
+	// Initialize Kafka producer with connection validation and retry.
 	kafkaCfg := pkgkafka.DefaultProducerConfig(cfg.KafkaBrokers)
 	kafkaProducer := pkgkafka.NewProducer(kafkaCfg, logger)
-	logger.Info("kafka producer initialized", slog.Any("brokers", cfg.KafkaBrokers))
+	if err := pingKafkaWithRetry(ctx, kafkaProducer, logger); err != nil {
+		logger.Warn("kafka producer ping failed after retries, continuing in degraded mode",
+			slog.String("error", err.Error()),
+		)
+	} else {
+		logger.Info("kafka producer initialized", slog.Any("brokers", cfg.KafkaBrokers))
+	}
 
 	// Build the dependency graph.
 	repo := postgres.NewNotificationRepository(pool)
@@ -110,35 +138,38 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	// Kafka event consumers.
 	senderAdapter := &notificationSenderAdapter{svc: notificationService}
 	consumerHandler := event.NewConsumerHandler(senderAdapter, logger)
-	consumers := event.NewConsumers(cfg.KafkaBrokers, consumerHandler, logger)
+	idempotencyStore := pkgkafka.NewMemoryIdempotencyStore(24 * time.Hour)
+	consumers := event.NewConsumers(cfg.KafkaBrokers, consumerHandler, idempotencyStore, logger)
 
 	// Health checks.
 	healthHandler := health.NewHandler()
-	healthHandler.Register("postgres", func(ctx context.Context) error {
+	healthHandler.RegisterCritical("postgres", func(ctx context.Context) error {
 		return pool.Ping(ctx)
 	})
-	healthHandler.Register("kafka", func(ctx context.Context) error {
+	healthHandler.RegisterNonCritical("kafka", func(ctx context.Context) error {
 		return kafkaProducer.Ping(ctx)
 	})
 
 	// HTTP router.
-	router := handler.NewRouter(notificationService, healthHandler, logger)
+	router := handler.NewRouter(notificationService, healthHandler, logger, cfg.PprofAllowedCIDRs)
 
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.HTTPPort),
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	return &App{
-		cfg:        cfg,
-		logger:     logger,
-		pool:       pool,
-		producer:   kafkaProducer,
-		consumers:  consumers,
-		httpServer: httpServer,
+		cfg:            cfg,
+		logger:         logger,
+		pool:           pool,
+		producer:       kafkaProducer,
+		consumers:      consumers,
+		httpServer:     httpServer,
+		tracerShutdown: tracerShutdown,
 	}, nil
 }
 
@@ -175,22 +206,36 @@ func (a *App) Run(ctx context.Context) error {
 	return a.Shutdown()
 }
 
-// Shutdown gracefully stops all components.
+// Shutdown gracefully stops all components in the correct order:
+// 1. HTTP server (drain in-flight requests)
+// 2. Tracer (flush pending spans from drained requests)
+// 3. Kafka consumers
+// 4. Kafka producer
+// 5. PostgreSQL pool
 func (a *App) Shutdown() error {
 	a.logger.Info("shutting down application...")
 
 	var errs []error
 
-	// Graceful HTTP server shutdown with a 10-second deadline.
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := a.httpServer.Shutdown(shutdownCtx); err != nil {
+	// 1. Drain in-flight HTTP requests (5s budget).
+	httpCtx, httpCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer httpCancel()
+	if err := a.httpServer.Shutdown(httpCtx); err != nil {
 		a.logger.Error("http server shutdown error", slog.String("error", err.Error()))
 		errs = append(errs, err)
 	}
 
-	// Close Kafka consumers.
+	// 2. Flush pending spans after HTTP drain so in-flight request spans are captured.
+	if a.tracerShutdown != nil {
+		tracerCtx, tracerCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer tracerCancel()
+		if err := a.tracerShutdown(tracerCtx); err != nil {
+			a.logger.Error("tracer shutdown error", slog.String("error", err.Error()))
+			errs = append(errs, err)
+		}
+	}
+
+	// 3. Close Kafka consumers (2s budget).
 	for _, consumer := range a.consumers {
 		if err := consumer.Close(); err != nil {
 			a.logger.Error("kafka consumer close error", slog.String("error", err.Error()))
@@ -198,15 +243,45 @@ func (a *App) Shutdown() error {
 		}
 	}
 
-	// Close Kafka producer.
+	// 4. Close Kafka producer (2s budget).
 	if err := a.producer.Close(); err != nil {
 		a.logger.Error("kafka producer close error", slog.String("error", err.Error()))
 		errs = append(errs, err)
 	}
 
-	// Close PostgreSQL pool.
+	// 5. Close PostgreSQL pool.
 	a.pool.Close()
 
 	a.logger.Info("application shutdown complete")
 	return errors.Join(errs...)
+}
+
+// pingKafkaWithRetry attempts to ping the Kafka producer with exponential
+// backoff (3 attempts, 1s/2s/4s with ±25% jitter).
+func pingKafkaWithRetry(ctx context.Context, producer *pkgkafka.Producer, logger *slog.Logger) error {
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		if err := producer.Ping(ctx); err == nil {
+			return nil
+		} else {
+			lastErr = err
+		}
+		if attempt < 2 {
+			base := time.Duration(1<<uint(attempt)) * time.Second
+			jitter := time.Duration(float64(base) * 0.25 * (2*rand.Float64() - 1)) // #nosec G404 -- non-cryptographic jitter for retry backoff
+			wait := base + jitter
+			logger.Warn("kafka producer ping failed, retrying",
+				slog.Int("attempt", attempt+1),
+				slog.Int("max_attempts", 3),
+				slog.Duration("backoff", wait),
+				slog.String("error", lastErr.Error()),
+			)
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("kafka ping: context cancelled during retry: %w", ctx.Err())
+			case <-time.After(wait):
+			}
+		}
+	}
+	return fmt.Errorf("kafka producer ping failed after 3 attempts: %w", lastErr)
 }

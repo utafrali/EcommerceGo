@@ -200,11 +200,8 @@ func (h *UserHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	addressID := chi.URLParam(r, "id")
-	if addressID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "address id is required"},
-		})
+	addressID, ok2 := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok2 {
 		return
 	}
 
@@ -236,7 +233,7 @@ func (h *UserHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 		Phone:        req.Phone,
 	}
 
-	address, err := h.service.UpdateAddress(r.Context(), userID, addressID, input)
+	address, err := h.service.UpdateAddress(r.Context(), userID, addressID.String(), input)
 	if err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
@@ -255,18 +252,15 @@ func (h *UserHandler) DeleteAddress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	addressID := chi.URLParam(r, "id")
-	if addressID == "" {
-		httputil.WriteJSON(w, http.StatusBadRequest, httputil.Response{
-			Error: &httputil.ErrorResponse{Code: "INVALID_INPUT", Message: "address id is required"},
-		})
+	addressID, ok2 := httputil.ParseUUID(w, chi.URLParam(r, "id"))
+	if !ok2 {
 		return
 	}
 
-	if err := h.service.DeleteAddress(r.Context(), userID, addressID); err != nil {
+	if err := h.service.DeleteAddress(r.Context(), userID, addressID.String()); err != nil {
 		httputil.WriteError(w, r, err, h.logger)
 		return
 	}
 
-	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": addressID, "status": "deleted"}})
+	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": addressID.String(), "status": "deleted"}})
 }

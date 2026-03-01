@@ -262,7 +262,8 @@ func (h *ConsumerHandler) handleCheckoutCompleted(ctx context.Context, event *pk
 }
 
 // NewConsumers creates Kafka consumers for all topics the notification service subscribes to.
-func NewConsumers(brokers []string, handler *ConsumerHandler, logger *slog.Logger) []*pkgkafka.Consumer {
+// If idempotencyStore is non-nil, handlers are wrapped with deduplication logic.
+func NewConsumers(brokers []string, handler *ConsumerHandler, idempotencyStore pkgkafka.IdempotencyStore, logger *slog.Logger) []*pkgkafka.Consumer {
 	topics := []string{
 		TopicOrderCreated,
 		TopicPaymentSucceeded,
@@ -274,14 +275,20 @@ func NewConsumers(brokers []string, handler *ConsumerHandler, logger *slog.Logge
 
 	for _, topic := range topics {
 		cfg := pkgkafka.ConsumerConfig{
-			Brokers:  brokers,
-			GroupID:  ConsumerGroupID,
-			Topic:    topic,
-			MinBytes: 1,
-			MaxBytes: 10e6,
+			Brokers:   brokers,
+			GroupID:   ConsumerGroupID,
+			Topic:     topic,
+			MinBytes:  1,
+			MaxBytes:  10e6,
+			EnableDLQ: true,
 		}
 
-		consumer := pkgkafka.NewConsumer(cfg, handler.Handle, logger)
+		var h pkgkafka.Handler = handler.Handle
+		if idempotencyStore != nil {
+			h = pkgkafka.IdempotentHandler(idempotencyStore, handler.Handle, logger)
+		}
+
+		consumer := pkgkafka.NewConsumer(cfg, h, logger)
 		consumers = append(consumers, consumer)
 	}
 

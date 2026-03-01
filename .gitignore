@@ -6,6 +6,10 @@
 *.dylib
 bin/
 
+# Compiled Go service binaries
+server
+services/*/cmd/server/server
+
 # Test binary, built with `go test -c`
 *.test
 

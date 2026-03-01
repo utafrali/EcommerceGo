@@ -8,19 +8,19 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/utafrali/EcommerceGo/pkg/database"
 	apperrors "github.com/utafrali/EcommerceGo/pkg/errors"
 	"github.com/utafrali/EcommerceGo/services/user/internal/domain"
 )
 
 // UserRepository implements repository.UserRepository using PostgreSQL.
 type UserRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewUserRepository creates a new PostgreSQL-backed user repository.
-func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
+func NewUserRepository(pool database.DBTX) *UserRepository {
 	return &UserRepository{pool: pool}
 }
 
@@ -162,11 +162,11 @@ func (r *UserRepository) scanUser(ctx context.Context, query string, args ...any
 
 // AddressRepository implements repository.AddressRepository using PostgreSQL.
 type AddressRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewAddressRepository creates a new PostgreSQL-backed address repository.
-func NewAddressRepository(pool *pgxpool.Pool) *AddressRepository {
+func NewAddressRepository(pool database.DBTX) *AddressRepository {
 	return &AddressRepository{pool: pool}
 }
 
@@ -381,11 +381,11 @@ func (r *AddressRepository) SetDefault(ctx context.Context, userID, addressID st
 
 // RefreshTokenRepository implements repository.RefreshTokenRepository using PostgreSQL.
 type RefreshTokenRepository struct {
-	pool *pgxpool.Pool
+	pool database.DBTX
 }
 
 // NewRefreshTokenRepository creates a new PostgreSQL-backed refresh token repository.
-func NewRefreshTokenRepository(pool *pgxpool.Pool) *RefreshTokenRepository {
+func NewRefreshTokenRepository(pool database.DBTX) *RefreshTokenRepository {
 	return &RefreshTokenRepository{pool: pool}
 }
 
