@@ -123,7 +123,7 @@ func NewCircuitBreakerClient(client *Client, cbCfg CircuitBreakerConfig, logger 
 		},
 	}
 
-	cb := gobreaker.NewCircuitBreaker[*http.Response](settings) //nolint:bodyclose
+	cb := gobreaker.NewCircuitBreaker[*http.Response](settings) //nolint:bodyclose // false positive: generic type param *http.Response does not allocate a body
 
 	// Set initial state metric.
 	circuitBreakerState.WithLabelValues(cbCfg.Name).Set(0)
