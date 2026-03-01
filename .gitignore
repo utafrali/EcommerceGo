@@ -1,3 +1,8 @@
+# learn-claude-code agent (separate repo, not tracked)
+learn-claude-code/
+# Skills symlink created by agent.sh
+skills
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
