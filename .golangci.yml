@@ -31,6 +31,13 @@ linters:
         - performance
     misspell:
       locale: US
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gocritic
+          - unparam
 
 formatters:
   enable:
@@ -42,11 +49,5 @@ formatters:
         - github.com/utafrali/EcommerceGo
 
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-        - gocritic
-        - unparam
   max-issues-per-linter: 50
   max-same-issues: 5
