@@ -20,7 +20,7 @@ set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 AGENT_DIR="$REPO_ROOT/learn-claude-code"
-SESSION="${1:-s_full}"
+SESSION="${1:-ecommercego}"
 SCRIPT="$AGENT_DIR/agents/${SESSION}.py"
 
 # ── Validate ────────────────────────────────────────────────────────────────
