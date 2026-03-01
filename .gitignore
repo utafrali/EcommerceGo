@@ -1,6 +1,6 @@
-# learn-claude-code agent (separate repo, not tracked)
+# learn-claude-code agent (separate repo, cloned locally, not tracked)
 learn-claude-code/
-# Skills symlink created by agent.sh
+# Skills symlink (created by agent.sh if run from wrong dir)
 skills
 
 # Binaries for programs and plugins
