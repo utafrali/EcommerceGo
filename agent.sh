@@ -1,26 +1,27 @@
 #!/bin/bash
 # EcommerceGo Development Agent
 #
-# Runs learn-claude-code s_full.py (or any session) from the learn-claude-code/
-# directory so WORKDIR, .env, skills/, .tasks/, .team/ all resolve correctly.
+# Runs agents from learn-claude-code/ directory so WORKDIR, .env, skills/,
+# .tasks/, .team/ all resolve correctly.
 #
-# The EcommerceGo codebase path is passed to the agent via the ECOMMERCEGO_ROOT
-# env var and is documented in the ecommercego-dev skill.
+# The EcommerceGo codebase path is passed via ECOMMERCEGO_ROOT env var.
+# No ANTHROPIC_API_KEY needed — uses local claude CLI as backend.
 #
 # Usage:
-#   ./agent.sh              # full agent (s_full) — recommended
-#   ./agent.sh s11          # autonomous multi-agent with task claiming
-#   ./agent.sh s07          # task-system only
+#   ./agent.sh                    # autonomous loop (ecommercego_auto) — default
+#   ./agent.sh ecommercego        # interactive REPL — type tasks manually
+#   ./agent.sh s11                # learn-claude-code autonomous multi-agent
+#   ./agent.sh s_full             # learn-claude-code full REPL
 #
-# First time setup:
-#   1. Set ANTHROPIC_API_KEY in learn-claude-code/.env
-#   2. Run ./agent.sh
+# Env vars:
+#   INTERVAL=300   seconds between autonomous iterations (default 600)
+#   MODEL_ID=...   claude model to use (default claude-sonnet-4-6)
 
 set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 AGENT_DIR="$REPO_ROOT/learn-claude-code"
-SESSION="${1:-ecommercego}"
+SESSION="${1:-ecommercego_auto}"
 SCRIPT="$AGENT_DIR/agents/${SESSION}.py"
 
 # ── Validate ────────────────────────────────────────────────────────────────
@@ -32,7 +33,7 @@ fi
 
 if [ ! -f "$SCRIPT" ]; then
   echo "ERROR: Session script not found: $SCRIPT"
-  echo "Available: s01..s12, s_full"
+  echo "Available: ecommercego_auto (default), ecommercego, s01..s12, s_full"
   exit 1
 fi
 
@@ -44,16 +45,17 @@ if [ ! -f "$AGENT_DIR/.venv/bin/python3" ]; then
   echo "Done."
 fi
 
-# ── API Key check ─────────────────────────────────────────────────────────────
+# ── Backend detection ────────────────────────────────────────────────────────
+KEY=""
 if [ -f "$AGENT_DIR/.env" ]; then
-  KEY=$(grep "^ANTHROPIC_API_KEY=" "$AGENT_DIR/.env" | cut -d= -f2)
-  if [ "$KEY" = "your-key-here" ] || [ -z "$KEY" ]; then
-    if [ -z "$ANTHROPIC_API_KEY" ]; then
-      echo "ERROR: ANTHROPIC_API_KEY not set."
-      echo "Edit $AGENT_DIR/.env and set your real API key."
-      exit 1
-    fi
-  fi
+  KEY=$(grep "^ANTHROPIC_API_KEY=" "$AGENT_DIR/.env" 2>/dev/null | cut -d= -f2)
+fi
+[ -z "$KEY" ] && KEY="${ANTHROPIC_API_KEY:-}"
+
+if [ "$KEY" = "your-key-here" ] || [ -z "$KEY" ]; then
+  BACKEND="claude CLI (no API key needed)"
+else
+  BACKEND="Anthropic API"
 fi
 
 # ── Banner ────────────────────────────────────────────────────────────────────
@@ -61,12 +63,18 @@ echo ""
 echo "  ╔════════════════════════════════════════════╗"
 echo "  ║   EcommerceGo Development Agent           ║"
 echo "  ║   session : $SESSION"
+echo "  ║   backend : $BACKEND"
 echo "  ║   codebase: $REPO_ROOT"
 echo "  ║   workdir : $AGENT_DIR"
 echo "  ╚════════════════════════════════════════════╝"
 echo ""
-echo "  Type your task or 'load_skill ecommercego-dev' to start."
-echo "  /tasks  /team  /compact  to inspect state."
+if [ "$SESSION" = "ecommercego_auto" ]; then
+  echo "  Autonomous mode — agent will loop every ${INTERVAL:-600}s."
+  echo "  Press Ctrl+C to stop."
+else
+  echo "  Type your task or 'load_skill ecommercego-dev' to start."
+  echo "  /tasks  /team  /compact  to inspect state."
+fi
 echo ""
 
 # ── Run from learn-claude-code/ so WORKDIR, .env, skills/ all align ──────────
