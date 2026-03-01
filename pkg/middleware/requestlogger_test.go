@@ -9,8 +9,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/utafrali/EcommerceGo/pkg/logger"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/utafrali/EcommerceGo/pkg/logger"
 )
 
 func newTestLogger(w *bytes.Buffer) *slog.Logger {

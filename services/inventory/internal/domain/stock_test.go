@@ -95,12 +95,14 @@ func TestStockCheckResult_InStock(t *testing.T) {
 	r := StockCheckResult{Requested: 5, Available: 10, InStock: true}
 	assert.True(t, r.InStock)
 	assert.Equal(t, 5, r.Requested)
+	assert.Equal(t, 10, r.Available)
 }
 
 func TestStockCheckResult_OutOfStock(t *testing.T) {
 	r := StockCheckResult{Requested: 15, Available: 10, InStock: false}
 	assert.False(t, r.InStock)
 	assert.Equal(t, 15, r.Requested)
+	assert.Equal(t, 10, r.Available)
 }
 
 // ============================================================================

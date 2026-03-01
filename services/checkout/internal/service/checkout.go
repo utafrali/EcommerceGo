@@ -724,7 +724,7 @@ func (s *CheckoutService) releaseInventoryReservations(ctx context.Context, rese
 
 // cancelOrder is a compensating action to cancel an order.
 func (s *CheckoutService) cancelOrder(ctx context.Context, orderID string) error {
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.orderServiceURL+"/api/orders/"+orderID+"/cancel", nil)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, s.orderServiceURL+"/api/orders/"+orderID+"/cancel", http.NoBody)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to create cancel order request", slog.String("error", err.Error()))
 		return fmt.Errorf("create cancel order request: %w", err)

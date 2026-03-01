@@ -65,7 +65,7 @@ func (e *Engine) Suggest(ctx context.Context, prefix string, limit int) ([]strin
 	if err != nil {
 		return nil, fmt.Errorf("elasticsearch suggest: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.IsError() {
 		var errResp esErrorResponse

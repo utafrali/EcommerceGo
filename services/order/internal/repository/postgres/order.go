@@ -32,7 +32,7 @@ func (r *OrderRepository) Create(ctx context.Context, o *domain.Order) error {
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var shippingJSON, billingJSON []byte
 
@@ -371,4 +371,3 @@ func (r *OrderRepository) UpdateStatus(ctx context.Context, id string, status st
 
 	return nil
 }
-
