@@ -1,0 +1,727 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Inventory Service API",
+    "description": "Manages stock levels, reservations, and inventory movements for product variants.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "EcommerceGo"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8007",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    {
+      "name": "inventory",
+      "description": "Stock management and reservation operations"
+    }
+  ],
+  "paths": {
+    "/api/v1/inventory/": {
+      "post": {
+        "summary": "Initialize stock",
+        "description": "Creates a new stock record for a product variant. Use this when introducing a new variant to the inventory system.",
+        "tags": ["inventory"],
+        "operationId": "initializeStock",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitializeStockRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Stock initialized successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stock record already exists for this variant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/{productId}/variants/{variantId}": {
+      "get": {
+        "summary": "Get stock level",
+        "description": "Returns the current stock level and reservation details for a specific product variant.",
+        "tags": ["inventory"],
+        "operationId": "getStock",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the product",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "variantId",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the product variant",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stock level retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Stock record not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Adjust stock",
+        "description": "Adjusts the stock quantity for a product variant by a delta amount. Positive delta increases stock, negative delta decreases it.",
+        "tags": ["inventory"],
+        "operationId": "adjustStock",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the product",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "variantId",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the product variant",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustStockRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stock adjusted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body, UUID format, or insufficient stock",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Stock record not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/check": {
+      "post": {
+        "summary": "Check stock availability",
+        "description": "Checks whether the requested quantities are available for multiple product variants in a single bulk call.",
+        "tags": ["inventory"],
+        "operationId": "checkAvailability",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckAvailabilityRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Availability check completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckAvailabilityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/reserve": {
+      "post": {
+        "summary": "Reserve inventory",
+        "description": "Reserves stock for multiple product variants as part of a checkout session. Returns reservation IDs that must be confirmed or released.",
+        "tags": ["inventory"],
+        "operationId": "reserveStock",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReserveStockRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Inventory reserved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReserveStockResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Insufficient stock for one or more items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/release": {
+      "post": {
+        "summary": "Release reservation",
+        "description": "Releases a previously held inventory reservation, restoring the reserved quantity back to available stock.",
+        "tags": ["inventory"],
+        "operationId": "releaseReservation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseReservationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reservation released successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Reservation not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/confirm": {
+      "post": {
+        "summary": "Confirm reservation",
+        "description": "Permanently deducts the reserved inventory from available stock, completing the reservation lifecycle. Called after a successful order placement.",
+        "tags": ["inventory"],
+        "operationId": "confirmReservation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmReservationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reservation confirmed and stock deducted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Reservation not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/low-stock": {
+      "get": {
+        "summary": "List low stock items",
+        "description": "Returns a paginated list of product variants whose available quantity is at or below their configured low-stock threshold.",
+        "tags": ["inventory"],
+        "operationId": "listLowStock",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Number of items per page (1-100)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of low-stock items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LowStockListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid pagination parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "InitializeStockRequest": {
+        "type": "object",
+        "required": ["product_id", "variant_id"],
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID of the product"
+          },
+          "variant_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID of the product variant"
+          },
+          "warehouse_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional UUID of the warehouse"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Initial stock quantity",
+            "default": 0
+          },
+          "low_stock_threshold": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Quantity at which the item is considered low stock (defaults to 10)",
+            "default": 10
+          }
+        }
+      },
+      "AdjustStockRequest": {
+        "type": "object",
+        "required": ["delta", "reason"],
+        "properties": {
+          "delta": {
+            "type": "integer",
+            "description": "Quantity change; positive to increase, negative to decrease"
+          },
+          "reason": {
+            "type": "string",
+            "enum": ["order", "return", "adjustment", "reservation"],
+            "description": "Reason for the stock adjustment"
+          }
+        }
+      },
+      "CheckAvailabilityRequest": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/StockCheckItem"
+            }
+          }
+        }
+      },
+      "ReserveStockRequest": {
+        "type": "object",
+        "required": ["checkout_id", "items"],
+        "properties": {
+          "checkout_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID of the checkout session"
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/StockCheckItem"
+            }
+          },
+          "ttl_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Reservation TTL in seconds; uses service default if not provided"
+          }
+        }
+      },
+      "ReleaseReservationRequest": {
+        "type": "object",
+        "required": ["reservation_id"],
+        "properties": {
+          "reservation_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID of the reservation to release"
+          }
+        }
+      },
+      "ConfirmReservationRequest": {
+        "type": "object",
+        "required": ["reservation_id"],
+        "properties": {
+          "reservation_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID of the reservation to confirm"
+          }
+        }
+      },
+      "StockCheckItem": {
+        "type": "object",
+        "required": ["product_id", "variant_id", "quantity"],
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "variant_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "Stock": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "variant_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouse_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "reserved_quantity": {
+            "type": "integer"
+          },
+          "low_stock_threshold": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StockResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Stock"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        }
+      },
+      "CheckAvailabilityResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "product_id": { "type": "string", "format": "uuid" },
+                    "variant_id": { "type": "string", "format": "uuid" },
+                    "requested": { "type": "integer" },
+                    "available": { "type": "integer" },
+                    "is_available": { "type": "boolean" }
+                  }
+                }
+              },
+              "all_available": {
+                "type": "boolean",
+                "description": "True only when all requested items are available"
+              }
+            }
+          }
+        }
+      },
+      "ReserveStockResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "reservation_ids": {
+                "type": "array",
+                "items": { "type": "string", "format": "uuid" }
+              },
+              "checkout_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        }
+      },
+      "ReservationStatusResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "reservation_id": { "type": "string", "format": "uuid" },
+              "status": { "type": "string", "enum": ["released", "confirmed"] }
+            }
+          }
+        }
+      },
+      "LowStockListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Stock" }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer" },
+              "page": { "type": "integer" },
+              "per_page": { "type": "integer" },
+              "total_pages": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        }
+      }
+    }
+  }
+}

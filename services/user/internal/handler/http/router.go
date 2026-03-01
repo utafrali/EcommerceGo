@@ -11,6 +11,7 @@ import (
 
 	"github.com/utafrali/EcommerceGo/pkg/health"
 	"github.com/utafrali/EcommerceGo/pkg/middleware"
+	"github.com/utafrali/EcommerceGo/services/user/docs"
 	"github.com/utafrali/EcommerceGo/services/user/internal/auth"
 	"github.com/utafrali/EcommerceGo/services/user/internal/domain"
 	"github.com/utafrali/EcommerceGo/services/user/internal/service"
@@ -100,6 +101,10 @@ func NewRouter(
 		r.Delete("/wishlist/{productId}", wishlistHandler.Remove)
 		r.Get("/wishlist/{productId}", wishlistHandler.Exists)
 	})
+
+	// Swagger documentation
+	r.Get("/swagger/doc.json", docs.ServeSpec)
+	r.Get("/swagger/", docs.ServeUI)
 
 	return r
 }

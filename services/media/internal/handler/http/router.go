@@ -11,6 +11,7 @@ import (
 
 	"github.com/utafrali/EcommerceGo/pkg/health"
 	"github.com/utafrali/EcommerceGo/pkg/middleware"
+	"github.com/utafrali/EcommerceGo/services/media/docs"
 	"github.com/utafrali/EcommerceGo/services/media/internal/service"
 )
 
@@ -54,6 +55,10 @@ func NewRouter(
 		r.Put("/{id}", mediaHandler.UpdateMediaMetadata)
 		r.Delete("/{id}", mediaHandler.DeleteMedia)
 	})
+
+	// Swagger documentation
+	r.Get("/swagger/doc.json", docs.ServeSpec)
+	r.Get("/swagger/", docs.ServeUI)
 
 	return r
 }

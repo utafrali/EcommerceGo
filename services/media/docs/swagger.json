@@ -1,0 +1,464 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Media Service API",
+    "description": "File upload, retrieval, and metadata management for media assets (images, videos, documents).",
+    "version": "1.0.0",
+    "contact": {
+      "name": "EcommerceGo",
+      "url": "https://github.com/utafrali/EcommerceGo"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8011",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    {
+      "name": "media",
+      "description": "Media file management"
+    },
+    {
+      "name": "health",
+      "description": "Service health probes"
+    }
+  ],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Liveness probe",
+        "description": "Returns 200 if the service process is alive.",
+        "operationId": "liveness",
+        "responses": {
+          "200": {
+            "description": "Service is alive",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Readiness probe",
+        "description": "Returns 200 if the service is ready to accept traffic, 503 if a critical dependency is unavailable.",
+        "operationId": "readiness",
+        "responses": {
+          "200": {
+            "description": "Service is ready",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          },
+          "503": {
+            "description": "Service is not ready",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media/": {
+      "post": {
+        "tags": ["media"],
+        "summary": "Upload media file",
+        "description": "Upload a media file via multipart/form-data. Supported content types include images (jpeg, png, gif, webp), videos (mp4, webm), and documents (pdf). Maximum file size is determined by domain.MaxFileSize.",
+        "operationId": "uploadMedia",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The file to upload"
+                  },
+                  "owner_id": {
+                    "type": "string",
+                    "description": "UUID of the owning entity (e.g., product, user)",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                  },
+                  "owner_type": {
+                    "type": "string",
+                    "description": "Type of the owning entity",
+                    "example": "product",
+                    "enum": ["product", "user", "category", "brand", "campaign"]
+                  },
+                  "alt_text": {
+                    "type": "string",
+                    "description": "Accessibility alt text for the media",
+                    "example": "Front view of running shoe"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Media uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MediaResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or unsupported file type",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "413": {
+            "description": "File size exceeds limit",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media/{id}": {
+      "get": {
+        "tags": ["media"],
+        "summary": "Get media file metadata",
+        "description": "Retrieves metadata for a media file by its UUID. Does not stream the file content.",
+        "operationId": "getMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Media file UUID",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media metadata",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MediaResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Media not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["media"],
+        "summary": "Update media metadata",
+        "description": "Updates alt text and/or sort order for an existing media file.",
+        "operationId": "updateMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Media file UUID",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateMediaRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Media metadata updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MediaResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Media not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["media"],
+        "summary": "Delete media file",
+        "description": "Deletes a media file and its stored data by UUID.",
+        "operationId": "deleteMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Media file UUID",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeleteMediaResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Media not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/media/owner/{ownerType}/{ownerId}": {
+      "get": {
+        "tags": ["media"],
+        "summary": "List media by owner",
+        "description": "Returns a paginated list of media files belonging to a specific owner (e.g., all images for a product).",
+        "operationId": "listMediaByOwner",
+        "parameters": [
+          {
+            "name": "ownerType",
+            "in": "path",
+            "description": "Owner entity type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["product", "user", "category", "brand", "campaign"],
+              "example": "product"
+            }
+          },
+          {
+            "name": "ownerId",
+            "in": "path",
+            "description": "Owner entity UUID",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Number of results per page (max 100)",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of media files",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MediaListResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid path or query parameters",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "git_commit": { "type": "string", "example": "abc1234" },
+          "build_time": { "type": "string", "example": "2026-03-01T00:00:00Z" },
+          "go_version": { "type": "string", "example": "go1.24.0" }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string", "example": "INVALID_INPUT" },
+          "message": { "type": "string", "example": "file is required" },
+          "request_id": { "type": "string", "example": "req-abc123" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": { "$ref": "#/components/schemas/ErrorDetail" }
+        }
+      },
+      "Media": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "example": "550e8400-e29b-41d4-a716-446655440000" },
+          "owner_id": { "type": "string", "format": "uuid", "example": "660e9500-e39c-41d4-b827-557766551111" },
+          "owner_type": { "type": "string", "example": "product" },
+          "file_name": { "type": "string", "example": "shoe-front.jpg" },
+          "content_type": { "type": "string", "example": "image/jpeg" },
+          "size": { "type": "integer", "format": "int64", "example": 204800, "description": "File size in bytes" },
+          "url": { "type": "string", "format": "uri", "example": "https://cdn.example.com/media/shoe-front.jpg" },
+          "alt_text": { "type": "string", "example": "Front view of running shoe" },
+          "sort_order": { "type": "integer", "example": 0 },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "MediaResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/Media" }
+        }
+      },
+      "MediaListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Media" }
+          },
+          "total": { "type": "integer", "example": 5 },
+          "page": { "type": "integer", "example": 1 },
+          "per_page": { "type": "integer", "example": 20 },
+          "total_pages": { "type": "integer", "example": 1 }
+        }
+      },
+      "UpdateMediaRequest": {
+        "type": "object",
+        "properties": {
+          "alt_text": {
+            "type": "string",
+            "nullable": true,
+            "example": "Updated alt text"
+          },
+          "sort_order": {
+            "type": "integer",
+            "nullable": true,
+            "example": 2
+          }
+        }
+      },
+      "DeleteMediaResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "status": { "type": "string", "example": "deleted" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

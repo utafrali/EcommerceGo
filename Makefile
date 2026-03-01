@@ -5,7 +5,7 @@
 .PHONY: help setup build test lint proto-gen docker-up docker-down docker-infra \
         docker-infra-down docker-build docker-logs docker-backend docker-ps \
         migrate migrate-down seed clean fmt vet build-all test-all \
-        security-scan vuln-check security-all
+        security-scan vuln-check security-all swagger
 
 # Default target
 help: ## Show this help
@@ -23,6 +23,7 @@ setup: ## Initial project setup (install tools, generate proto)
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install github.com/securego/gosec/v2/cmd/gosec@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
+	go install github.com/swaggo/swag/cmd/swag@latest
 	@echo "==> Setup complete!"
 
 # -----------------------------------------------------------------------------
@@ -108,6 +109,21 @@ proto-gen: ## Generate Go and gRPC code from proto files
 
 proto-lint: ## Lint proto files
 	cd proto && buf lint
+
+# -----------------------------------------------------------------------------
+# Swagger / OpenAPI
+# -----------------------------------------------------------------------------
+swagger: ## Regenerate OpenAPI docs for all services (requires swag: go install github.com/swaggo/swag/cmd/swag@latest)
+	@echo "==> Regenerating Swagger docs..."
+	@for svc in $(SERVICES); do \
+		echo "  swag init for $$svc..."; \
+		(cd services/$$svc && swag init -g cmd/server/main.go -o docs --overridesFile docs/.swaggo 2>/dev/null || true); \
+	done
+	@echo "==> Swagger docs generated (run 'make build' to pick up changes)"
+
+swagger-%: ## Regenerate Swagger docs for a specific service (e.g., make swagger-product)
+	@echo "==> Running swag init for $*..."
+	cd services/$* && swag init -g cmd/server/main.go -o docs
 
 # -----------------------------------------------------------------------------
 # Database Migrations

@@ -1,0 +1,459 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Notification Service API",
+    "description": "Manages creation, delivery, and retrieval of user notifications across email, SMS, and push channels.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "EcommerceGo"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8009",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    {
+      "name": "notifications",
+      "description": "Notification lifecycle management"
+    }
+  ],
+  "paths": {
+    "/api/v1/notifications/": {
+      "post": {
+        "summary": "Create notification",
+        "description": "Creates and dispatches a new notification to a user via the specified channel (email, SMS, or push).",
+        "tags": ["notifications"],
+        "operationId": "sendNotification",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendNotificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Notification created and queued for delivery",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/{id}": {
+      "get": {
+        "summary": "Get notification",
+        "description": "Returns a single notification by its UUID.",
+        "tags": ["notifications"],
+        "operationId": "getNotification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the notification",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Notification not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/user/{userId}": {
+      "get": {
+        "summary": "List user notifications",
+        "description": "Returns a paginated list of notifications for a specific user with optional filtering by status and channel.",
+        "tags": ["notifications"],
+        "operationId": "listNotificationsByUser",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the user",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by notification status",
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "sent", "failed", "read"]
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "description": "Filter by delivery channel",
+            "schema": {
+              "type": "string",
+              "enum": ["email", "sms", "push"]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Items per page (1-100)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of user notifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID format or pagination parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "put": {
+        "summary": "Mark as read",
+        "description": "Marks a notification as read, updating its status and recording the read timestamp.",
+        "tags": ["notifications"],
+        "operationId": "markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the notification",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification marked as read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Notification not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/{id}/retry": {
+      "post": {
+        "summary": "Retry failed notification",
+        "description": "Re-queues a failed notification for delivery. Only notifications in the 'failed' status can be retried.",
+        "tags": ["notifications"],
+        "operationId": "retryNotification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the notification to retry",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification re-queued for delivery",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID format or notification not in failed state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Notification not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SendNotificationRequest": {
+        "type": "object",
+        "required": ["user_id", "type", "channel", "body"],
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID of the recipient user"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["email", "sms", "push"],
+            "description": "Notification type"
+          },
+          "channel": {
+            "type": "string",
+            "description": "Delivery channel identifier (e.g. 'order_confirmation', 'password_reset')"
+          },
+          "subject": {
+            "type": "string",
+            "description": "Subject line (applicable for email notifications)"
+          },
+          "body": {
+            "type": "string",
+            "description": "Main content of the notification"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "normal", "high", "urgent"],
+            "description": "Delivery priority; defaults to 'normal' if omitted"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Arbitrary key-value pairs for renderer context (e.g. order ID, product name)"
+          }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["email", "sms", "push"]
+          },
+          "channel": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "sent", "failed", "read"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "normal", "high", "urgent"]
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "retry_count": {
+            "type": "integer"
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "read_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "NotificationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Notification"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        }
+      },
+      "NotificationListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer" },
+              "page": { "type": "integer" },
+              "per_page": { "type": "integer" },
+              "total_pages": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        }
+      }
+    }
+  }
+}

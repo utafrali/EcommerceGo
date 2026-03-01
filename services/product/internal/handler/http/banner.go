@@ -63,6 +63,16 @@ type UpdateBannerRequest struct {
 // --- Handlers ---
 
 // ListBanners handles GET /api/v1/banners
+// @Summary List banners
+// @Description Returns a paginated list of banners with optional filtering
+// @Tags banners
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param per_page query int false "Items per page (max 100)" default(20)
+// @Param position query string false "Filter by position" Enums(hero_slider,mid_banner,category_banner)
+// @Param is_active query bool false "Filter by active status"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/banners [get]
 func (h *BannerHandler) ListBanners(w http.ResponseWriter, r *http.Request) {
 	filter := domain.BannerFilter{
 		Page:    1,
@@ -97,6 +107,14 @@ func (h *BannerHandler) ListBanners(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetBanner handles GET /api/v1/banners/{id}
+// @Summary Get banner by ID
+// @Description Returns a banner by UUID
+// @Tags banners
+// @Produce json
+// @Param id path string true "Banner UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/v1/banners/{id} [get]
 func (h *BannerHandler) GetBanner(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -116,6 +134,16 @@ func (h *BannerHandler) GetBanner(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateBanner handles POST /api/v1/banners
+// @Summary Create a banner
+// @Description Creates a new promotional banner
+// @Tags banners
+// @Accept json
+// @Produce json
+// @Param request body CreateBannerRequest true "Banner to create"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Router /api/v1/banners [post]
 func (h *BannerHandler) CreateBanner(w http.ResponseWriter, r *http.Request) {
 	// Limit request body to 1MB to prevent DoS via large payloads.
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
@@ -169,6 +197,17 @@ func (h *BannerHandler) CreateBanner(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateBanner handles PUT /api/v1/banners/{id}
+// @Summary Update a banner
+// @Description Partially updates a banner
+// @Tags banners
+// @Accept json
+// @Produce json
+// @Param id path string true "Banner UUID"
+// @Param request body UpdateBannerRequest true "Fields to update"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/v1/banners/{id} [put]
 func (h *BannerHandler) UpdateBanner(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -247,6 +286,14 @@ func (h *BannerHandler) UpdateBanner(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteBanner handles DELETE /api/v1/banners/{id}
+// @Summary Delete a banner
+// @Description Deletes a banner by UUID
+// @Tags banners
+// @Produce json
+// @Param id path string true "Banner UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/v1/banners/{id} [delete]
 func (h *BannerHandler) DeleteBanner(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {

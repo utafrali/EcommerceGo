@@ -64,6 +64,18 @@ type SetPaymentMethodRequest struct {
 // --- Handlers ---
 
 // InitiateCheckout handles POST /api/v1/checkout
+// @Summary Initiate a checkout session
+// @Description Creates a new checkout session for the authenticated user. Requires X-User-ID header.
+// @Tags checkout
+// @Accept json
+// @Produce json
+// @Param X-User-ID header string true "Authenticated user UUID"
+// @Param request body InitiateCheckoutRequest true "Checkout initiation data"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/checkout/ [post]
 func (h *CheckoutHandler) InitiateCheckout(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("X-User-ID")
 	if userID == "" {
@@ -115,6 +127,18 @@ func (h *CheckoutHandler) InitiateCheckout(w http.ResponseWriter, r *http.Reques
 }
 
 // GetCheckout handles GET /api/v1/checkout/{id}
+// @Summary Get checkout session
+// @Description Returns a checkout session by ID. Only the session owner (X-User-ID) may access it.
+// @Tags checkout
+// @Produce json
+// @Param id path string true "Checkout session UUID"
+// @Param X-User-ID header string true "Authenticated user UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/checkout/{id} [get]
 func (h *CheckoutHandler) GetCheckout(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -138,6 +162,21 @@ func (h *CheckoutHandler) GetCheckout(w http.ResponseWriter, r *http.Request) {
 }
 
 // SetShippingAddress handles PUT /api/v1/checkout/{id}/shipping
+// @Summary Set shipping address
+// @Description Sets or updates the shipping address on the checkout session.
+// @Tags checkout
+// @Accept json
+// @Produce json
+// @Param id path string true "Checkout session UUID"
+// @Param X-User-ID header string true "Authenticated user UUID"
+// @Param request body SetShippingAddressRequest true "Shipping address data"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/checkout/{id}/shipping [put]
 func (h *CheckoutHandler) SetShippingAddress(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -192,6 +231,21 @@ func (h *CheckoutHandler) SetShippingAddress(w http.ResponseWriter, r *http.Requ
 }
 
 // SetPaymentMethod handles PUT /api/v1/checkout/{id}/payment
+// @Summary Set payment method
+// @Description Sets the payment method on the checkout session.
+// @Tags checkout
+// @Accept json
+// @Produce json
+// @Param id path string true "Checkout session UUID"
+// @Param X-User-ID header string true "Authenticated user UUID"
+// @Param request body SetPaymentMethodRequest true "Payment method data"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/checkout/{id}/payment [put]
 func (h *CheckoutHandler) SetPaymentMethod(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -236,6 +290,19 @@ func (h *CheckoutHandler) SetPaymentMethod(w http.ResponseWriter, r *http.Reques
 }
 
 // ProcessCheckout handles POST /api/v1/checkout/{id}/process
+// @Summary Process checkout
+// @Description Runs the checkout saga: reserves inventory, creates order, and initiates payment.
+// @Tags checkout
+// @Produce json
+// @Param id path string true "Checkout session UUID"
+// @Param X-User-ID header string true "Authenticated user UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 503 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/checkout/{id}/process [post]
 func (h *CheckoutHandler) ProcessCheckout(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -265,6 +332,19 @@ func (h *CheckoutHandler) ProcessCheckout(w http.ResponseWriter, r *http.Request
 }
 
 // CancelCheckout handles POST /api/v1/checkout/{id}/cancel
+// @Summary Cancel checkout session
+// @Description Cancels an active checkout session. Terminal sessions cannot be canceled.
+// @Tags checkout
+// @Produce json
+// @Param id path string true "Checkout session UUID"
+// @Param X-User-ID header string true "Authenticated user UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/checkout/{id}/cancel [post]
 func (h *CheckoutHandler) CancelCheckout(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {

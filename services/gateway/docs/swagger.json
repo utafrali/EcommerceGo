@@ -1,0 +1,1449 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "EcommerceGo API Gateway",
+    "description": "Unified entry point for all EcommerceGo microservices. All requests require a JWT Bearer token in the Authorization header unless noted otherwise. Prices are always in cents (int64).",
+    "version": "1.0.0",
+    "contact": {
+      "name": "EcommerceGo",
+      "url": "https://github.com/utafrali/EcommerceGo"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local development (API Gateway)"
+    }
+  ],
+  "security": [
+    { "BearerAuth": [] }
+  ],
+  "tags": [
+    { "name": "health", "description": "Gateway health probes" },
+    { "name": "products", "description": "Product catalogue (Product Service :8001)" },
+    { "name": "categories", "description": "Product categories (Product Service :8001)" },
+    { "name": "brands", "description": "Product brands (Product Service :8001)" },
+    { "name": "banners", "description": "Promotional banners (Product Service :8001)" },
+    { "name": "cart", "description": "Shopping cart (Cart Service :8002)" },
+    { "name": "orders", "description": "Order management (Order Service :8003)" },
+    { "name": "checkout", "description": "Checkout saga (Checkout Service :8004)" },
+    { "name": "payments", "description": "Payment processing (Payment Service :8005)" },
+    { "name": "auth", "description": "Authentication & authorization (User Service :8006)" },
+    { "name": "users", "description": "User profiles & addresses (User Service :8006)" },
+    { "name": "inventory", "description": "Stock & reservations (Inventory Service :8007)" },
+    { "name": "campaigns", "description": "Promotions & discounts (Campaign Service :8008)" },
+    { "name": "coupons", "description": "Coupon redemption (Campaign Service :8008)" },
+    { "name": "notifications", "description": "User notifications (Notification Service :8009)" },
+    { "name": "search", "description": "Product search (Search Service :8010)" },
+    { "name": "media", "description": "Media file management (Media Service :8011)" }
+  ],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Gateway liveness probe",
+        "operationId": "gatewayLiveness",
+        "security": [],
+        "responses": {
+          "200": { "description": "Gateway process is alive", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } } } }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Gateway readiness probe",
+        "operationId": "gatewayReadiness",
+        "security": [],
+        "responses": {
+          "200": { "description": "Gateway is ready", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } } } },
+          "503": { "description": "Gateway is not ready", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } } } }
+        }
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "tags": ["products"],
+        "summary": "List products",
+        "operationId": "listProducts",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } },
+          { "name": "category_id", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "brand_id", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["active", "inactive", "draft"] } },
+          { "name": "sort_by", "in": "query", "schema": { "type": "string", "enum": ["price_asc", "price_desc", "newest", "name_asc"] } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated product list", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PaginatedProductsResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "post": {
+        "tags": ["products"],
+        "summary": "Create product",
+        "operationId": "createProduct",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateProductRequest" } } } },
+        "responses": {
+          "201": { "description": "Product created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/api/v1/products/{id}": {
+      "get": {
+        "tags": ["products"],
+        "summary": "Get product by ID",
+        "operationId": "getProduct",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Product details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "put": {
+        "tags": ["products"],
+        "summary": "Update product",
+        "operationId": "updateProduct",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateProductRequest" } } } },
+        "responses": {
+          "200": { "description": "Product updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProductResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "delete": {
+        "tags": ["products"],
+        "summary": "Delete product",
+        "operationId": "deleteProduct",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Product deleted" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "tags": ["categories"],
+        "summary": "List categories",
+        "operationId": "listCategories",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Category list", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GenericListResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["categories"],
+        "summary": "Create category",
+        "operationId": "createCategory",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NameSlugRequest" } } } },
+        "responses": {
+          "201": { "description": "Category created" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/categories/{id}": {
+      "get": {
+        "tags": ["categories"],
+        "summary": "Get category by ID",
+        "operationId": "getCategory",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Category details" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["categories"],
+        "summary": "Update category",
+        "operationId": "updateCategory",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NameSlugRequest" } } } },
+        "responses": {
+          "200": { "description": "Category updated" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["categories"],
+        "summary": "Delete category",
+        "operationId": "deleteCategory",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Category deleted" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/brands": {
+      "get": {
+        "tags": ["brands"],
+        "summary": "List brands",
+        "operationId": "listBrands",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Brand list" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["brands"],
+        "summary": "Create brand",
+        "operationId": "createBrand",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NameSlugRequest" } } } },
+        "responses": {
+          "201": { "description": "Brand created" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/brands/{id}": {
+      "get": {
+        "tags": ["brands"],
+        "summary": "Get brand by ID",
+        "operationId": "getBrand",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Brand details" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["brands"],
+        "summary": "Update brand",
+        "operationId": "updateBrand",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NameSlugRequest" } } } },
+        "responses": {
+          "200": { "description": "Brand updated" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["brands"],
+        "summary": "Delete brand",
+        "operationId": "deleteBrand",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Brand deleted" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/banners": {
+      "get": {
+        "tags": ["banners"],
+        "summary": "List banners",
+        "operationId": "listBanners",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "active_only", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": { "description": "Banner list" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["banners"],
+        "summary": "Create banner",
+        "operationId": "createBanner",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateBannerRequest" } } } },
+        "responses": {
+          "201": { "description": "Banner created" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/banners/{id}": {
+      "get": {
+        "tags": ["banners"],
+        "summary": "Get banner by ID",
+        "operationId": "getBanner",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Banner details" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["banners"],
+        "summary": "Update banner",
+        "operationId": "updateBanner",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateBannerRequest" } } } },
+        "responses": {
+          "200": { "description": "Banner updated" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["banners"],
+        "summary": "Delete banner",
+        "operationId": "deleteBanner",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Banner deleted" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/cart": {
+      "get": {
+        "tags": ["cart"],
+        "summary": "Get current user's cart",
+        "operationId": "getCart",
+        "responses": {
+          "200": { "description": "Cart details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CartResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      },
+      "delete": {
+        "tags": ["cart"],
+        "summary": "Clear cart",
+        "operationId": "clearCart",
+        "responses": {
+          "200": { "description": "Cart cleared" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/cart/items": {
+      "post": {
+        "tags": ["cart"],
+        "summary": "Add item to cart",
+        "operationId": "addCartItem",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddCartItemRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Item added to cart", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CartResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": { "description": "Optimistic locking conflict, retry" },
+          "500": { "$ref": "#/components/responses/InternalError" }
+        }
+      }
+    },
+    "/api/v1/cart/items/{productId}": {
+      "put": {
+        "tags": ["cart"],
+        "summary": "Update cart item quantity",
+        "operationId": "updateCartItem",
+        "parameters": [ { "name": "productId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateCartItemRequest" } } } },
+        "responses": {
+          "200": { "description": "Cart item updated" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["cart"],
+        "summary": "Remove item from cart",
+        "operationId": "removeCartItem",
+        "parameters": [ { "name": "productId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } } ],
+        "responses": {
+          "200": { "description": "Item removed from cart" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/orders": {
+      "get": {
+        "tags": ["orders"],
+        "summary": "List user orders",
+        "operationId": "listOrders",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated order list" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["orders"],
+        "summary": "Create order",
+        "operationId": "createOrder",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateOrderRequest" } } } },
+        "responses": {
+          "201": { "description": "Order created" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/orders/{id}": {
+      "get": {
+        "tags": ["orders"],
+        "summary": "Get order by ID",
+        "operationId": "getOrder",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Order details" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/orders/{id}/status": {
+      "put": {
+        "tags": ["orders"],
+        "summary": "Update order status",
+        "operationId": "updateOrderStatus",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateOrderStatusRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Order status updated" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/checkout": {
+      "post": {
+        "tags": ["checkout"],
+        "summary": "Initiate checkout session",
+        "description": "Creates a checkout session and starts the saga: reserve inventory → create order → process payment.",
+        "operationId": "createCheckout",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateCheckoutRequest" } } } },
+        "responses": {
+          "201": { "description": "Checkout session created" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "503": { "description": "Downstream service unavailable (circuit breaker open)" }
+        }
+      }
+    },
+    "/api/v1/checkout/{id}": {
+      "get": {
+        "tags": ["checkout"],
+        "summary": "Get checkout session",
+        "operationId": "getCheckout",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Checkout session details" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/checkout/{id}/confirm": {
+      "post": {
+        "tags": ["checkout"],
+        "summary": "Confirm checkout",
+        "operationId": "confirmCheckout",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Checkout confirmed" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/payments": {
+      "get": {
+        "tags": ["payments"],
+        "summary": "List user payments",
+        "operationId": "listPayments",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Payment list" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/payments/{id}": {
+      "get": {
+        "tags": ["payments"],
+        "summary": "Get payment by ID",
+        "operationId": "getPayment",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Payment details" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/payments/{id}/refund": {
+      "post": {
+        "tags": ["payments"],
+        "summary": "Refund payment",
+        "operationId": "refundPayment",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RefundRequest" } } } },
+        "responses": {
+          "200": { "description": "Refund initiated" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Register new user",
+        "operationId": "register",
+        "security": [],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RegisterRequest" } } } },
+        "responses": {
+          "201": { "description": "User registered", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "description": "Email already exists" }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Login",
+        "operationId": "login",
+        "security": [],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } } },
+        "responses": {
+          "200": { "description": "Login successful", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Refresh access token",
+        "operationId": "refreshToken",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RefreshRequest" } } } },
+        "responses": {
+          "200": { "description": "Token refreshed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/users/{id}/profile": {
+      "get": {
+        "tags": ["users"],
+        "summary": "Get user profile",
+        "operationId": "getProfile",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "User profile" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["users"],
+        "summary": "Update user profile",
+        "operationId": "updateProfile",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateProfileRequest" } } } },
+        "responses": {
+          "200": { "description": "Profile updated" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/users/{id}/addresses": {
+      "get": {
+        "tags": ["users"],
+        "summary": "List user addresses",
+        "operationId": "listAddresses",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Address list" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["users"],
+        "summary": "Create address",
+        "operationId": "createAddress",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddressRequest" } } } },
+        "responses": {
+          "201": { "description": "Address created" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/users/{id}/addresses/{addressId}": {
+      "put": {
+        "tags": ["users"],
+        "summary": "Update address",
+        "operationId": "updateAddress",
+        "parameters": [
+          { "$ref": "#/components/parameters/IDParam" },
+          { "name": "addressId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddressRequest" } } } },
+        "responses": {
+          "200": { "description": "Address updated" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["users"],
+        "summary": "Delete address",
+        "operationId": "deleteAddress",
+        "parameters": [
+          { "$ref": "#/components/parameters/IDParam" },
+          { "name": "addressId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Address deleted" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/inventory/{productId}/stock": {
+      "get": {
+        "tags": ["inventory"],
+        "summary": "Get stock for a product",
+        "operationId": "getStock",
+        "parameters": [ { "name": "productId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } } ],
+        "responses": {
+          "200": { "description": "Stock details" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["inventory"],
+        "summary": "Update stock",
+        "operationId": "updateStock",
+        "parameters": [ { "name": "productId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateStockRequest" } } } },
+        "responses": {
+          "200": { "description": "Stock updated" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/inventory/check": {
+      "post": {
+        "tags": ["inventory"],
+        "summary": "Bulk availability check",
+        "operationId": "bulkCheckInventory",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BulkCheckRequest" } } } },
+        "responses": {
+          "200": { "description": "Availability results" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/inventory/reserve": {
+      "post": {
+        "tags": ["inventory"],
+        "summary": "Reserve inventory for checkout",
+        "operationId": "reserveInventory",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReserveRequest" } } } },
+        "responses": {
+          "200": { "description": "Reservation created" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "422": { "description": "Insufficient stock" }
+        }
+      }
+    },
+    "/api/v1/inventory/reserve/{reservationId}": {
+      "delete": {
+        "tags": ["inventory"],
+        "summary": "Release reservation",
+        "operationId": "releaseReservation",
+        "parameters": [ { "name": "reservationId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } } ],
+        "responses": {
+          "200": { "description": "Reservation released" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/campaigns": {
+      "get": {
+        "tags": ["campaigns"],
+        "summary": "List campaigns",
+        "operationId": "listCampaigns",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "active_only", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": { "description": "Campaign list" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["campaigns"],
+        "summary": "Create campaign",
+        "operationId": "createCampaign",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateCampaignRequest" } } } },
+        "responses": {
+          "201": { "description": "Campaign created" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/campaigns/{id}": {
+      "get": {
+        "tags": ["campaigns"],
+        "summary": "Get campaign by ID",
+        "operationId": "getCampaign",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Campaign details" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["campaigns"],
+        "summary": "Update campaign",
+        "operationId": "updateCampaign",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateCampaignRequest" } } } },
+        "responses": {
+          "200": { "description": "Campaign updated" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["campaigns"],
+        "summary": "Delete campaign",
+        "operationId": "deleteCampaign",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Campaign deleted" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/coupons/validate": {
+      "post": {
+        "tags": ["coupons"],
+        "summary": "Validate coupon code",
+        "operationId": "validateCoupon",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ValidateCouponRequest" } } } },
+        "responses": {
+          "200": { "description": "Coupon is valid", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CouponValidationResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "description": "Coupon not found or expired" }
+        }
+      }
+    },
+    "/api/v1/coupons/{code}/apply": {
+      "post": {
+        "tags": ["coupons"],
+        "summary": "Apply coupon to order",
+        "operationId": "applyCoupon",
+        "parameters": [ { "name": "code", "in": "path", "required": true, "schema": { "type": "string", "example": "ILK10" } } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApplyCouponRequest" } } } },
+        "responses": {
+          "200": { "description": "Coupon applied" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "tags": ["notifications"],
+        "summary": "List user notifications",
+        "operationId": "listNotifications",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "unread_only", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": { "description": "Notification list" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/notifications/{id}": {
+      "get": {
+        "tags": ["notifications"],
+        "summary": "Get notification by ID",
+        "operationId": "getNotification",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Notification details" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "put": {
+        "tags": ["notifications"],
+        "summary": "Mark notification as read",
+        "operationId": "markNotificationRead",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Notification marked as read" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/search/": {
+      "get": {
+        "tags": ["search"],
+        "summary": "Search products",
+        "operationId": "searchProducts",
+        "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string" } },
+          { "name": "category_id", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "brand_id", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "min_price", "in": "query", "schema": { "type": "integer", "format": "int64", "minimum": 0 } },
+          { "name": "max_price", "in": "query", "schema": { "type": "integer", "format": "int64", "minimum": 0 } },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["relevance", "price_asc", "price_desc", "newest", "name_asc", "name_desc"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": { "description": "Search results" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/search/suggest": {
+      "get": {
+        "tags": ["search"],
+        "summary": "Get search suggestions",
+        "operationId": "searchSuggest",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 5, "maximum": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Suggestions" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/search/index": {
+      "post": {
+        "tags": ["search"],
+        "summary": "Index a product",
+        "operationId": "indexProduct",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IndexProductRequest" } } } },
+        "responses": {
+          "200": { "description": "Product indexed" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/search/{id}": {
+      "delete": {
+        "tags": ["search"],
+        "summary": "Remove product from index",
+        "operationId": "deleteFromIndex",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Product removed from index" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/search/bulk": {
+      "post": {
+        "tags": ["search"],
+        "summary": "Bulk index products",
+        "operationId": "bulkIndexProducts",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BulkIndexRequest" } } } },
+        "responses": {
+          "200": { "description": "Bulk indexing completed" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/search/reindex": {
+      "post": {
+        "tags": ["search"],
+        "summary": "Reindex all products",
+        "operationId": "reindexProducts",
+        "responses": {
+          "202": { "description": "Reindex started" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/media/": {
+      "post": {
+        "tags": ["media"],
+        "summary": "Upload media file",
+        "operationId": "uploadMedia",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "owner_id": { "type": "string", "format": "uuid" },
+                  "owner_type": { "type": "string", "enum": ["product", "user", "category", "brand", "campaign"] },
+                  "alt_text": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Media uploaded" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/media/{id}": {
+      "get": {
+        "tags": ["media"],
+        "summary": "Get media metadata",
+        "operationId": "getMedia",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Media metadata" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["media"],
+        "summary": "Update media metadata",
+        "operationId": "updateMedia",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateMediaRequest" } } } },
+        "responses": {
+          "200": { "description": "Media updated" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["media"],
+        "summary": "Delete media file",
+        "operationId": "deleteMedia",
+        "parameters": [ { "$ref": "#/components/parameters/IDParam" } ],
+        "responses": {
+          "200": { "description": "Media deleted" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/v1/media/owner/{ownerType}/{ownerId}": {
+      "get": {
+        "tags": ["media"],
+        "summary": "List media by owner",
+        "operationId": "listMediaByOwner",
+        "parameters": [
+          { "name": "ownerType", "in": "path", "required": true, "schema": { "type": "string", "enum": ["product", "user", "category", "brand", "campaign"] } },
+          { "name": "ownerId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "per_page", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated media list" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token obtained from /api/v1/auth/login or /api/v1/auth/register"
+      }
+    },
+    "parameters": {
+      "IDParam": {
+        "name": "id",
+        "in": "path",
+        "description": "Resource UUID",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid request body or parameters",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid JWT token",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      },
+      "InternalError": {
+        "description": "Internal server error",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+      }
+    },
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "git_commit": { "type": "string", "example": "abc1234" },
+          "build_time": { "type": "string", "example": "2026-03-01T00:00:00Z" },
+          "go_version": { "type": "string", "example": "go1.24.0" }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string", "example": "UNAUTHORIZED" },
+          "message": { "type": "string", "example": "missing or invalid token" },
+          "request_id": { "type": "string", "example": "req-abc123" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": { "$ref": "#/components/schemas/ErrorDetail" }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "example": "Running Shoe Pro" },
+          "slug": { "type": "string", "example": "running-shoe-pro" },
+          "description": { "type": "string" },
+          "category_id": { "type": "string", "format": "uuid" },
+          "brand_id": { "type": "string", "format": "uuid" },
+          "base_price": { "type": "integer", "format": "int64", "example": 9999, "description": "Price in cents" },
+          "currency": { "type": "string", "example": "USD" },
+          "status": { "type": "string", "enum": ["active", "inactive", "draft"] },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ProductResponse": {
+        "type": "object",
+        "properties": { "data": { "$ref": "#/components/schemas/Product" } }
+      },
+      "PaginatedProductsResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } },
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "per_page": { "type": "integer" },
+          "total_pages": { "type": "integer" }
+        }
+      },
+      "GenericListResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "type": "object" } },
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "per_page": { "type": "integer" },
+          "total_pages": { "type": "integer" }
+        }
+      },
+      "CreateProductRequest": {
+        "type": "object",
+        "required": ["name", "base_price", "currency"],
+        "properties": {
+          "name": { "type": "string" },
+          "slug": { "type": "string" },
+          "description": { "type": "string" },
+          "category_id": { "type": "string", "format": "uuid" },
+          "brand_id": { "type": "string", "format": "uuid" },
+          "base_price": { "type": "integer", "format": "int64", "minimum": 0, "description": "Price in cents" },
+          "currency": { "type": "string", "example": "USD" },
+          "status": { "type": "string", "enum": ["active", "inactive", "draft"], "default": "draft" }
+        }
+      },
+      "UpdateProductRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "base_price": { "type": "integer", "format": "int64", "minimum": 0 },
+          "status": { "type": "string", "enum": ["active", "inactive", "draft"] }
+        }
+      },
+      "NameSlugRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "example": "Electronics" },
+          "slug": { "type": "string", "example": "electronics" },
+          "description": { "type": "string" }
+        }
+      },
+      "CreateBannerRequest": {
+        "type": "object",
+        "required": ["title", "image_url"],
+        "properties": {
+          "title": { "type": "string" },
+          "image_url": { "type": "string", "format": "uri" },
+          "link_url": { "type": "string", "format": "uri" },
+          "position": { "type": "integer" },
+          "is_active": { "type": "boolean", "default": true },
+          "starts_at": { "type": "string", "format": "date-time" },
+          "ends_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CartItem": {
+        "type": "object",
+        "properties": {
+          "product_id": { "type": "string", "format": "uuid" },
+          "variant_id": { "type": "string", "format": "uuid" },
+          "quantity": { "type": "integer", "minimum": 1 },
+          "unit_price": { "type": "integer", "format": "int64", "description": "Price in cents" },
+          "name": { "type": "string" }
+        }
+      },
+      "CartResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "user_id": { "type": "string", "format": "uuid" },
+              "items": { "type": "array", "items": { "$ref": "#/components/schemas/CartItem" } },
+              "total_amount": { "type": "integer", "format": "int64", "description": "Total in cents" },
+              "item_count": { "type": "integer" },
+              "version": { "type": "integer", "description": "Optimistic locking version" }
+            }
+          }
+        }
+      },
+      "AddCartItemRequest": {
+        "type": "object",
+        "required": ["product_id", "quantity"],
+        "properties": {
+          "product_id": { "type": "string", "format": "uuid" },
+          "variant_id": { "type": "string", "format": "uuid" },
+          "quantity": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "UpdateCartItemRequest": {
+        "type": "object",
+        "required": ["quantity"],
+        "properties": {
+          "quantity": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "CreateOrderRequest": {
+        "type": "object",
+        "required": ["user_id", "items"],
+        "properties": {
+          "user_id": { "type": "string", "format": "uuid" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["product_id", "quantity", "unit_price"],
+              "properties": {
+                "product_id": { "type": "string", "format": "uuid" },
+                "variant_id": { "type": "string", "format": "uuid" },
+                "quantity": { "type": "integer", "minimum": 1 },
+                "unit_price": { "type": "integer", "format": "int64" }
+              }
+            }
+          },
+          "shipping_address_id": { "type": "string", "format": "uuid" },
+          "coupon_code": { "type": "string" }
+        }
+      },
+      "UpdateOrderStatusRequest": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": { "type": "string", "enum": ["pending", "confirmed", "shipped", "delivered", "cancelled"] }
+        }
+      },
+      "CreateCheckoutRequest": {
+        "type": "object",
+        "required": ["user_id", "items"],
+        "properties": {
+          "user_id": { "type": "string", "format": "uuid" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": { "type": "string", "format": "uuid" },
+                "quantity": { "type": "integer", "minimum": 1 },
+                "unit_price": { "type": "integer", "format": "int64" }
+              }
+            }
+          },
+          "shipping_address_id": { "type": "string", "format": "uuid" },
+          "payment_method": { "type": "string", "enum": ["credit_card", "debit_card", "bank_transfer"] },
+          "coupon_code": { "type": "string" }
+        }
+      },
+      "RefundRequest": {
+        "type": "object",
+        "required": ["amount"],
+        "properties": {
+          "amount": { "type": "integer", "format": "int64", "minimum": 1, "description": "Refund amount in cents" },
+          "reason": { "type": "string" }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["email", "password", "first_name", "last_name"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string", "minLength": 8 },
+          "first_name": { "type": "string" },
+          "last_name": { "type": "string" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        }
+      },
+      "RefreshRequest": {
+        "type": "object",
+        "required": ["refresh_token"],
+        "properties": {
+          "refresh_token": { "type": "string" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "access_token": { "type": "string" },
+              "refresh_token": { "type": "string" },
+              "expires_in": { "type": "integer", "description": "Token expiry in seconds" },
+              "user_id": { "type": "string", "format": "uuid" }
+            }
+          }
+        }
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "properties": {
+          "first_name": { "type": "string" },
+          "last_name": { "type": "string" },
+          "phone": { "type": "string" }
+        }
+      },
+      "AddressRequest": {
+        "type": "object",
+        "required": ["line1", "city", "country"],
+        "properties": {
+          "line1": { "type": "string" },
+          "line2": { "type": "string" },
+          "city": { "type": "string" },
+          "state": { "type": "string" },
+          "postal_code": { "type": "string" },
+          "country": { "type": "string", "example": "TR" },
+          "is_default": { "type": "boolean" }
+        }
+      },
+      "UpdateStockRequest": {
+        "type": "object",
+        "required": ["quantity", "reason"],
+        "properties": {
+          "quantity": { "type": "integer" },
+          "reason": { "type": "string", "enum": ["purchase", "sale", "return", "adjustment", "damage"] }
+        }
+      },
+      "BulkCheckRequest": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": { "type": "string", "format": "uuid" },
+                "quantity": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        }
+      },
+      "ReserveRequest": {
+        "type": "object",
+        "required": ["checkout_id", "items"],
+        "properties": {
+          "checkout_id": { "type": "string", "format": "uuid" },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": { "type": "string", "format": "uuid" },
+                "quantity": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        }
+      },
+      "CreateCampaignRequest": {
+        "type": "object",
+        "required": ["name", "type", "discount_value"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "type": { "type": "string", "enum": ["percentage", "fixed_amount", "buy_x_get_y", "free_shipping"] },
+          "discount_value": { "type": "integer", "format": "int64", "minimum": 1, "description": "Discount in cents or basis points for percentage" },
+          "starts_at": { "type": "string", "format": "date-time" },
+          "ends_at": { "type": "string", "format": "date-time" },
+          "is_stackable": { "type": "boolean", "default": false },
+          "coupon_code": { "type": "string" },
+          "usage_limit": { "type": "integer", "minimum": 1 }
+        }
+      },
+      "ValidateCouponRequest": {
+        "type": "object",
+        "required": ["code", "order_amount"],
+        "properties": {
+          "code": { "type": "string", "example": "ILK10" },
+          "order_amount": { "type": "integer", "format": "int64", "minimum": 1, "description": "Order total in cents" }
+        }
+      },
+      "CouponValidationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "valid": { "type": "boolean" },
+              "discount_amount": { "type": "integer", "format": "int64", "description": "Discount in cents" },
+              "campaign_id": { "type": "string", "format": "uuid" }
+            }
+          }
+        }
+      },
+      "ApplyCouponRequest": {
+        "type": "object",
+        "required": ["order_id"],
+        "properties": {
+          "order_id": { "type": "string", "format": "uuid" }
+        }
+      },
+      "IndexProductRequest": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "slug": { "type": "string" },
+          "description": { "type": "string" },
+          "category_id": { "type": "string", "format": "uuid" },
+          "brand_id": { "type": "string", "format": "uuid" },
+          "base_price": { "type": "integer", "format": "int64" },
+          "currency": { "type": "string" },
+          "status": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "attributes": { "type": "object", "additionalProperties": { "type": "string" } }
+        }
+      },
+      "BulkIndexRequest": {
+        "type": "object",
+        "required": ["products"],
+        "properties": {
+          "products": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/IndexProductRequest" },
+            "minItems": 1,
+            "maxItems": 500
+          }
+        }
+      },
+      "UpdateMediaRequest": {
+        "type": "object",
+        "properties": {
+          "alt_text": { "type": "string", "nullable": true },
+          "sort_order": { "type": "integer", "nullable": true }
+        }
+      }
+    }
+  }
+}

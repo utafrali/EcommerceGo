@@ -39,6 +39,16 @@ type CreateReviewRequest struct {
 // --- Handlers ---
 
 // ListReviews handles GET /api/v1/products/{productId}/reviews
+// @Summary List product reviews
+// @Description Returns paginated reviews for a product with rating summary
+// @Tags reviews
+// @Produce json
+// @Param productId path string true "Product UUID"
+// @Param page query int false "Page number" default(1)
+// @Param per_page query int false "Items per page (max 100)" default(20)
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /api/v1/products/{productId}/reviews [get]
 func (h *ReviewHandler) ListReviews(w http.ResponseWriter, r *http.Request) {
 	productID := chi.URLParam(r, "productId")
 	if productID == "" {
@@ -79,6 +89,18 @@ func (h *ReviewHandler) ListReviews(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateReview handles POST /api/v1/products/{productId}/reviews
+// @Summary Create a product review
+// @Description Submits a review for a product. Requires X-User-ID header.
+// @Tags reviews
+// @Accept json
+// @Produce json
+// @Param productId path string true "Product UUID"
+// @Param X-User-ID header string true "Authenticated user UUID"
+// @Param request body CreateReviewRequest true "Review to submit"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Router /api/v1/products/{productId}/reviews [post]
 func (h *ReviewHandler) CreateReview(w http.ResponseWriter, r *http.Request) {
 	productID := chi.URLParam(r, "productId")
 	if productID == "" {

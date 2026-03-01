@@ -1,0 +1,301 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Cart Service API",
+    "description": "Shopping cart management API — add, update, remove items and clear the cart",
+    "version": "1.0.0",
+    "contact": {
+      "name": "EcommerceGo"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8002",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    {"name": "cart", "description": "Shopping cart operations"}
+  ],
+  "components": {
+    "securitySchemes": {
+      "userIDHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-User-ID",
+        "description": "Authenticated user UUID forwarded by the gateway"
+      }
+    },
+    "schemas": {
+      "AddItemRequest": {
+        "type": "object",
+        "required": ["product_id", "variant_id", "name", "sku", "price", "quantity"],
+        "properties": {
+          "product_id": {"type": "string", "description": "Product UUID"},
+          "variant_id": {"type": "string", "description": "Product variant UUID"},
+          "name": {"type": "string", "minLength": 1, "maxLength": 500, "description": "Product name"},
+          "sku": {"type": "string", "description": "Product SKU"},
+          "price": {"type": "integer", "minimum": 0, "description": "Unit price in cents"},
+          "quantity": {"type": "integer", "minimum": 1, "description": "Number of units to add"},
+          "image_url": {"type": "string", "description": "Product image URL"}
+        }
+      },
+      "UpdateQuantityRequest": {
+        "type": "object",
+        "required": ["quantity"],
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "New quantity. Set to 0 to remove the item."
+          }
+        }
+      },
+      "CartItem": {
+        "type": "object",
+        "properties": {
+          "product_id": {"type": "string", "format": "uuid"},
+          "variant_id": {"type": "string", "format": "uuid"},
+          "name": {"type": "string"},
+          "sku": {"type": "string"},
+          "price": {"type": "integer", "description": "Unit price in cents"},
+          "quantity": {"type": "integer"},
+          "image_url": {"type": "string"},
+          "line_total": {"type": "integer", "description": "price * quantity in cents"}
+        }
+      },
+      "Cart": {
+        "type": "object",
+        "properties": {
+          "user_id": {"type": "string", "format": "uuid"},
+          "items": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/CartItem"}
+          },
+          "total_amount": {"type": "integer", "description": "Sum of all line totals in cents"},
+          "item_count": {"type": "integer", "description": "Total number of units across all items"},
+          "version": {"type": "integer", "description": "Optimistic locking version"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "CartResponse": {
+        "type": "object",
+        "properties": {
+          "data": {"$ref": "#/components/schemas/Cart"}
+        }
+      },
+      "ClearedResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "status": {"type": "string", "example": "cleared"}
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {"type": "string"},
+              "message": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request — invalid input",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "X-User-ID header missing or invalid",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Conflict — optimistic lock version mismatch",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {"userIDHeader": []}
+  ],
+  "paths": {
+    "/api/v1/cart/": {
+      "get": {
+        "summary": "Get cart contents",
+        "description": "Returns the current user's cart including all items, total amount, and item count",
+        "operationId": "getCart",
+        "tags": ["cart"],
+        "security": [{"userIDHeader": []}],
+        "responses": {
+          "200": {
+            "description": "Cart contents",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CartResponse"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "delete": {
+        "summary": "Clear cart",
+        "description": "Removes all items from the current user's cart",
+        "operationId": "clearCart",
+        "tags": ["cart"],
+        "security": [{"userIDHeader": []}],
+        "responses": {
+          "200": {
+            "description": "Cart cleared",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ClearedResponse"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/cart/items": {
+      "post": {
+        "summary": "Add item to cart",
+        "description": "Adds a product variant to the cart. If the item already exists, its quantity is incremented.",
+        "operationId": "addItem",
+        "tags": ["cart"],
+        "security": [{"userIDHeader": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/AddItemRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated cart",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CartResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "422": {"$ref": "#/components/responses/ValidationError"}
+        }
+      }
+    },
+    "/api/v1/cart/items/{productId}/{variantId}": {
+      "put": {
+        "summary": "Update cart item quantity",
+        "description": "Updates the quantity of a specific item in the cart. Set quantity to 0 to remove the item.",
+        "operationId": "updateItemQuantity",
+        "tags": ["cart"],
+        "security": [{"userIDHeader": []}],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "Product UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          },
+          {
+            "name": "variantId",
+            "in": "path",
+            "required": true,
+            "description": "Product variant UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/UpdateQuantityRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated cart",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CartResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "409": {"$ref": "#/components/responses/Conflict"}
+        }
+      },
+      "delete": {
+        "summary": "Remove cart item",
+        "description": "Removes a specific product variant from the cart",
+        "operationId": "removeItem",
+        "tags": ["cart"],
+        "security": [{"userIDHeader": []}],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "Product UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          },
+          {
+            "name": "variantId",
+            "in": "path",
+            "required": true,
+            "description": "Product variant UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated cart after removal",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CartResponse"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "409": {"$ref": "#/components/responses/Conflict"}
+        }
+      }
+    }
+  }
+}

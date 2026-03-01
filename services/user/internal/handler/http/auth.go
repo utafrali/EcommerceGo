@@ -71,6 +71,16 @@ type AuthResponse struct {
 // --- Handlers ---
 
 // Register handles POST /api/v1/auth/register
+// @Summary Register a new user
+// @Description Creates a new user account and returns the user profile with tokens
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body RegisterRequest true "Registration data"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Router /api/v1/auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
 
@@ -109,6 +119,16 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 // Login handles POST /api/v1/auth/login
+// @Summary Login
+// @Description Authenticates a user and returns access/refresh tokens
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "Login credentials"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
 
@@ -145,6 +165,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // RefreshToken handles POST /api/v1/auth/refresh
+// @Summary Refresh access token
+// @Description Issues a new access token using a valid refresh token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body RefreshTokenRequest true "Refresh token"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /api/v1/auth/refresh [post]
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
 
@@ -171,6 +201,15 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 }
 
 // ForgotPassword handles POST /api/v1/auth/forgot-password
+// @Summary Request password reset
+// @Description Sends a password reset email if the account exists. Always returns 200 to prevent email enumeration.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body ForgotPasswordRequest true "Email address"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /api/v1/auth/forgot-password [post]
 func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
 
@@ -198,6 +237,16 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 }
 
 // ResetPassword handles POST /api/v1/auth/reset-password
+// @Summary Reset password
+// @Description Resets the user's password using the token received by email
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body ResetPasswordRequest true "Reset token and new password"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Router /api/v1/auth/reset-password [post]
 func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
 
@@ -225,6 +274,17 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 }
 
 // ChangePassword handles POST /api/v1/auth/change-password
+// @Summary Change password
+// @Description Changes the authenticated user's password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Security bearerAuth
+// @Param request body ChangePasswordRequest true "Current and new password"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /api/v1/auth/change-password [post]
 func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
 

@@ -1,0 +1,937 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Product Service API",
+    "description": "Product catalog management API — products, categories, brands, banners, and reviews",
+    "version": "1.0.0",
+    "contact": {
+      "name": "EcommerceGo"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8001",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    {"name": "products", "description": "Product management"},
+    {"name": "categories", "description": "Category management"},
+    {"name": "brands", "description": "Brand management"},
+    {"name": "banners", "description": "Banner management"},
+    {"name": "reviews", "description": "Product reviews"}
+  ],
+  "paths": {
+    "/api/v1/products": {
+      "get": {
+        "summary": "List all products",
+        "description": "Returns a paginated list of products with optional filtering and sorting",
+        "operationId": "listProducts",
+        "tags": ["products"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "schema": {"type": "integer", "default": 1, "minimum": 1}
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Items per page (max 100)",
+            "schema": {"type": "integer", "default": 20, "minimum": 1, "maximum": 100}
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "description": "Filter by category UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          },
+          {
+            "name": "brand_id",
+            "in": "query",
+            "description": "Filter by brand UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by product status",
+            "schema": {"type": "string", "enum": ["draft", "published", "archived"]}
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "description": "Sort order",
+            "schema": {"type": "string", "enum": ["newest", "price_asc", "price_desc", "name_asc", "name_desc"]}
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Full-text search query",
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "min_price",
+            "in": "query",
+            "description": "Minimum price in cents",
+            "schema": {"type": "integer", "minimum": 0}
+          },
+          {
+            "name": "max_price",
+            "in": "query",
+            "description": "Maximum price in cents",
+            "schema": {"type": "integer", "minimum": 0}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of products",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/PaginatedProductsResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"}
+        }
+      },
+      "post": {
+        "summary": "Create a product",
+        "description": "Creates a new product in the catalog",
+        "operationId": "createProduct",
+        "tags": ["products"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CreateProductRequest"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ProductResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "422": {"$ref": "#/components/responses/ValidationError"}
+        }
+      }
+    },
+    "/api/v1/products/{idOrSlug}": {
+      "get": {
+        "summary": "Get product by ID or slug",
+        "description": "Returns a product detail including images, variants, category, and brand. Accepts UUID or URL slug.",
+        "operationId": "getProduct",
+        "tags": ["products"],
+        "parameters": [
+          {
+            "name": "idOrSlug",
+            "in": "path",
+            "required": true,
+            "description": "Product UUID or URL slug",
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product detail",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ProductDetailResponse"}
+              }
+            }
+          },
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/api/v1/products/{id}": {
+      "put": {
+        "summary": "Update a product",
+        "description": "Partially updates a product — all fields are optional",
+        "operationId": "updateProduct",
+        "tags": ["products"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Product UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/UpdateProductRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated product",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ProductResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/ValidationError"}
+        }
+      },
+      "delete": {
+        "summary": "Delete a product",
+        "description": "Soft-deletes a product by UUID",
+        "operationId": "deleteProduct",
+        "tags": ["products"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Product UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product deleted",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/DeletedResponse"}
+              }
+            }
+          },
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/api/v1/products/{productId}/reviews": {
+      "get": {
+        "summary": "List product reviews",
+        "description": "Returns paginated reviews for a product with rating summary",
+        "operationId": "listReviews",
+        "tags": ["reviews"],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "Product UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "schema": {"type": "integer", "default": 1, "minimum": 1}
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Items per page (max 100)",
+            "schema": {"type": "integer", "default": 20, "minimum": 1, "maximum": 100}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated reviews with summary",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ReviewsListResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"}
+        }
+      },
+      "post": {
+        "summary": "Create a product review",
+        "description": "Submits a review for a product. Requires X-User-ID header.",
+        "operationId": "createReview",
+        "tags": ["reviews"],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "Product UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": true,
+            "description": "Authenticated user UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CreateReviewRequest"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Review created",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ReviewResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "422": {"$ref": "#/components/responses/ValidationError"}
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "summary": "List categories",
+        "description": "Returns a flat list of categories. Pass ?tree=true for a nested tree structure.",
+        "operationId": "listCategories",
+        "tags": ["categories"],
+        "parameters": [
+          {
+            "name": "tree",
+            "in": "query",
+            "description": "Return categories as a nested tree",
+            "schema": {"type": "boolean", "default": false}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of categories",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CategoriesListResponse"}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a category",
+        "description": "Creates a new product category",
+        "operationId": "createCategory",
+        "tags": ["categories"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CreateCategoryRequest"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category created",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CategoryResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "422": {"$ref": "#/components/responses/ValidationError"}
+        }
+      }
+    },
+    "/api/v1/categories/{id}": {
+      "get": {
+        "summary": "Get category by ID or slug",
+        "description": "Returns a category. Accepts UUID or URL slug.",
+        "operationId": "getCategory",
+        "tags": ["categories"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Category UUID or slug",
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category detail",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CategoryResponse"}
+              }
+            }
+          },
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      },
+      "put": {
+        "summary": "Update a category",
+        "description": "Partially updates a category",
+        "operationId": "updateCategory",
+        "tags": ["categories"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Category UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/UpdateCategoryRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated category",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CategoryResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      },
+      "delete": {
+        "summary": "Delete a category",
+        "description": "Deletes a category by UUID",
+        "operationId": "deleteCategory",
+        "tags": ["categories"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Category UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category deleted",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/DeletedResponse"}
+              }
+            }
+          },
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/api/v1/brands": {
+      "get": {
+        "summary": "List brands",
+        "description": "Returns a list of all product brands",
+        "operationId": "listBrands",
+        "tags": ["brands"],
+        "responses": {
+          "200": {
+            "description": "List of brands",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BrandsListResponse"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/banners": {
+      "get": {
+        "summary": "List banners",
+        "description": "Returns a paginated list of banners with optional position and active filtering",
+        "operationId": "listBanners",
+        "tags": ["banners"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "schema": {"type": "integer", "default": 1, "minimum": 1}
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Items per page (max 100)",
+            "schema": {"type": "integer", "default": 20, "minimum": 1, "maximum": 100}
+          },
+          {
+            "name": "position",
+            "in": "query",
+            "description": "Filter by banner position",
+            "schema": {"type": "string", "enum": ["hero_slider", "mid_banner", "category_banner"]}
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "description": "Filter by active status",
+            "schema": {"type": "boolean"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of banners",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/PaginatedBannersResponse"}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a banner",
+        "description": "Creates a new promotional banner",
+        "operationId": "createBanner",
+        "tags": ["banners"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CreateBannerRequest"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Banner created",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BannerResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "422": {"$ref": "#/components/responses/ValidationError"}
+        }
+      }
+    },
+    "/api/v1/banners/{id}": {
+      "get": {
+        "summary": "Get banner by ID",
+        "description": "Returns a banner by UUID",
+        "operationId": "getBanner",
+        "tags": ["banners"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Banner UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Banner detail",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BannerResponse"}
+              }
+            }
+          },
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      },
+      "put": {
+        "summary": "Update a banner",
+        "description": "Partially updates a banner",
+        "operationId": "updateBanner",
+        "tags": ["banners"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Banner UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/UpdateBannerRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated banner",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BannerResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      },
+      "delete": {
+        "summary": "Delete a banner",
+        "description": "Deletes a banner by UUID",
+        "operationId": "deleteBanner",
+        "tags": ["banners"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Banner UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Banner deleted",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/DeletedResponse"}
+              }
+            }
+          },
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateProductRequest": {
+        "type": "object",
+        "required": ["name", "base_price", "currency"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 500},
+          "description": {"type": "string"},
+          "brand_id": {"type": "string", "format": "uuid", "nullable": true},
+          "category_id": {"type": "string", "format": "uuid", "nullable": true},
+          "base_price": {"type": "integer", "minimum": 0, "description": "Price in cents"},
+          "currency": {"type": "string", "minLength": 3, "maxLength": 3, "example": "USD"},
+          "metadata": {"type": "object", "additionalProperties": true}
+        }
+      },
+      "UpdateProductRequest": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 500},
+          "description": {"type": "string"},
+          "brand_id": {"type": "string", "format": "uuid", "nullable": true},
+          "category_id": {"type": "string", "format": "uuid", "nullable": true},
+          "status": {"type": "string", "enum": ["draft", "published", "archived"]},
+          "base_price": {"type": "integer", "minimum": 0, "description": "Price in cents"},
+          "currency": {"type": "string", "minLength": 3, "maxLength": 3},
+          "metadata": {"type": "object", "additionalProperties": true}
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "name": {"type": "string"},
+          "slug": {"type": "string"},
+          "description": {"type": "string"},
+          "brand_id": {"type": "string", "format": "uuid", "nullable": true},
+          "category_id": {"type": "string", "format": "uuid", "nullable": true},
+          "base_price": {"type": "integer", "description": "Price in cents"},
+          "currency": {"type": "string"},
+          "status": {"type": "string", "enum": ["draft", "published", "archived"]},
+          "metadata": {"type": "object"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "ProductResponse": {
+        "type": "object",
+        "properties": {
+          "data": {"$ref": "#/components/schemas/Product"}
+        }
+      },
+      "ProductDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "description": "Product detail with images, variants, category, and brand"
+          }
+        }
+      },
+      "PaginatedProductsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/Product"}
+          },
+          "total": {"type": "integer"},
+          "page": {"type": "integer"},
+          "per_page": {"type": "integer"},
+          "total_pages": {"type": "integer"}
+        }
+      },
+      "CreateReviewRequest": {
+        "type": "object",
+        "required": ["rating"],
+        "properties": {
+          "rating": {"type": "integer", "minimum": 1, "maximum": 5},
+          "title": {"type": "string", "maxLength": 255},
+          "body": {"type": "string"}
+        }
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "product_id": {"type": "string", "format": "uuid"},
+          "user_id": {"type": "string", "format": "uuid"},
+          "rating": {"type": "integer", "minimum": 1, "maximum": 5},
+          "title": {"type": "string"},
+          "body": {"type": "string"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "ReviewResponse": {
+        "type": "object",
+        "properties": {
+          "data": {"$ref": "#/components/schemas/Review"}
+        }
+      },
+      "ReviewsListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/Review"}
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "average_rating": {"type": "number"},
+              "total_count": {"type": "integer"},
+              "rating_distribution": {"type": "object"}
+            }
+          },
+          "total_count": {"type": "integer"},
+          "page": {"type": "integer"},
+          "per_page": {"type": "integer"},
+          "total_pages": {"type": "integer"}
+        }
+      },
+      "CreateCategoryRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 255},
+          "parent_id": {"type": "string", "format": "uuid", "nullable": true},
+          "sort_order": {"type": "integer", "minimum": 0, "default": 0},
+          "is_active": {"type": "boolean", "default": true},
+          "image_url": {"type": "string", "format": "uri"},
+          "icon_url": {"type": "string", "format": "uri"},
+          "description": {"type": "string"}
+        }
+      },
+      "UpdateCategoryRequest": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 255},
+          "parent_id": {"type": "string", "format": "uuid", "nullable": true},
+          "sort_order": {"type": "integer", "minimum": 0},
+          "is_active": {"type": "boolean"},
+          "image_url": {"type": "string"},
+          "icon_url": {"type": "string"},
+          "description": {"type": "string"}
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "name": {"type": "string"},
+          "slug": {"type": "string"},
+          "parent_id": {"type": "string", "format": "uuid", "nullable": true},
+          "level": {"type": "integer"},
+          "sort_order": {"type": "integer"},
+          "is_active": {"type": "boolean"},
+          "image_url": {"type": "string", "nullable": true},
+          "icon_url": {"type": "string", "nullable": true},
+          "description": {"type": "string", "nullable": true},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "CategoryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {"$ref": "#/components/schemas/Category"}
+        }
+      },
+      "CategoriesListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/Category"}
+          }
+        }
+      },
+      "Brand": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "name": {"type": "string"},
+          "slug": {"type": "string"},
+          "logo_url": {"type": "string", "nullable": true},
+          "created_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "BrandsListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/Brand"}
+          }
+        }
+      },
+      "CreateBannerRequest": {
+        "type": "object",
+        "required": ["title", "image_url", "link_url", "link_type", "position"],
+        "properties": {
+          "title": {"type": "string", "minLength": 1, "maxLength": 255},
+          "subtitle": {"type": "string", "maxLength": 500, "nullable": true},
+          "image_url": {"type": "string", "format": "uri"},
+          "link_url": {"type": "string"},
+          "link_type": {"type": "string", "enum": ["internal", "external"]},
+          "position": {"type": "string", "enum": ["hero_slider", "mid_banner", "category_banner"]},
+          "sort_order": {"type": "integer", "minimum": 0, "default": 0},
+          "is_active": {"type": "boolean", "default": true},
+          "starts_at": {"type": "string", "format": "date-time", "nullable": true},
+          "ends_at": {"type": "string", "format": "date-time", "nullable": true}
+        }
+      },
+      "UpdateBannerRequest": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string", "minLength": 1, "maxLength": 255},
+          "subtitle": {"type": "string", "maxLength": 500},
+          "image_url": {"type": "string", "format": "uri"},
+          "link_url": {"type": "string"},
+          "link_type": {"type": "string", "enum": ["internal", "external"]},
+          "position": {"type": "string", "enum": ["hero_slider", "mid_banner", "category_banner"]},
+          "sort_order": {"type": "integer", "minimum": 0},
+          "is_active": {"type": "boolean"},
+          "starts_at": {"type": "string", "format": "date-time"},
+          "ends_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "Banner": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "title": {"type": "string"},
+          "subtitle": {"type": "string", "nullable": true},
+          "image_url": {"type": "string"},
+          "link_url": {"type": "string"},
+          "link_type": {"type": "string", "enum": ["internal", "external"]},
+          "position": {"type": "string", "enum": ["hero_slider", "mid_banner", "category_banner"]},
+          "sort_order": {"type": "integer"},
+          "is_active": {"type": "boolean"},
+          "starts_at": {"type": "string", "format": "date-time", "nullable": true},
+          "ends_at": {"type": "string", "format": "date-time", "nullable": true},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "BannerResponse": {
+        "type": "object",
+        "properties": {
+          "data": {"$ref": "#/components/schemas/Banner"}
+        }
+      },
+      "PaginatedBannersResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/Banner"}
+          },
+          "total": {"type": "integer"},
+          "page": {"type": "integer"},
+          "per_page": {"type": "integer"},
+          "total_pages": {"type": "integer"}
+        }
+      },
+      "DeletedResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string", "format": "uuid"},
+              "status": {"type": "string", "example": "deleted"}
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {"type": "string"},
+              "message": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request — invalid input or parameter",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Validation error — one or more fields failed validation",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+          }
+        }
+      }
+    }
+  }
+}

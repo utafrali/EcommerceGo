@@ -1,0 +1,733 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "User Service API",
+    "description": "User authentication, profile management, address book, and wishlist API",
+    "version": "1.0.0",
+    "contact": {
+      "name": "EcommerceGo"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8006",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    {"name": "auth", "description": "Authentication and password management"},
+    {"name": "users", "description": "User profile and address management"},
+    {"name": "wishlist", "description": "Wishlist management"}
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["email", "password", "first_name", "last_name"],
+        "properties": {
+          "email": {"type": "string", "format": "email"},
+          "password": {"type": "string", "minLength": 8},
+          "first_name": {"type": "string", "minLength": 1, "maxLength": 100},
+          "last_name": {"type": "string", "minLength": 1, "maxLength": 100}
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {"type": "string", "format": "email"},
+          "password": {"type": "string"}
+        }
+      },
+      "RefreshTokenRequest": {
+        "type": "object",
+        "required": ["refresh_token"],
+        "properties": {
+          "refresh_token": {"type": "string"}
+        }
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "required": ["email"],
+        "properties": {
+          "email": {"type": "string", "format": "email"}
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": ["token", "new_password"],
+        "properties": {
+          "token": {"type": "string"},
+          "new_password": {"type": "string", "minLength": 8}
+        }
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "required": ["current_password", "new_password"],
+        "properties": {
+          "current_password": {"type": "string"},
+          "new_password": {"type": "string", "minLength": 8}
+        }
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "properties": {
+          "first_name": {"type": "string", "minLength": 1, "maxLength": 100},
+          "last_name": {"type": "string", "minLength": 1, "maxLength": 100},
+          "phone": {"type": "string", "maxLength": 20}
+        }
+      },
+      "CreateAddressRequest": {
+        "type": "object",
+        "required": ["first_name", "last_name", "address_line1", "city", "postal_code", "country_code"],
+        "properties": {
+          "label": {"type": "string", "maxLength": 50},
+          "first_name": {"type": "string", "minLength": 1, "maxLength": 100},
+          "last_name": {"type": "string", "minLength": 1, "maxLength": 100},
+          "address_line1": {"type": "string", "minLength": 1, "maxLength": 500},
+          "address_line2": {"type": "string", "maxLength": 500},
+          "city": {"type": "string", "minLength": 1, "maxLength": 100},
+          "state": {"type": "string", "maxLength": 100},
+          "postal_code": {"type": "string", "minLength": 1, "maxLength": 20},
+          "country_code": {"type": "string", "minLength": 2, "maxLength": 2, "example": "US"},
+          "phone": {"type": "string", "maxLength": 20},
+          "is_default": {"type": "boolean", "default": false}
+        }
+      },
+      "UpdateAddressRequest": {
+        "type": "object",
+        "properties": {
+          "label": {"type": "string", "maxLength": 50},
+          "first_name": {"type": "string", "minLength": 1, "maxLength": 100},
+          "last_name": {"type": "string", "minLength": 1, "maxLength": 100},
+          "address_line1": {"type": "string", "minLength": 1, "maxLength": 500},
+          "address_line2": {"type": "string", "maxLength": 500},
+          "city": {"type": "string", "minLength": 1, "maxLength": 100},
+          "state": {"type": "string", "maxLength": 100},
+          "postal_code": {"type": "string", "minLength": 1, "maxLength": 20},
+          "country_code": {"type": "string", "minLength": 2, "maxLength": 2},
+          "phone": {"type": "string", "maxLength": 20}
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "email": {"type": "string", "format": "email"},
+          "first_name": {"type": "string"},
+          "last_name": {"type": "string"},
+          "phone": {"type": "string", "nullable": true},
+          "role": {"type": "string", "enum": ["customer", "admin"]},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "Tokens": {
+        "type": "object",
+        "properties": {
+          "access_token": {"type": "string"},
+          "refresh_token": {"type": "string"},
+          "expires_in": {"type": "integer", "description": "Access token TTL in seconds"}
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "user": {"$ref": "#/components/schemas/User"},
+              "tokens": {"$ref": "#/components/schemas/Tokens"}
+            }
+          }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "data": {"$ref": "#/components/schemas/User"}
+        }
+      },
+      "Address": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "user_id": {"type": "string", "format": "uuid"},
+          "label": {"type": "string"},
+          "first_name": {"type": "string"},
+          "last_name": {"type": "string"},
+          "address_line1": {"type": "string"},
+          "address_line2": {"type": "string"},
+          "city": {"type": "string"},
+          "state": {"type": "string"},
+          "postal_code": {"type": "string"},
+          "country_code": {"type": "string"},
+          "phone": {"type": "string"},
+          "is_default": {"type": "boolean"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "AddressResponse": {
+        "type": "object",
+        "properties": {
+          "data": {"$ref": "#/components/schemas/Address"}
+        }
+      },
+      "AddressesListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/Address"}
+          }
+        }
+      },
+      "WishlistItem": {
+        "type": "object",
+        "properties": {
+          "user_id": {"type": "string", "format": "uuid"},
+          "product_id": {"type": "string", "format": "uuid"},
+          "added_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "WishlistResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/WishlistItem"}
+          }
+        }
+      },
+      "WishlistExistsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "exists": {"type": "boolean"}
+            }
+          }
+        }
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "message": {"type": "string"}
+            }
+          }
+        }
+      },
+      "DeletedResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string", "format": "uuid"},
+              "status": {"type": "string", "example": "deleted"}
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {"type": "string"},
+              "message": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request — invalid input or parameter",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Authentication required or token invalid",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Validation error — one or more fields failed validation",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/ErrorResponse"}
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "description": "Creates a new user account and returns the user profile with access/refresh tokens",
+        "operationId": "register",
+        "tags": ["auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/RegisterRequest"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/AuthResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "422": {"$ref": "#/components/responses/ValidationError"}
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Login",
+        "description": "Authenticates a user and returns access/refresh tokens",
+        "operationId": "login",
+        "tags": ["auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/LoginRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/AuthResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "summary": "Refresh access token",
+        "description": "Issues a new access token using a valid refresh token",
+        "operationId": "refreshToken",
+        "tags": ["auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/RefreshTokenRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New tokens issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {"$ref": "#/components/schemas/Tokens"}
+                  }
+                }
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "summary": "Request password reset",
+        "description": "Sends a password reset email if the account exists. Always returns 200 to prevent email enumeration.",
+        "operationId": "forgotPassword",
+        "tags": ["auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/ForgotPasswordRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reset link sent (if email exists)",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/MessageResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"}
+        }
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "summary": "Reset password",
+        "description": "Resets the user's password using the token received by email",
+        "operationId": "resetPassword",
+        "tags": ["auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/ResetPasswordRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/MessageResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "422": {"$ref": "#/components/responses/ValidationError"}
+        }
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "summary": "Change password",
+        "description": "Changes the authenticated user's password",
+        "operationId": "changePassword",
+        "tags": ["auth"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/ChangePasswordRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/MessageResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "422": {"$ref": "#/components/responses/ValidationError"}
+        }
+      }
+    },
+    "/api/v1/users/me": {
+      "get": {
+        "summary": "Get current user profile",
+        "description": "Returns the authenticated user's profile",
+        "operationId": "getProfile",
+        "tags": ["users"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "User profile",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/UserResponse"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "put": {
+        "summary": "Update user profile",
+        "description": "Updates the authenticated user's profile — all fields are optional",
+        "operationId": "updateProfile",
+        "tags": ["users"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/UpdateProfileRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user profile",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/UserResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/users/me/addresses": {
+      "get": {
+        "summary": "List user addresses",
+        "description": "Returns all shipping addresses for the authenticated user",
+        "operationId": "listAddresses",
+        "tags": ["users"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "List of addresses",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/AddressesListResponse"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "post": {
+        "summary": "Create an address",
+        "description": "Adds a new shipping address for the authenticated user",
+        "operationId": "createAddress",
+        "tags": ["users"],
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CreateAddressRequest"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Address created",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/AddressResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "422": {"$ref": "#/components/responses/ValidationError"}
+        }
+      }
+    },
+    "/api/v1/users/me/addresses/{id}": {
+      "put": {
+        "summary": "Update an address",
+        "description": "Partially updates a shipping address owned by the authenticated user",
+        "operationId": "updateAddress",
+        "tags": ["users"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Address UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/UpdateAddressRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated address",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/AddressResponse"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      },
+      "delete": {
+        "summary": "Delete an address",
+        "description": "Deletes a shipping address owned by the authenticated user",
+        "operationId": "deleteAddress",
+        "tags": ["users"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Address UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Address deleted",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/DeletedResponse"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/api/v1/users/wishlist": {
+      "get": {
+        "summary": "List wishlist",
+        "description": "Returns all products in the authenticated user's wishlist",
+        "operationId": "listWishlist",
+        "tags": ["wishlist"],
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Wishlist items",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/WishlistResponse"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/users/wishlist/{productId}": {
+      "get": {
+        "summary": "Check if product is in wishlist",
+        "description": "Returns whether a product is in the authenticated user's wishlist",
+        "operationId": "checkWishlist",
+        "tags": ["wishlist"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "Product UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wishlist membership check result",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/WishlistExistsResponse"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "post": {
+        "summary": "Add product to wishlist",
+        "description": "Adds a product to the authenticated user's wishlist",
+        "operationId": "addToWishlist",
+        "tags": ["wishlist"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "Product UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product added to wishlist",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "delete": {
+        "summary": "Remove product from wishlist",
+        "description": "Removes a product from the authenticated user's wishlist",
+        "operationId": "removeFromWishlist",
+        "tags": ["wishlist"],
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "description": "Product UUID",
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product removed from wishlist",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    }
+  }
+}

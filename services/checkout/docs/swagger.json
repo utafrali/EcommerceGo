@@ -1,0 +1,871 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Checkout Service API",
+    "description": "Manages checkout sessions and orchestrates the checkout saga (inventory reservation, order creation, payment).",
+    "version": "1.0.0",
+    "contact": {
+      "name": "EcommerceGo",
+      "url": "https://github.com/utafrali/EcommerceGo"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8004",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    {
+      "name": "checkout",
+      "description": "Checkout session operations"
+    }
+  ],
+  "paths": {
+    "/api/v1/checkout/": {
+      "post": {
+        "tags": ["checkout"],
+        "summary": "Initiate a checkout session",
+        "description": "Creates a new checkout session for the authenticated user. Requires X-User-ID header.",
+        "operationId": "initiateCheckout",
+        "parameters": [
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": true,
+            "description": "Authenticated user UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitiateCheckoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Checkout session created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing X-User-ID header or invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/checkout/{id}": {
+      "get": {
+        "tags": ["checkout"],
+        "summary": "Get checkout session",
+        "description": "Returns the checkout session by ID. Only the session owner may access it (X-User-ID must match).",
+        "operationId": "getCheckout",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Checkout session UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": true,
+            "description": "Authenticated user UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Checkout session found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing checkout ID or X-User-ID header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access to this checkout session is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Checkout session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/checkout/{id}/shipping": {
+      "put": {
+        "tags": ["checkout"],
+        "summary": "Set shipping address",
+        "description": "Sets or updates the shipping address on the checkout session.",
+        "operationId": "setShippingAddress",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Checkout session UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": true,
+            "description": "Authenticated user UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetShippingAddressRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Shipping address updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access to this checkout session is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Checkout session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/checkout/{id}/payment": {
+      "put": {
+        "tags": ["checkout"],
+        "summary": "Set payment method",
+        "description": "Sets the payment method on the checkout session.",
+        "operationId": "setPaymentMethod",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Checkout session UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": true,
+            "description": "Authenticated user UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPaymentMethodRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment method updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access to this checkout session is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Checkout session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/checkout/{id}/process": {
+      "post": {
+        "tags": ["checkout"],
+        "summary": "Process checkout",
+        "description": "Runs the checkout saga: reserves inventory, creates the order, and initiates payment. Requires shipping address and payment method to be set first.",
+        "operationId": "processCheckout",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Checkout session UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": true,
+            "description": "Authenticated user UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Checkout processed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Checkout session not ready for processing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access to this checkout session is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Checkout session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Downstream service unavailable (circuit breaker open)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/checkout/{id}/cancel": {
+      "post": {
+        "tags": ["checkout"],
+        "summary": "Cancel checkout session",
+        "description": "Cancels an active checkout session. Terminal sessions (completed, failed, expired) cannot be canceled.",
+        "operationId": "cancelCheckout",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Checkout session UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-User-ID",
+            "in": "header",
+            "required": true,
+            "description": "Authenticated user UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Checkout session canceled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing checkout ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Access to this checkout session is forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Checkout session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Session is already in a terminal state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CheckoutItemRequest": {
+        "type": "object",
+        "required": ["product_id", "variant_id", "name", "sku", "price", "quantity"],
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "variant_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "660e8400-e29b-41d4-a716-446655440001"
+          },
+          "name": {
+            "type": "string",
+            "example": "Classic T-Shirt"
+          },
+          "sku": {
+            "type": "string",
+            "example": "TSH-001-BLK-M"
+          },
+          "price": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unit price in cents",
+            "minimum": 1,
+            "example": 2999
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 2
+          }
+        }
+      },
+      "InitiateCheckoutRequest": {
+        "type": "object",
+        "required": ["items", "currency"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/CheckoutItemRequest"
+            }
+          },
+          "currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3,
+            "example": "TRY"
+          }
+        }
+      },
+      "SetShippingAddressRequest": {
+        "type": "object",
+        "required": ["full_name", "address_line", "city", "postal_code", "country"],
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "example": "Jane Doe"
+          },
+          "address_line": {
+            "type": "string",
+            "example": "123 Main Street"
+          },
+          "city": {
+            "type": "string",
+            "example": "Istanbul"
+          },
+          "state": {
+            "type": "string",
+            "example": "Istanbul"
+          },
+          "postal_code": {
+            "type": "string",
+            "example": "34000"
+          },
+          "country": {
+            "type": "string",
+            "example": "TR"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+905001234567"
+          }
+        }
+      },
+      "SetPaymentMethodRequest": {
+        "type": "object",
+        "required": ["payment_method"],
+        "properties": {
+          "payment_method": {
+            "type": "string",
+            "example": "credit_card"
+          }
+        }
+      },
+      "Address": {
+        "type": "object",
+        "properties": {
+          "full_name": {
+            "type": "string"
+          },
+          "address_line": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "postal_code": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        }
+      },
+      "CheckoutItem": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "variant_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "price": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unit price in cents"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "reservation_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "CheckoutSession": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["initiated", "items_reserved", "payment_pending", "payment_processing", "completed", "failed", "expired"]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckoutItem"
+            }
+          },
+          "subtotal_amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Subtotal in cents"
+          },
+          "discount_amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Discount in cents"
+          },
+          "shipping_amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Shipping cost in cents"
+          },
+          "total_amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total in cents"
+          },
+          "currency": {
+            "type": "string",
+            "example": "TRY"
+          },
+          "shipping_address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "billing_address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "payment_method": {
+            "type": "string"
+          },
+          "payment_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "order_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "failure_reason": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CheckoutSessionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CheckoutSession"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "NOT_FOUND"
+          },
+          "message": {
+            "type": "string",
+            "example": "checkout session not found"
+          },
+          "request_id": {
+            "type": "string",
+            "example": "01HV9Y..."
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        }
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "VALIDATION_ERROR"
+              },
+              "message": {
+                "type": "string",
+                "example": "validation failed"
+              },
+              "fields": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "example": {
+                  "currency": "len=3",
+                  "items": "required"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

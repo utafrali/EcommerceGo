@@ -1,0 +1,886 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Campaign Service API",
+    "description": "Manages promotional campaigns, coupon codes, and stacking rules for the e-commerce platform.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "EcommerceGo"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8008",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    {
+      "name": "campaigns",
+      "description": "Campaign CRUD and lifecycle management"
+    },
+    {
+      "name": "stacking-rules",
+      "description": "Campaign stacking and exclusion rules"
+    },
+    {
+      "name": "coupons",
+      "description": "Coupon validation and application"
+    }
+  ],
+  "paths": {
+    "/api/v1/campaigns/": {
+      "post": {
+        "summary": "Create campaign",
+        "description": "Creates a new promotional campaign. Campaigns can be percentage-based, fixed-amount, buy-X-get-Y, or free-shipping type.",
+        "tags": ["campaigns"],
+        "operationId": "createCampaign",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCampaignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Campaign created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body, date format, or campaign code format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Campaign with the same code already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List campaigns",
+        "description": "Returns a paginated list of campaigns with optional filtering by status and type.",
+        "tags": ["campaigns"],
+        "operationId": "listCampaigns",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by campaign status",
+            "schema": {
+              "type": "string",
+              "enum": ["draft", "active", "paused", "expired", "archived"]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter by campaign type",
+            "schema": {
+              "type": "string",
+              "enum": ["percentage", "fixed_amount", "buy_x_get_y", "free_shipping"]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Items per page (1-100)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of campaigns",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter or pagination parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/campaigns/{id}": {
+      "get": {
+        "summary": "Get campaign",
+        "description": "Returns a single campaign by its UUID.",
+        "tags": ["campaigns"],
+        "operationId": "getCampaign",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the campaign",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Campaign retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Campaign not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update campaign",
+        "description": "Updates an existing campaign. All fields are optional; only provided fields will be updated.",
+        "tags": ["campaigns"],
+        "operationId": "updateCampaign",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the campaign",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCampaignRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Campaign updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Campaign not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/campaigns/{id}/deactivate": {
+      "post": {
+        "summary": "Deactivate campaign",
+        "description": "Deactivates an active campaign, stopping it from applying to new orders.",
+        "tags": ["campaigns"],
+        "operationId": "deactivateCampaign",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the campaign to deactivate",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Campaign deactivated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Campaign not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/campaigns/{id}/stacking-rules": {
+      "post": {
+        "summary": "Add stacking rule",
+        "description": "Creates a stacking rule between two campaigns, defining whether they are compatible (can be combined) or exclusive (mutually excluding).",
+        "tags": ["stacking-rules"],
+        "operationId": "createStackingRule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "UUID of campaign A in the stacking rule",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStackingRuleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Stacking rule created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackingRuleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "One or both campaigns not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Get stacking rules",
+        "description": "Returns all stacking rules associated with a specific campaign.",
+        "tags": ["stacking-rules"],
+        "operationId": "getStackingRules",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the campaign",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of stacking rules for the campaign",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackingRuleListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Campaign not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/campaigns/stacking-rules/{ruleId}": {
+      "delete": {
+        "summary": "Delete stacking rule",
+        "description": "Removes a specific stacking rule by its UUID.",
+        "tags": ["stacking-rules"],
+        "operationId": "deleteStackingRule",
+        "parameters": [
+          {
+            "name": "ruleId",
+            "in": "path",
+            "required": true,
+            "description": "UUID of the stacking rule",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Stacking rule deleted successfully"
+          },
+          "400": {
+            "description": "Invalid UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Stacking rule not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coupons/validate": {
+      "post": {
+        "summary": "Validate coupon code",
+        "description": "Validates a single coupon code against an order and returns the applicable discount amount without applying it.",
+        "tags": ["coupons"],
+        "operationId": "validateCoupon",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateCouponRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Coupon validated; response includes validity status and discount amount",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponValidationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coupons/validate-multiple": {
+      "post": {
+        "summary": "Validate multiple coupons",
+        "description": "Validates a list of coupon codes in a single request, checking compatibility and computing combined discount amounts.",
+        "tags": ["coupons"],
+        "operationId": "validateMultipleCoupons",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateMultipleCouponsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Coupons validated; response includes per-coupon results and total discount",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MultiCouponValidationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coupons/apply": {
+      "post": {
+        "summary": "Apply coupons and calculate discount",
+        "description": "Applies a coupon code to an order, records the usage, and returns the final discount amount.",
+        "tags": ["coupons"],
+        "operationId": "applyCoupon",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyCouponRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Coupon applied and usage recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CouponUsageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body, coupon expired, or minimum order not met",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Coupon usage limit reached or already used by this user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateCampaignRequest": {
+        "type": "object",
+        "required": ["name", "type", "discount_value", "start_date", "end_date"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "description": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["percentage", "fixed_amount", "buy_x_get_y", "free_shipping"]
+          },
+          "discount_value": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "Discount value in cents for fixed_amount, or basis points for percentage"
+          },
+          "min_order_amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Minimum order amount in cents required to apply this campaign"
+          },
+          "max_discount_amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Maximum discount cap in cents (0 = no cap)"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "Coupon code (2-50 uppercase alphanumeric chars or hyphens)",
+            "example": "SUMMER20"
+          },
+          "max_usage_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Maximum total usages (0 = unlimited)"
+          },
+          "is_stackable": { "type": "boolean", "default": false },
+          "priority": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Application priority when multiple campaigns match (higher = applied first)"
+          },
+          "exclusion_group": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Named group; only one campaign per group can apply to an order"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Campaign start date in RFC3339 format"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Campaign end date in RFC3339 format; must be after start_date"
+          },
+          "applicable_categories": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Category IDs this campaign applies to (empty = all categories)"
+          },
+          "applicable_products": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Product IDs this campaign applies to (empty = all products)"
+          }
+        }
+      },
+      "UpdateCampaignRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "description": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["percentage", "fixed_amount", "buy_x_get_y", "free_shipping"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "active", "paused", "expired", "archived"]
+          },
+          "discount_value": { "type": "integer", "format": "int64", "minimum": 1 },
+          "min_order_amount": { "type": "integer", "format": "int64", "minimum": 0 },
+          "max_discount_amount": { "type": "integer", "format": "int64", "minimum": 0 },
+          "code": { "type": "string", "maxLength": 50 },
+          "max_usage_count": { "type": "integer", "minimum": 0 },
+          "is_stackable": { "type": "boolean" },
+          "priority": { "type": "integer", "minimum": 0 },
+          "exclusion_group": { "type": "string", "maxLength": 100 },
+          "start_date": { "type": "string", "format": "date-time" },
+          "end_date": { "type": "string", "format": "date-time" },
+          "applicable_categories": { "type": "array", "items": { "type": "string" } },
+          "applicable_products": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "ValidateCouponRequest": {
+        "type": "object",
+        "required": ["code", "order_amount", "currency", "user_id"],
+        "properties": {
+          "code": { "type": "string" },
+          "order_amount": { "type": "integer", "format": "int64", "minimum": 1, "description": "Order total in cents" },
+          "currency": { "type": "string", "minLength": 3, "maxLength": 3, "example": "USD" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "category_ids": { "type": "array", "items": { "type": "string" } },
+          "product_ids": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "ApplyCouponRequest": {
+        "type": "object",
+        "required": ["code", "order_amount", "currency", "user_id", "order_id"],
+        "properties": {
+          "code": { "type": "string" },
+          "order_amount": { "type": "integer", "format": "int64", "minimum": 1 },
+          "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+          "user_id": { "type": "string", "format": "uuid" },
+          "order_id": { "type": "string", "format": "uuid" },
+          "category_ids": { "type": "array", "items": { "type": "string" } },
+          "product_ids": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "ValidateMultipleCouponsRequest": {
+        "type": "object",
+        "required": ["codes", "order_amount"],
+        "properties": {
+          "codes": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "order_amount": { "type": "integer", "format": "int64", "minimum": 1 },
+          "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+          "user_id": { "type": "string", "format": "uuid" },
+          "category_ids": { "type": "array", "items": { "type": "string" } },
+          "product_ids": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "CreateStackingRuleRequest": {
+        "type": "object",
+        "required": ["campaign_b_id", "rule_type"],
+        "properties": {
+          "campaign_b_id": { "type": "string", "format": "uuid" },
+          "rule_type": { "type": "string", "enum": ["compatible", "exclusive"] }
+        }
+      },
+      "Campaign": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "type": { "type": "string" },
+          "status": { "type": "string" },
+          "discount_value": { "type": "integer", "format": "int64" },
+          "min_order_amount": { "type": "integer", "format": "int64" },
+          "max_discount_amount": { "type": "integer", "format": "int64" },
+          "code": { "type": "string" },
+          "max_usage_count": { "type": "integer" },
+          "current_usage_count": { "type": "integer" },
+          "is_stackable": { "type": "boolean" },
+          "priority": { "type": "integer" },
+          "exclusion_group": { "type": "string" },
+          "start_date": { "type": "string", "format": "date-time" },
+          "end_date": { "type": "string", "format": "date-time" },
+          "applicable_categories": { "type": "array", "items": { "type": "string" } },
+          "applicable_products": { "type": "array", "items": { "type": "string" } },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "StackingRule": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "campaign_a_id": { "type": "string", "format": "uuid" },
+          "campaign_b_id": { "type": "string", "format": "uuid" },
+          "rule_type": { "type": "string", "enum": ["compatible", "exclusive"] },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CampaignResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/Campaign" },
+          "error": { "$ref": "#/components/schemas/ErrorDetail" }
+        }
+      },
+      "CampaignListResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Campaign" } },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer" },
+              "page": { "type": "integer" },
+              "per_page": { "type": "integer" },
+              "total_pages": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "StackingRuleResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/StackingRule" }
+        }
+      },
+      "StackingRuleListResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/StackingRule" } }
+        }
+      },
+      "CouponValidationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "valid": { "type": "boolean" },
+              "discount_amount": { "type": "integer", "format": "int64" },
+              "campaign": { "$ref": "#/components/schemas/Campaign" },
+              "reason": { "type": "string", "description": "Reason if coupon is invalid" }
+            }
+          }
+        }
+      },
+      "MultiCouponValidationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "code": { "type": "string" },
+                    "valid": { "type": "boolean" },
+                    "discount_amount": { "type": "integer", "format": "int64" },
+                    "reason": { "type": "string" }
+                  }
+                }
+              },
+              "total_discount": { "type": "integer", "format": "int64" }
+            }
+          }
+        }
+      },
+      "CouponUsageResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "campaign_id": { "type": "string", "format": "uuid" },
+              "order_id": { "type": "string", "format": "uuid" },
+              "user_id": { "type": "string", "format": "uuid" },
+              "discount_amount": { "type": "integer", "format": "int64" },
+              "used_at": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": { "$ref": "#/components/schemas/ErrorDetail" }
+        }
+      }
+    }
+  }
+}

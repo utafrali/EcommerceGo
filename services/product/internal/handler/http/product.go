@@ -58,6 +58,22 @@ type UpdateProductRequest struct {
 // --- Handlers ---
 
 // ListProducts handles GET /api/v1/products
+// @Summary List all products
+// @Description Returns paginated list of products with optional filtering and sorting
+// @Tags products
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param per_page query int false "Items per page (max 100)" default(20)
+// @Param category_id query string false "Filter by category UUID"
+// @Param brand_id query string false "Filter by brand UUID"
+// @Param status query string false "Filter by status" Enums(draft,published,archived)
+// @Param sort_by query string false "Sort order" Enums(newest,price_asc,price_desc,name_asc,name_desc)
+// @Param search query string false "Full-text search query"
+// @Param min_price query int false "Minimum price in cents"
+// @Param max_price query int false "Maximum price in cents"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /api/v1/products [get]
 func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	filter := repository.ProductFilter{
 		Page:    1,
@@ -152,6 +168,14 @@ func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 // GetProduct handles GET /api/v1/products/{idOrSlug}
 // It accepts both a UUID (product ID) and a slug for lookup.
 // Returns an enriched product detail including images, variants, category, and brand.
+// @Summary Get product by ID or slug
+// @Description Returns a product detail. Accepts both UUID and URL slug.
+// @Tags products
+// @Produce json
+// @Param idOrSlug path string true "Product UUID or URL slug"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/v1/products/{idOrSlug} [get]
 func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 	idOrSlug := chi.URLParam(r, "idOrSlug")
 	if idOrSlug == "" {
@@ -181,6 +205,16 @@ func (h *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateProduct handles POST /api/v1/products
+// @Summary Create a product
+// @Description Creates a new product in the catalog
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param request body CreateProductRequest true "Product to create"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Router /api/v1/products [post]
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 	// Limit request body to 1MB to prevent DoS via large payloads.
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
@@ -218,6 +252,17 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateProduct handles PUT /api/v1/products/{id}
+// @Summary Update a product
+// @Description Partially updates a product — all fields are optional
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path string true "Product UUID"
+// @Param request body UpdateProductRequest true "Fields to update"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/v1/products/{id} [put]
 func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
 	if !ok {
@@ -261,6 +306,14 @@ func (h *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteProduct handles DELETE /api/v1/products/{id}
+// @Summary Delete a product
+// @Description Soft-deletes a product by UUID
+// @Tags products
+// @Produce json
+// @Param id path string true "Product UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/v1/products/{id} [delete]
 func (h *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
 	if !ok {

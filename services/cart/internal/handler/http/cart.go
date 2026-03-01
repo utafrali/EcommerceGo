@@ -47,6 +47,14 @@ type UpdateQuantityRequest struct {
 // --- Handlers ---
 
 // GetCart handles GET /api/v1/cart
+// @Summary Get cart contents
+// @Description Returns the current user's cart including all items, total amount, and item count
+// @Tags cart
+// @Produce json
+// @Param X-User-ID header string true "Authenticated user UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /api/v1/cart/ [get]
 func (h *CartHandler) GetCart(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFromContext(r.Context())
 	if !ok {
@@ -66,6 +74,18 @@ func (h *CartHandler) GetCart(w http.ResponseWriter, r *http.Request) {
 }
 
 // AddItem handles POST /api/v1/cart/items
+// @Summary Add item to cart
+// @Description Adds a product variant to the cart. If the item already exists, its quantity is incremented.
+// @Tags cart
+// @Accept json
+// @Produce json
+// @Param X-User-ID header string true "Authenticated user UUID"
+// @Param request body AddItemRequest true "Item to add"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 409 {object} map[string]interface{}
+// @Router /api/v1/cart/items [post]
 func (h *CartHandler) AddItem(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFromContext(r.Context())
 	if !ok {
@@ -111,6 +131,20 @@ func (h *CartHandler) AddItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateItemQuantity handles PUT /api/v1/cart/items/{productId}/{variantId}
+// @Summary Update cart item quantity
+// @Description Updates the quantity of a specific item. Set quantity to 0 to remove the item.
+// @Tags cart
+// @Accept json
+// @Produce json
+// @Param X-User-ID header string true "Authenticated user UUID"
+// @Param productId path string true "Product UUID"
+// @Param variantId path string true "Product variant UUID"
+// @Param request body UpdateQuantityRequest true "New quantity"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 409 {object} map[string]interface{}
+// @Router /api/v1/cart/items/{productId}/{variantId} [put]
 func (h *CartHandler) UpdateItemQuantity(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFromContext(r.Context())
 	if !ok {
@@ -155,6 +189,17 @@ func (h *CartHandler) UpdateItemQuantity(w http.ResponseWriter, r *http.Request)
 }
 
 // RemoveItem handles DELETE /api/v1/cart/items/{productId}/{variantId}
+// @Summary Remove cart item
+// @Description Removes a specific product variant from the cart
+// @Tags cart
+// @Produce json
+// @Param X-User-ID header string true "Authenticated user UUID"
+// @Param productId path string true "Product UUID"
+// @Param variantId path string true "Product variant UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 409 {object} map[string]interface{}
+// @Router /api/v1/cart/items/{productId}/{variantId} [delete]
 func (h *CartHandler) RemoveItem(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFromContext(r.Context())
 	if !ok {
@@ -183,6 +228,14 @@ func (h *CartHandler) RemoveItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // ClearCart handles DELETE /api/v1/cart
+// @Summary Clear cart
+// @Description Removes all items from the current user's cart
+// @Tags cart
+// @Produce json
+// @Param X-User-ID header string true "Authenticated user UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /api/v1/cart/ [delete]
 func (h *CartHandler) ClearCart(w http.ResponseWriter, r *http.Request) {
 	userID, ok := userIDFromContext(r.Context())
 	if !ok {

@@ -1,0 +1,541 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Search Service API",
+    "description": "Full-text product search with filtering, pagination, suggestions, and index management.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "EcommerceGo",
+      "url": "https://github.com/utafrali/EcommerceGo"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8010",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    {
+      "name": "search",
+      "description": "Product search and suggestion endpoints"
+    },
+    {
+      "name": "index",
+      "description": "Search index management endpoints"
+    },
+    {
+      "name": "health",
+      "description": "Service health probes"
+    }
+  ],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Liveness probe",
+        "description": "Returns 200 if the service process is alive.",
+        "operationId": "liveness",
+        "responses": {
+          "200": {
+            "description": "Service is alive",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Readiness probe",
+        "description": "Returns 200 if the service is ready to accept traffic, 503 if a critical dependency is unavailable, or 200 with status=degraded if a non-critical dependency is unavailable.",
+        "operationId": "readiness",
+        "responses": {
+          "200": {
+            "description": "Service is ready (or degraded but still serving)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          },
+          "503": {
+            "description": "Service is not ready",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search/": {
+      "get": {
+        "tags": ["search"],
+        "summary": "Search products",
+        "description": "Full-text search for products with optional filtering by category, brand, and price range. Supports sorting and pagination. Prices are in cents (int64).",
+        "operationId": "searchProducts",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search query string",
+            "required": false,
+            "schema": { "type": "string", "example": "running shoes" }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "description": "Filter by category UUID",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "brand_id",
+            "in": "query",
+            "description": "Filter by brand UUID",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by product status",
+            "required": false,
+            "schema": { "type": "string", "enum": ["active", "inactive", "draft"] }
+          },
+          {
+            "name": "min_price",
+            "in": "query",
+            "description": "Minimum price in cents (inclusive)",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64", "minimum": 0 }
+          },
+          {
+            "name": "max_price",
+            "in": "query",
+            "description": "Maximum price in cents (inclusive)",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64", "minimum": 0 }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort order for results",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["relevance", "price_asc", "price_desc", "newest", "name_asc", "name_desc"],
+              "default": "relevance"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Number of results per page (max 100)",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SearchResultResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search/suggest": {
+      "get": {
+        "tags": ["search"],
+        "summary": "Get search suggestions",
+        "description": "Returns autocomplete suggestions for a query prefix. Returns up to 5 suggestions by default (max 20).",
+        "operationId": "searchSuggest",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Prefix to autocomplete",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "example": "run" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of suggestions (max 20)",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 20, "default": 5 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of suggestions",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuggestResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search/index": {
+      "post": {
+        "tags": ["index"],
+        "summary": "Index a product",
+        "description": "Adds or updates a single product document in the search index.",
+        "operationId": "indexProduct",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/IndexProductRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product indexed successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IndexProductResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search/{id}": {
+      "delete": {
+        "tags": ["index"],
+        "summary": "Remove product from index",
+        "description": "Deletes a product document from the search index by UUID.",
+        "operationId": "deleteProduct",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Product UUID",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product removed from index",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeleteProductResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found in index",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search/bulk": {
+      "post": {
+        "tags": ["index"],
+        "summary": "Bulk index products",
+        "description": "Indexes multiple product documents in a single request (max 500 products, 10 MB payload).",
+        "operationId": "bulkIndexProducts",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BulkIndexRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bulk indexing completed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BulkIndexResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search/reindex": {
+      "post": {
+        "tags": ["index"],
+        "summary": "Reindex all products",
+        "description": "Triggers a full reindex of all products in the background. Returns 202 Accepted immediately; the reindex continues asynchronously.",
+        "operationId": "reindexProducts",
+        "responses": {
+          "202": {
+            "description": "Reindex started",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ReindexResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "git_commit": { "type": "string", "example": "abc1234" },
+          "build_time": { "type": "string", "example": "2026-03-01T00:00:00Z" },
+          "go_version": { "type": "string", "example": "go1.24.0" }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string", "example": "INVALID_PARAMETER" },
+          "message": { "type": "string", "example": "min_price must not be negative" },
+          "request_id": { "type": "string", "example": "req-abc123" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": { "$ref": "#/components/schemas/ErrorDetail" }
+        }
+      },
+      "SearchHit": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "example": "550e8400-e29b-41d4-a716-446655440000" },
+          "name": { "type": "string", "example": "Running Shoe Pro" },
+          "slug": { "type": "string", "example": "running-shoe-pro" },
+          "description": { "type": "string", "example": "Lightweight running shoe" },
+          "category_id": { "type": "string", "format": "uuid" },
+          "category_name": { "type": "string", "example": "Shoes" },
+          "brand_id": { "type": "string", "format": "uuid" },
+          "brand_name": { "type": "string", "example": "SpeedBrand" },
+          "base_price": { "type": "integer", "format": "int64", "example": 9999, "description": "Price in cents" },
+          "currency": { "type": "string", "example": "USD" },
+          "status": { "type": "string", "example": "active" },
+          "image_url": { "type": "string", "format": "uri", "example": "https://cdn.example.com/img.jpg" },
+          "tags": { "type": "array", "items": { "type": "string" }, "example": ["running", "sport"] },
+          "score": { "type": "number", "format": "float", "example": 0.95 }
+        }
+      },
+      "SearchResult": {
+        "type": "object",
+        "properties": {
+          "hits": { "type": "array", "items": { "$ref": "#/components/schemas/SearchHit" } },
+          "total": { "type": "integer", "example": 42 },
+          "page": { "type": "integer", "example": 1 },
+          "per_page": { "type": "integer", "example": 20 },
+          "engine": { "type": "string", "example": "elasticsearch", "description": "Active search engine (elasticsearch or memory)" }
+        }
+      },
+      "SearchResultResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/SearchResult" }
+        }
+      },
+      "SuggestData": {
+        "type": "object",
+        "properties": {
+          "suggestions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["running shoes", "running shorts", "running socks"]
+          }
+        }
+      },
+      "SuggestResponse": {
+        "type": "object",
+        "properties": {
+          "data": { "$ref": "#/components/schemas/SuggestData" }
+        }
+      },
+      "IndexProductRequest": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid", "description": "Product UUID" },
+          "name": { "type": "string", "minLength": 1, "example": "Running Shoe Pro" },
+          "slug": { "type": "string", "example": "running-shoe-pro" },
+          "description": { "type": "string", "example": "Lightweight running shoe" },
+          "category_id": { "type": "string", "format": "uuid" },
+          "category_name": { "type": "string", "example": "Shoes" },
+          "brand_id": { "type": "string", "format": "uuid" },
+          "brand_name": { "type": "string", "example": "SpeedBrand" },
+          "base_price": { "type": "integer", "format": "int64", "example": 9999, "description": "Price in cents" },
+          "currency": { "type": "string", "example": "USD" },
+          "status": { "type": "string", "example": "active" },
+          "image_url": { "type": "string", "format": "uri" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "attributes": { "type": "object", "additionalProperties": { "type": "string" }, "example": {"color": "red", "size": "42"} }
+        }
+      },
+      "IndexProductResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "status": { "type": "string", "example": "indexed" }
+            }
+          }
+        }
+      },
+      "DeleteProductResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "status": { "type": "string", "example": "deleted" }
+            }
+          }
+        }
+      },
+      "BulkIndexRequest": {
+        "type": "object",
+        "required": ["products"],
+        "properties": {
+          "products": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/IndexProductRequest" },
+            "minItems": 1,
+            "maxItems": 500
+          }
+        }
+      },
+      "BulkIndexResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "indexed": { "type": "integer", "example": 150 },
+              "status": { "type": "string", "example": "ok" }
+            }
+          }
+        }
+      },
+      "ReindexResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string", "example": "reindex started" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

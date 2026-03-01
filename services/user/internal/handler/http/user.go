@@ -65,6 +65,14 @@ type UpdateAddressRequest struct {
 // --- Handlers ---
 
 // GetProfile handles GET /api/v1/users/me
+// @Summary Get current user profile
+// @Description Returns the authenticated user's profile
+// @Tags users
+// @Produce json
+// @Security bearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /api/v1/users/me [get]
 func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserIDFromContext(r.Context())
 	if userID == "" {
@@ -84,6 +92,17 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateProfile handles PUT /api/v1/users/me
+// @Summary Update user profile
+// @Description Updates the authenticated user's profile — all fields are optional
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security bearerAuth
+// @Param request body UpdateProfileRequest true "Fields to update"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /api/v1/users/me [put]
 func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserIDFromContext(r.Context())
 	if userID == "" {
@@ -124,6 +143,14 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListAddresses handles GET /api/v1/users/me/addresses
+// @Summary List user addresses
+// @Description Returns all shipping addresses for the authenticated user
+// @Tags users
+// @Produce json
+// @Security bearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /api/v1/users/me/addresses [get]
 func (h *UserHandler) ListAddresses(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserIDFromContext(r.Context())
 	if userID == "" {
@@ -143,6 +170,17 @@ func (h *UserHandler) ListAddresses(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateAddress handles POST /api/v1/users/me/addresses
+// @Summary Create an address
+// @Description Adds a new shipping address for the authenticated user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security bearerAuth
+// @Param request body CreateAddressRequest true "Address to create"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /api/v1/users/me/addresses [post]
 func (h *UserHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserIDFromContext(r.Context())
 	if userID == "" {
@@ -191,6 +229,19 @@ func (h *UserHandler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateAddress handles PUT /api/v1/users/me/addresses/{id}
+// @Summary Update an address
+// @Description Partially updates a shipping address owned by the authenticated user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security bearerAuth
+// @Param id path string true "Address UUID"
+// @Param request body UpdateAddressRequest true "Fields to update"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/v1/users/me/addresses/{id} [put]
 func (h *UserHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserIDFromContext(r.Context())
 	if userID == "" {
@@ -243,6 +294,16 @@ func (h *UserHandler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteAddress handles DELETE /api/v1/users/me/addresses/{id}
+// @Summary Delete an address
+// @Description Deletes a shipping address owned by the authenticated user
+// @Tags users
+// @Produce json
+// @Security bearerAuth
+// @Param id path string true "Address UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/v1/users/me/addresses/{id} [delete]
 func (h *UserHandler) DeleteAddress(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserIDFromContext(r.Context())
 	if userID == "" {

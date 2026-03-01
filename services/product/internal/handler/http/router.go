@@ -11,6 +11,7 @@ import (
 
 	"github.com/utafrali/EcommerceGo/pkg/health"
 	"github.com/utafrali/EcommerceGo/pkg/middleware"
+	"github.com/utafrali/EcommerceGo/services/product/docs"
 	"github.com/utafrali/EcommerceGo/services/product/internal/repository/postgres"
 	"github.com/utafrali/EcommerceGo/services/product/internal/service"
 )
@@ -123,6 +124,10 @@ func NewRouter(
 		r.Put("/{id}", bannerHandler.UpdateBanner)
 		r.Delete("/{id}", bannerHandler.DeleteBanner)
 	})
+
+	// Swagger documentation
+	r.Get("/swagger/doc.json", docs.ServeSpec)
+	r.Get("/swagger/", docs.ServeUI)
 
 	return r
 }

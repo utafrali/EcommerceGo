@@ -60,6 +60,13 @@ type UpdateCategoryRequest struct {
 
 // ListCategories handles GET /api/v1/categories
 // Returns a flat list by default. Pass ?tree=true to get a nested tree structure.
+// @Summary List categories
+// @Description Returns a flat list of categories. Pass ?tree=true for a nested tree structure.
+// @Tags categories
+// @Produce json
+// @Param tree query bool false "Return categories as a nested tree"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/categories [get]
 func (h *CategoryHandler) ListCategories(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("tree") == "true" {
 		h.listCategoriesTree(w, r)
@@ -88,6 +95,14 @@ func (h *CategoryHandler) listCategoriesTree(w http.ResponseWriter, r *http.Requ
 
 // GetCategory handles GET /api/v1/categories/{id}
 // Accepts both a UUID (category ID) and a slug for lookup.
+// @Summary Get category by ID or slug
+// @Description Returns a category. Accepts UUID or URL slug.
+// @Tags categories
+// @Produce json
+// @Param id path string true "Category UUID or slug"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/v1/categories/{id} [get]
 func (h *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 	idOrSlug := chi.URLParam(r, "id")
 	if idOrSlug == "" {
@@ -117,6 +132,16 @@ func (h *CategoryHandler) GetCategory(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateCategory handles POST /api/v1/categories
+// @Summary Create a category
+// @Description Creates a new product category
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Param request body CreateCategoryRequest true "Category to create"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Router /api/v1/categories [post]
 func (h *CategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 	// Limit request body to 1MB to prevent DoS via large payloads.
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
@@ -186,6 +211,17 @@ func (h *CategoryHandler) CreateCategory(w http.ResponseWriter, r *http.Request)
 }
 
 // UpdateCategory handles PUT /api/v1/categories/{id}
+// @Summary Update a category
+// @Description Partially updates a category
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Param id path string true "Category UUID"
+// @Param request body UpdateCategoryRequest true "Fields to update"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/v1/categories/{id} [put]
 func (h *CategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -287,6 +323,14 @@ func (h *CategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request)
 }
 
 // DeleteCategory handles DELETE /api/v1/categories/{id}
+// @Summary Delete a category
+// @Description Deletes a category by UUID
+// @Tags categories
+// @Produce json
+// @Param id path string true "Category UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/v1/categories/{id} [delete]
 func (h *CategoryHandler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {

@@ -67,6 +67,17 @@ type CancelOrderRequest struct {
 // --- Handlers ---
 
 // CreateOrder handles POST /api/v1/orders
+// @Summary Create an order
+// @Description Creates a new order from the provided items, addresses, and pricing. Money values are in cents.
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param request body CreateOrderRequest true "Order creation data"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/orders/ [post]
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	// Limit request body to 1MB to prevent DoS via large payloads.
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
@@ -117,6 +128,18 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListOrders handles GET /api/v1/orders
+// @Summary List orders
+// @Description Returns a paginated list of orders, optionally filtered by user_id or status.
+// @Tags orders
+// @Produce json
+// @Param user_id query string false "Filter by user UUID"
+// @Param status query string false "Filter by order status" Enums(pending,confirmed,processing,shipped,delivered,canceled,refunded)
+// @Param page query int false "Page number" default(1)
+// @Param per_page query int false "Items per page (max 100)" default(20)
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/orders/ [get]
 func (h *OrderHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
 	filter := repository.OrderFilter{
 		Page:    1,
@@ -160,6 +183,16 @@ func (h *OrderHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetOrder handles GET /api/v1/orders/{id}
+// @Summary Get order by ID
+// @Description Returns a single order by its UUID.
+// @Tags orders
+// @Produce json
+// @Param id path string true "Order UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/orders/{id} [get]
 func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
 	if !ok {
@@ -176,6 +209,19 @@ func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateOrderStatus handles PUT /api/v1/orders/{id}/status
+// @Summary Update order status
+// @Description Transitions the order to a new status. Only valid state transitions are allowed.
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param id path string true "Order UUID"
+// @Param request body UpdateStatusRequest true "New status data"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/orders/{id}/status [put]
 func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
 	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
 	if !ok {
@@ -208,6 +254,19 @@ func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 }
 
 // CancelOrder handles POST /api/v1/orders/{id}/cancel
+// @Summary Cancel an order
+// @Description Cancels an order. The request body is optional; a cancellation reason may be provided.
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param id path string true "Order UUID"
+// @Param request body CancelOrderRequest false "Optional cancellation reason"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/orders/{id}/cancel [post]
 func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
 	if !ok {

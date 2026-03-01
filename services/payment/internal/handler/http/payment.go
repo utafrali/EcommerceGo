@@ -49,6 +49,18 @@ type RefundPaymentRequest struct {
 // --- Handlers ---
 
 // CreatePayment handles POST /api/v1/payments
+// @Summary Initialize a payment
+// @Description Creates a new payment record in pending status. Use the /process endpoint to charge.
+// @Tags payments
+// @Accept json
+// @Produce json
+// @Param request body CreatePaymentRequest true "Payment creation data"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 409 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/payments/ [post]
 func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
 
@@ -84,6 +96,16 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetPayment handles GET /api/v1/payments/{id}
+// @Summary Get payment by ID
+// @Description Returns a single payment record by its UUID.
+// @Tags payments
+// @Produce json
+// @Param id path string true "Payment UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/payments/{id} [get]
 func (h *PaymentHandler) GetPayment(w http.ResponseWriter, r *http.Request) {
 	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
 	if !ok {
@@ -100,6 +122,17 @@ func (h *PaymentHandler) GetPayment(w http.ResponseWriter, r *http.Request) {
 }
 
 // ProcessPayment handles POST /api/v1/payments/{id}/process
+// @Summary Process a payment
+// @Description Submits the payment to the configured payment provider.
+// @Tags payments
+// @Produce json
+// @Param id path string true "Payment UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/payments/{id}/process [post]
 func (h *PaymentHandler) ProcessPayment(w http.ResponseWriter, r *http.Request) {
 	id, ok := httputil.ParseUUID(w, chi.URLParam(r, "id"))
 	if !ok {
@@ -116,6 +149,19 @@ func (h *PaymentHandler) ProcessPayment(w http.ResponseWriter, r *http.Request) 
 }
 
 // RefundPayment handles POST /api/v1/payments/{id}/refund
+// @Summary Refund a payment
+// @Description Issues a full or partial refund for a succeeded payment.
+// @Tags payments
+// @Accept json
+// @Produce json
+// @Param id path string true "Payment UUID"
+// @Param request body RefundPaymentRequest true "Refund data"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 422 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/payments/{id}/refund [post]
 func (h *PaymentHandler) RefundPayment(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 
@@ -152,6 +198,16 @@ func (h *PaymentHandler) RefundPayment(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetPaymentByCheckoutID handles GET /api/v1/payments/checkout/{checkoutId}
+// @Summary Get payment by checkout ID
+// @Description Returns the payment associated with a given checkout session UUID.
+// @Tags payments
+// @Produce json
+// @Param checkoutId path string true "Checkout session UUID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/payments/checkout/{checkoutId} [get]
 func (h *PaymentHandler) GetPaymentByCheckoutID(w http.ResponseWriter, r *http.Request) {
 	checkoutID, ok := httputil.ParseUUID(w, chi.URLParam(r, "checkoutId"))
 	if !ok {
@@ -168,6 +224,17 @@ func (h *PaymentHandler) GetPaymentByCheckoutID(w http.ResponseWriter, r *http.R
 }
 
 // ListPaymentsByUser handles GET /api/v1/payments/user/{userId}
+// @Summary List payments by user
+// @Description Returns a paginated list of all payments for a given user.
+// @Tags payments
+// @Produce json
+// @Param userId path string true "User UUID"
+// @Param page query int false "Page number" default(1)
+// @Param per_page query int false "Items per page (max 100)" default(20)
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/payments/user/{userId} [get]
 func (h *PaymentHandler) ListPaymentsByUser(w http.ResponseWriter, r *http.Request) {
 	userID, ok := httputil.ParseUUID(w, chi.URLParam(r, "userId"))
 	if !ok {

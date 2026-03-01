@@ -1,0 +1,747 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Order Service API",
+    "description": "Manages customer orders, order items, and order status transitions.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "EcommerceGo",
+      "url": "https://github.com/utafrali/EcommerceGo"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8003",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    {
+      "name": "orders",
+      "description": "Order management operations"
+    }
+  ],
+  "paths": {
+    "/api/v1/orders/": {
+      "post": {
+        "tags": ["orders"],
+        "summary": "Create an order",
+        "description": "Creates a new order from the provided items and addresses. Money values are in cents (int64).",
+        "operationId": "createOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["orders"],
+        "summary": "List orders",
+        "description": "Returns a paginated list of orders, optionally filtered by user ID or status.",
+        "operationId": "listOrders",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "description": "Filter orders by user UUID",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter orders by status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "confirmed", "processing", "shipped", "delivered", "canceled", "refunded"]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Items per page (default: 20, max: 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of orders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{id}": {
+      "get": {
+        "tags": ["orders"],
+        "summary": "Get order by ID",
+        "description": "Returns a single order by its UUID.",
+        "operationId": "getOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Order UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{id}/status": {
+      "put": {
+        "tags": ["orders"],
+        "summary": "Update order status",
+        "description": "Transitions the order to a new status. Only valid state transitions are allowed.",
+        "operationId": "updateOrderStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Order UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or UUID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid status transition or validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{id}/cancel": {
+      "post": {
+        "tags": ["orders"],
+        "summary": "Cancel an order",
+        "description": "Cancels an order. The request body is optional; a reason may be provided.",
+        "operationId": "cancelOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Order UUID",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order canceled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid UUID format",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Order cannot be canceled in its current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Address": {
+        "type": "object",
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "example": "Jane Doe"
+          },
+          "address_line": {
+            "type": "string",
+            "example": "123 Main Street"
+          },
+          "city": {
+            "type": "string",
+            "example": "Istanbul"
+          },
+          "state": {
+            "type": "string",
+            "example": "Istanbul"
+          },
+          "postal_code": {
+            "type": "string",
+            "example": "34000"
+          },
+          "country": {
+            "type": "string",
+            "example": "TR"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+905001234567"
+          }
+        },
+        "required": ["full_name", "address_line", "city", "postal_code", "country"]
+      },
+      "CreateOrderItemRequest": {
+        "type": "object",
+        "required": ["product_id", "name", "price", "quantity"],
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "variant_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "660e8400-e29b-41d4-a716-446655440001"
+          },
+          "name": {
+            "type": "string",
+            "example": "Classic T-Shirt"
+          },
+          "sku": {
+            "type": "string",
+            "example": "TSH-001-BLK-M"
+          },
+          "price": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unit price in cents",
+            "example": 2999
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 2
+          }
+        }
+      },
+      "CreateOrderRequest": {
+        "type": "object",
+        "required": ["user_id", "items", "currency"],
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "770e8400-e29b-41d4-a716-446655440002"
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/CreateOrderItemRequest"
+            }
+          },
+          "discount_amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Discount amount in cents",
+            "example": 500
+          },
+          "shipping_amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Shipping cost in cents",
+            "example": 999
+          },
+          "currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3,
+            "example": "TRY"
+          },
+          "shipping_address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "billing_address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "notes": {
+            "type": "string",
+            "example": "Please leave at the door"
+          }
+        }
+      },
+      "UpdateStatusRequest": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["pending", "confirmed", "processing", "shipped", "delivered", "canceled", "refunded"],
+            "example": "confirmed"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Payment confirmed by provider"
+          }
+        }
+      },
+      "CancelOrderRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "Customer requested cancellation"
+          }
+        }
+      },
+      "OrderItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "order_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "variant_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "price": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unit price in cents"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "subtotal": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Line total in cents"
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "confirmed", "processing", "shipped", "delivered", "canceled", "refunded"]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderItem"
+            }
+          },
+          "subtotal_amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Sum of all line totals in cents"
+          },
+          "discount_amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Discount amount in cents"
+          },
+          "shipping_amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Shipping cost in cents"
+          },
+          "total_amount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Final total in cents"
+          },
+          "currency": {
+            "type": "string",
+            "example": "TRY"
+          },
+          "shipping_address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "billing_address": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "canceled_reason": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OrderResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Order"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        }
+      },
+      "OrderListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Order"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "per_page": {
+            "type": "integer",
+            "example": 20
+          },
+          "total": {
+            "type": "integer",
+            "example": 150
+          },
+          "total_pages": {
+            "type": "integer",
+            "example": 8
+          }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "NOT_FOUND"
+          },
+          "message": {
+            "type": "string",
+            "example": "order not found"
+          },
+          "request_id": {
+            "type": "string",
+            "example": "01HV9Y..."
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        }
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "VALIDATION_ERROR"
+              },
+              "message": {
+                "type": "string",
+                "example": "validation failed"
+              },
+              "fields": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "example": {
+                  "user_id": "required",
+                  "currency": "len=3"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

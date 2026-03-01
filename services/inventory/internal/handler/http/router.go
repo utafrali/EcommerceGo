@@ -11,6 +11,7 @@ import (
 
 	"github.com/utafrali/EcommerceGo/pkg/health"
 	"github.com/utafrali/EcommerceGo/pkg/middleware"
+	"github.com/utafrali/EcommerceGo/services/inventory/docs"
 	"github.com/utafrali/EcommerceGo/services/inventory/internal/service"
 )
 
@@ -41,6 +42,10 @@ func NewRouter(
 
 	// Pprof debug endpoints with IP allowlist.
 	middleware.RegisterPprof(r, pprofCIDRs, logger)
+
+	// Swagger documentation
+	r.Get("/swagger/doc.json", docs.ServeSpec)
+	r.Get("/swagger/", docs.ServeUI)
 
 	// Inventory API endpoints
 	inventoryHandler := NewInventoryHandler(inventoryService, logger)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/utafrali/EcommerceGo/pkg/health"
 	"github.com/utafrali/EcommerceGo/pkg/middleware"
+	"github.com/utafrali/EcommerceGo/services/cart/docs"
 	"github.com/utafrali/EcommerceGo/services/cart/internal/service"
 )
 
@@ -56,6 +57,10 @@ func NewRouter(
 		r.Put("/items/{productId}/{variantId}", cartHandler.UpdateItemQuantity)
 		r.Delete("/items/{productId}/{variantId}", cartHandler.RemoveItem)
 	})
+
+	// Swagger documentation
+	r.Get("/swagger/doc.json", docs.ServeSpec)
+	r.Get("/swagger/", docs.ServeUI)
 
 	return r
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/utafrali/EcommerceGo/pkg/health"
 	pkgmiddleware "github.com/utafrali/EcommerceGo/pkg/middleware"
+	"github.com/utafrali/EcommerceGo/services/gateway/docs"
 	"github.com/utafrali/EcommerceGo/services/gateway/internal/config"
 	gwmiddleware "github.com/utafrali/EcommerceGo/services/gateway/internal/middleware"
 	"github.com/utafrali/EcommerceGo/services/gateway/internal/proxy"
@@ -118,6 +119,10 @@ func NewRouter(cfg *config.Config, sp *proxy.ServiceProxy, healthHandler *health
 		r.Handle("/v1/media", sp.Handler("media"))
 		r.Handle("/v1/media/*", sp.Handler("media"))
 	})
+
+	// Swagger documentation
+	r.Get("/swagger/doc.json", docs.ServeSpec)
+	r.Get("/swagger/", docs.ServeUI)
 
 	return r
 }
