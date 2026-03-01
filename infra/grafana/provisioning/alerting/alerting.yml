@@ -1,0 +1,71 @@
+# =============================================================================
+# Grafana Alerting Provisioning — EcommerceGo
+# Pipeline Round 56
+#
+# Provisions:
+#   - Alertmanager contact point (points Grafana alerts → local Alertmanager)
+#   - Default notification policy
+#   - Mute timings for maintenance windows
+# =============================================================================
+
+apiVersion: 1
+
+# ---------------------------------------------------------------------------
+# Contact Points
+# ---------------------------------------------------------------------------
+contactPoints:
+  - orgId: 1
+    name: alertmanager
+    receivers:
+      - uid: alertmanager-receiver
+        type: alertmanager
+        settings:
+          url: "http://alertmanager:9093"
+          basicAuthUser: ""
+          basicAuthPassword: ""
+        disableResolveMessage: false
+
+  - orgId: 1
+    name: webhook-dev
+    receivers:
+      - uid: webhook-dev-receiver
+        type: webhook
+        settings:
+          url: "http://alertmanager:9093/api/v1/alerts"
+          httpMethod: POST
+          maxAlerts: 0
+        disableResolveMessage: false
+
+# ---------------------------------------------------------------------------
+# Notification Policies
+# ---------------------------------------------------------------------------
+policies:
+  - orgId: 1
+    receiver: alertmanager
+    group_by:
+      - alertname
+      - service
+      - team
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    routes:
+      - receiver: alertmanager
+        object_matchers:
+          - ["severity", "=", "critical"]
+        group_wait: 10s
+        repeat_interval: 1h
+
+# ---------------------------------------------------------------------------
+# Mute Timings (maintenance windows)
+# ---------------------------------------------------------------------------
+muteTimes:
+  - orgId: 1
+    name: weekend-maintenance
+    time_intervals:
+      - weekdays:
+          - saturday
+          - sunday
+        times:
+          - start_time: "02:00"
+            end_time: "06:00"

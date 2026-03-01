@@ -1,0 +1,139 @@
+# =============================================================================
+# EcommerceGo — Alertmanager Configuration
+# Pipeline Round 56
+#
+# Routes:
+#   critical → immediate webhook + (optional) email
+#   warning  → grouped webhook with 5m delay
+#
+# To enable email notifications set these environment variables:
+#   ALERTMANAGER_SMTP_HOST, ALERTMANAGER_SMTP_FROM
+#   ALERTMANAGER_SMTP_TO, ALERTMANAGER_SMTP_AUTH_USER
+#   ALERTMANAGER_SMTP_AUTH_PASSWORD
+#
+# To enable Slack notifications set:
+#   ALERTMANAGER_SLACK_WEBHOOK_URL
+# =============================================================================
+
+global:
+  # How long to wait before resending an alert that has not been resolved.
+  resolve_timeout: 5m
+
+  # SMTP settings — defaults to MailHog for local development.
+  # Override by running: envsubst < alertmanager.yml > alertmanager.resolved.yml
+  # or by providing a templated config via Docker secret.
+  smtp_smarthost: "mailhog:1025"
+  smtp_from: "alerts@ecommercego.local"
+  smtp_require_tls: false
+
+# ---------------------------------------------------------------------------
+# Templates
+# ---------------------------------------------------------------------------
+templates:
+  - "/etc/alertmanager/templates/*.tmpl"
+
+# ---------------------------------------------------------------------------
+# Routing tree
+# ---------------------------------------------------------------------------
+route:
+  # Default receiver for any alert not matched by a child route.
+  receiver: "webhook-dev"
+
+  # Group alerts that share the same alertname + service label into a single
+  # notification, batched for up to 30 seconds.
+  group_by: ["alertname", "service", "team"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  routes:
+    # Critical alerts: fire immediately, repeat every hour.
+    - matchers:
+        - severity = critical
+      receiver: "webhook-dev"
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: true  # also fall through to email if configured
+
+    # Critical alerts also go to email (no-op if smtp is not configured).
+    - matchers:
+        - severity = critical
+      receiver: "email-ops"
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Platform team alerts (ServiceDown, ServiceFlapping).
+    - matchers:
+        - team = platform
+      receiver: "webhook-dev"
+      group_wait: 10s
+
+    # Kafka-related alerts.
+    - matchers:
+        - alertname =~ "Kafka.*"
+      receiver: "webhook-dev"
+      group_interval: 10m
+
+# ---------------------------------------------------------------------------
+# Inhibition rules
+# ---------------------------------------------------------------------------
+inhibit_rules:
+  # Suppress warning-level alerts when a critical alert for the same service
+  # is already firing — avoid alert noise during an outage.
+  - source_matchers:
+      - severity = critical
+    target_matchers:
+      - severity = warning
+    equal: ["service"]
+
+  # Suppress all other alerts when a service is completely down.
+  - source_matchers:
+      - alertname = ServiceDown
+    target_matchers:
+      - alertname != ServiceDown
+    equal: ["job"]
+
+# ---------------------------------------------------------------------------
+# Receivers
+# ---------------------------------------------------------------------------
+receivers:
+
+  # Development webhook receiver — logs to MailHog or a simple HTTP server.
+  # Replace with a real endpoint (PagerDuty, OpsGenie, Slack, etc.) for production.
+  - name: "webhook-dev"
+    webhook_configs:
+      - url: "http://mailhog:1025"
+        send_resolved: true
+        http_config:
+          # No auth for the dev mailhog stub endpoint.
+        # Payload template — Alertmanager sends JSON by default.
+        # For a real webhook, override with a custom template.
+
+  # Email receiver (ops team) — configure SMTP credentials for production.
+  # Replace the placeholder values below with real addresses before deploying.
+  - name: "email-ops"
+    email_configs:
+      - to: "ops@ecommercego.local"
+        auth_username: ""
+        auth_password: ""
+        send_resolved: true
+        headers:
+          Subject: "[EcommerceGo] {{ .GroupLabels.alertname }} — {{ .Status | toUpper }}"
+        html: |
+          <!DOCTYPE html>
+          <html>
+          <body>
+            <h2>{{ .GroupLabels.alertname }} — {{ .Status | toUpper }}</h2>
+            <p><strong>Severity:</strong> {{ .CommonLabels.severity }}</p>
+            <p><strong>Team:</strong> {{ .CommonLabels.team }}</p>
+            <ul>
+            {{ range .Alerts }}
+              <li>
+                <strong>{{ .Labels.alertname }}</strong>: {{ .Annotations.description }}<br/>
+                Started: {{ .StartsAt | since }}
+              </li>
+            {{ end }}
+            </ul>
+            <p><a href="{{ .ExternalURL }}">View in Alertmanager</a></p>
+          </body>
+          </html>

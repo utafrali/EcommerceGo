@@ -1,0 +1,316 @@
+# =============================================================================
+# EcommerceGo — Prometheus Alerting Rules
+# Pipeline Round 56
+#
+# Groups:
+#   ecommerce_availability  — service up/down
+#   ecommerce_http          — error rate + latency
+#   ecommerce_circuit       — circuit breaker state
+#   ecommerce_database      — DB pool saturation
+#   ecommerce_kafka         — Kafka consumer/producer health
+# =============================================================================
+
+groups:
+
+  # ---------------------------------------------------------------------------
+  # Availability: service up/down
+  # ---------------------------------------------------------------------------
+  - name: ecommerce_availability
+    rules:
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: >
+            Prometheus target {{ $labels.job }} ({{ $labels.instance }}) has been
+            unreachable for more than 1 minute. Check pod status and health endpoint.
+          runbook: "https://github.com/utafrali/EcommerceGo/wiki/runbooks/service-down"
+
+      - alert: ServiceFlapping
+        # Fires when a service has gone down and come back up more than 3 times
+        # in 15 minutes — indicates an unstable service.
+        expr: changes(up[15m]) > 6
+        for: 0m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Service {{ $labels.job }} is flapping"
+          description: >
+            Service {{ $labels.job }} has toggled up/down {{ $value }} times in
+            the past 15 minutes. Investigate crash-loop or networking issues.
+
+  # ---------------------------------------------------------------------------
+  # HTTP: error rate and latency
+  # ---------------------------------------------------------------------------
+  - name: ecommerce_http
+    rules:
+
+      - alert: HighHTTPErrorRate
+        expr: |
+          (
+            sum by (service) (rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum by (service) (rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High HTTP 5xx error rate on {{ $labels.service }}"
+          description: >
+            Service {{ $labels.service }} has a 5xx error rate of
+            {{ humanizePercentage $value }} (threshold: 5%) over the last 5 minutes.
+          runbook: "https://github.com/utafrali/EcommerceGo/wiki/runbooks/high-error-rate"
+
+      - alert: CriticalHTTPErrorRate
+        expr: |
+          (
+            sum by (service) (rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum by (service) (rate(http_requests_total[5m]))
+          ) > 0.25
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Critical HTTP 5xx error rate on {{ $labels.service }}"
+          description: >
+            Service {{ $labels.service }} has a 5xx error rate of
+            {{ humanizePercentage $value }} (threshold: 25%) over the last 5 minutes.
+            Immediate investigation required.
+          runbook: "https://github.com/utafrali/EcommerceGo/wiki/runbooks/high-error-rate"
+
+      - alert: HighHTTPLatencyP99
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (service, le) (rate(http_request_duration_seconds_bucket[5m]))
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High p99 latency on {{ $labels.service }}"
+          description: >
+            Service {{ $labels.service }} p99 request latency is
+            {{ humanizeDuration $value }} (threshold: 500ms) over the last 5 minutes.
+          runbook: "https://github.com/utafrali/EcommerceGo/wiki/runbooks/high-latency"
+
+      - alert: CriticalHTTPLatencyP99
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (service, le) (rate(http_request_duration_seconds_bucket[5m]))
+          ) > 2.0
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Critical p99 latency on {{ $labels.service }}"
+          description: >
+            Service {{ $labels.service }} p99 request latency is
+            {{ humanizeDuration $value }} (threshold: 2s) over the last 5 minutes.
+            SLO breach likely. Immediate investigation required.
+          runbook: "https://github.com/utafrali/EcommerceGo/wiki/runbooks/high-latency"
+
+      - alert: HighInFlightRequests
+        expr: http_requests_in_flight > 500
+        for: 2m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High in-flight requests on {{ $labels.service }}"
+          description: >
+            Service {{ $labels.service }} has {{ $value }} in-flight requests
+            (threshold: 500), suggesting a traffic spike or slow upstream.
+
+  # ---------------------------------------------------------------------------
+  # Circuit Breaker: open state and fallback invocations
+  # ---------------------------------------------------------------------------
+  - name: ecommerce_circuit
+    rules:
+
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state == 2
+        for: 1m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Circuit breaker {{ $labels.name }} is open"
+          description: >
+            Circuit breaker {{ $labels.name }} has been in the OPEN state for
+            more than 1 minute, indicating repeated failures to a downstream
+            service. Saga fallbacks may be active.
+          runbook: "https://github.com/utafrali/EcommerceGo/wiki/runbooks/circuit-breaker"
+
+      - alert: CircuitBreakerFallbackSpiking
+        expr: rate(circuit_breaker_fallback_invoked_total[5m]) > 1
+        for: 2m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Circuit breaker {{ $labels.name }} fallback spiking"
+          description: >
+            Circuit breaker {{ $labels.name }} fallback is being invoked at
+            {{ $value | humanize }} req/s. This means the circuit is open and
+            degraded responses are being served.
+
+  # ---------------------------------------------------------------------------
+  # Database Pool: connection saturation
+  # ---------------------------------------------------------------------------
+  - name: ecommerce_database
+    rules:
+
+      - alert: DatabasePoolSaturated
+        expr: |
+          (
+            db_pool_acquired_connections
+            /
+            db_pool_max_connections
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "DB pool saturated for service {{ $labels.service }}"
+          description: >
+            Service {{ $labels.service }} DB connection pool utilization is
+            {{ humanizePercentage $value }} (threshold: 80%). Consider increasing
+            DB_MAX_CONNS or investigating slow queries.
+          runbook: "https://github.com/utafrali/EcommerceGo/wiki/runbooks/db-pool-saturation"
+
+      - alert: DatabasePoolExhausted
+        expr: |
+          (
+            db_pool_acquired_connections
+            /
+            db_pool_max_connections
+          ) >= 1.0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "DB pool exhausted for service {{ $labels.service }}"
+          description: >
+            Service {{ $labels.service }} DB connection pool is fully exhausted
+            ({{ humanizePercentage $value }}). New DB requests will queue or fail.
+            Immediate action required: scale DB or reduce load.
+          runbook: "https://github.com/utafrali/EcommerceGo/wiki/runbooks/db-pool-saturation"
+
+      - alert: DatabaseHighAcquireWait
+        # Rate of empty-acquire events (had to wait for a free connection) is high
+        expr: rate(db_pool_empty_acquire_count_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High DB acquire wait rate for service {{ $labels.service }}"
+          description: >
+            Service {{ $labels.service }} is waiting for DB connections at
+            {{ $value | humanize }} waits/s. Pool may be undersized.
+
+      - alert: DatabaseHighCanceledAcquires
+        expr: rate(db_pool_canceled_acquire_count_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High canceled DB acquires for service {{ $labels.service }}"
+          description: >
+            Service {{ $labels.service }} is canceling DB connection acquires
+            at {{ $value | humanize }}/s, possibly due to context timeouts.
+
+  # ---------------------------------------------------------------------------
+  # Kafka: consumer failures and DLQ activity
+  # ---------------------------------------------------------------------------
+  - name: ecommerce_kafka
+    rules:
+
+      - alert: KafkaDLQActivity
+        expr: rate(kafka_consumer_dlq_published_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Kafka DLQ activity on topic {{ $labels.topic }}"
+          description: >
+            Consumer group {{ $labels.consumer_group }} is sending messages to
+            the dead-letter queue for topic {{ $labels.topic }} at
+            {{ $value | humanize }} msg/s. Investigate message processing errors.
+          runbook: "https://github.com/utafrali/EcommerceGo/wiki/runbooks/kafka-dlq"
+
+      - alert: KafkaConsumerHighFailureRate
+        expr: |
+          (
+            sum by (topic, consumer_group) (rate(kafka_consumer_messages_failed_total[5m]))
+            /
+            sum by (topic, consumer_group) (rate(kafka_consumer_messages_received_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High Kafka consumer failure rate for {{ $labels.topic }}"
+          description: >
+            Consumer group {{ $labels.consumer_group }} has a
+            {{ humanizePercentage $value }} failure rate for topic {{ $labels.topic }}
+            (threshold: 5%). Messages may be accumulating in DLQ.
+          runbook: "https://github.com/utafrali/EcommerceGo/wiki/runbooks/kafka-consumer-failures"
+
+      - alert: KafkaProducerHighErrorRate
+        expr: |
+          (
+            sum by (topic) (rate(kafka_producer_publish_errors_total[5m]))
+            /
+            (
+              sum by (topic) (rate(kafka_producer_messages_published_total[5m]))
+              + sum by (topic) (rate(kafka_producer_publish_errors_total[5m]))
+            )
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High Kafka producer error rate for topic {{ $labels.topic }}"
+          description: >
+            Kafka producer error rate for topic {{ $labels.topic }} is
+            {{ humanizePercentage $value }} (threshold: 5%).
+            Check broker connectivity and topic configuration.
+          runbook: "https://github.com/utafrali/EcommerceGo/wiki/runbooks/kafka-producer-errors"
+
+      - alert: KafkaConsumerProcessingSlow
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (topic, consumer_group, le) (rate(kafka_consumer_processing_duration_seconds_bucket[5m]))
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Slow Kafka message processing for {{ $labels.topic }}"
+          description: >
+            Consumer group {{ $labels.consumer_group }} p99 processing time for
+            topic {{ $labels.topic }} is {{ humanizeDuration $value }} (threshold: 5s).
+            Handler may be blocking or calling slow downstream services.
