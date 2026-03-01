@@ -7,12 +7,14 @@ on:
       - 'services/**'
       - 'pkg/**'
       - 'proto/**'
+      - '.github/workflows/**'
   pull_request:
     branches: [main]
     paths:
       - 'services/**'
       - 'pkg/**'
       - 'proto/**'
+      - '.github/workflows/**'
 
 jobs:
   lint:
