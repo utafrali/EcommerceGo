@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/google/uuid"
@@ -162,9 +164,17 @@ func TestSearchService_BulkIndex_SkipsEmptyID(t *testing.T) {
 
 func TestSearchService_Reindex(t *testing.T) {
 	ctx := context.Background()
-	svc := newTestService()
 
-	// Reindex is a placeholder; just verify it does not error.
+	// Serve an empty products page so Reindex completes without error.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[],"total_count":0,"page":1,"total_pages":0}`))
+	}))
+	defer srv.Close()
+
+	eng := memory.New()
+	svc := NewSearchService(eng, newTestLogger(), srv.URL)
+
 	err := svc.Reindex(ctx)
 	assert.NoError(t, err)
 }

@@ -106,7 +106,7 @@ func sampleOrder() *domain.Order {
 	now := time.Now().UTC()
 	return &domain.Order{
 		ID:     "550e8400-e29b-41d4-a716-446655440001",
-		UserID: "user-456",
+		UserID: "550e8400-e29b-41d4-a716-446655440099",
 		Status: domain.OrderStatusPending,
 		Items: []domain.OrderItem{
 			{
@@ -143,7 +143,7 @@ func sampleOrder() *domain.Order {
 // validCreateOrderJSON returns a valid JSON body for POST /api/v1/orders.
 func validCreateOrderJSON() []byte {
 	body := CreateOrderRequest{
-		UserID: "user-456",
+		UserID: "550e8400-e29b-41d4-a716-446655440099",
 		Items: []CreateOrderItemRequest{
 			{
 				ProductID: "550e8400-e29b-41d4-a716-446655440020",
@@ -199,7 +199,7 @@ func TestCreateOrder_Success(t *testing.T) {
 	// Verify the returned order data contains expected fields.
 	data, ok := resp.Data.(map[string]interface{})
 	require.True(t, ok)
-	assert.Equal(t, "user-456", data["user_id"])
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440099", data["user_id"])
 	assert.Equal(t, "pending", data["status"])
 	assert.Equal(t, "USD", data["currency"])
 	assert.Equal(t, "Leave at door", data["notes"])
@@ -231,7 +231,7 @@ func TestCreateOrder_ValidationError_NoItems(t *testing.T) {
 	router := setupOrderRouter(handler)
 
 	body := CreateOrderRequest{
-		UserID:   "user-456",
+		UserID:   "550e8400-e29b-41d4-a716-446655440099",
 		Items:    []CreateOrderItemRequest{}, // empty items
 		Currency: "USD",
 	}
@@ -259,7 +259,7 @@ func TestCreateOrder_ValidationError_MissingUserID(t *testing.T) {
 		UserID: "", // missing required field
 		Items: []CreateOrderItemRequest{
 			{
-				ProductID: "prod-1",
+				ProductID: "550e8400-e29b-41d4-a716-446655440020",
 				Name:      "Product",
 				Price:     999,
 				Quantity:  1,
@@ -287,10 +287,10 @@ func TestCreateOrder_ValidationError_InvalidCurrency(t *testing.T) {
 	router := setupOrderRouter(handler)
 
 	body := CreateOrderRequest{
-		UserID: "user-456",
+		UserID: "550e8400-e29b-41d4-a716-446655440099",
 		Items: []CreateOrderItemRequest{
 			{
-				ProductID: "prod-1",
+				ProductID: "550e8400-e29b-41d4-a716-446655440020",
 				Name:      "Product",
 				Price:     999,
 				Quantity:  1,
@@ -608,7 +608,7 @@ func TestGetOrder_Success(t *testing.T) {
 	data, ok := resp.Data.(map[string]interface{})
 	require.True(t, ok)
 	assert.Equal(t, order.ID, data["id"])
-	assert.Equal(t, "user-456", data["user_id"])
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440099", data["user_id"])
 	assert.Equal(t, "pending", data["status"])
 	assert.Equal(t, float64(4498), data["total_amount"])
 	assert.Equal(t, "USD", data["currency"])
@@ -749,12 +749,11 @@ func TestUpdateOrderStatus_InvalidStatus(t *testing.T) {
 
 	router.ServeHTTP(rec, req)
 
-	// The service validates the status and returns InvalidInput.
+	// The validator rejects the status with oneof constraint.
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	resp := decodeResponse(t, rec)
 	require.NotNil(t, resp.Error)
-	assert.Equal(t, "INVALID_INPUT", resp.Error.Code)
-	assert.Contains(t, resp.Error.Message, "invalid status")
+	assert.Equal(t, "VALIDATION_ERROR", resp.Error.Code)
 }
 
 func TestUpdateOrderStatus_InvalidTransition(t *testing.T) {
