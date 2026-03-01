@@ -317,6 +317,24 @@ services:
       - ecommerce-net
 
   # ---------------------------------------------------------------------------
+  # k6 -- Load testing runner (profile: loadtest)
+  # ---------------------------------------------------------------------------
+  k6:
+    image: grafana/k6:0.54.0
+    container_name: ecommerce-k6
+    profiles: ["loadtest"]
+    environment:
+      BASE_URL: ${K6_BASE_URL:-http://gateway:8080}
+      K6_OUT: ${K6_OUT:-json=/results/k6-results.json}
+      K6_TEST_TOKEN: ${K6_TEST_TOKEN:-}
+    volumes:
+      - ./k6:/k6:ro
+      - ./k6/results:/results
+    command: run ${K6_SCRIPT:-/k6/scenarios/smoke.js}
+    networks:
+      - ecommerce-net
+
+  # ---------------------------------------------------------------------------
   # Jaeger -- Distributed tracing backend (all-in-one)
   # ---------------------------------------------------------------------------
   jaeger:

@@ -5,7 +5,9 @@
 .PHONY: help setup build test lint proto-gen docker-up docker-down docker-infra \
         docker-infra-down docker-build docker-logs docker-backend docker-ps \
         migrate migrate-down seed clean fmt vet build-all test-all \
-        security-scan vuln-check security-all swagger
+        security-scan vuln-check security-all swagger \
+        k6-smoke k6-load k6-spike k6-stress k6-product k6-search k6-user \
+        k6-cart k6-gateway k6-all k6-docker
 
 # Default target
 help: ## Show this help
@@ -222,6 +224,42 @@ vuln-check: ## Run govulncheck for dependency vulnerabilities on all Go modules
 	@echo "VULNERABILITY CHECK PASSED"
 
 security-all: security-scan vuln-check ## Run all security checks (gosec + govulncheck)
+
+# -----------------------------------------------------------------------------
+# Load Testing (k6)
+# -----------------------------------------------------------------------------
+k6-smoke: ## Run k6 smoke test (1 VU, 2m) against BASE_URL (default: localhost:8080)
+	k6 run --env BASE_URL=$${BASE_URL:-http://localhost:8080} k6/scenarios/smoke.js
+
+k6-load: ## Run k6 sustained load test (50 VUs, 9m) — staging only
+	k6 run --env BASE_URL=$${BASE_URL:-http://localhost:8080} k6/scenarios/load.js
+
+k6-spike: ## Run k6 spike test (0→200 VUs) — staging only
+	k6 run --env BASE_URL=$${BASE_URL:-http://localhost:8080} k6/scenarios/spike.js
+
+k6-stress: ## Run k6 stress test (find breaking point) — staging only
+	k6 run --env BASE_URL=$${BASE_URL:-http://localhost:8080} k6/scenarios/stress.js
+
+k6-product: ## Run k6 product service tests
+	k6 run --env BASE_URL=$${BASE_URL:-http://localhost:8080} k6/tests/product.js
+
+k6-search: ## Run k6 search service tests
+	k6 run --env BASE_URL=$${BASE_URL:-http://localhost:8080} k6/tests/search.js
+
+k6-user: ## Run k6 user service tests
+	k6 run --env BASE_URL=$${BASE_URL:-http://localhost:8080} k6/tests/user.js
+
+k6-cart: ## Run k6 cart service tests
+	k6 run --env BASE_URL=$${BASE_URL:-http://localhost:8080} k6/tests/cart.js
+
+k6-gateway: ## Run k6 gateway tests
+	k6 run --env BASE_URL=$${BASE_URL:-http://localhost:8080} k6/tests/gateway.js
+
+k6-all: k6-smoke k6-product k6-search k6-gateway ## Run all quick k6 tests (smoke + per-service)
+
+k6-docker: ## Run k6 via Docker Compose (K6_SCRIPT=scenarios/smoke.js)
+	docker compose -f docker-compose.infra.yml --profile loadtest \
+		run --rm k6 run /k6/$${K6_SCRIPT:-scenarios/smoke.js}
 
 # -----------------------------------------------------------------------------
 # Clean

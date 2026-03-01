@@ -63,3 +63,7 @@ tmp/
 
 test-results/
 *.tsbuildinfo
+
+# k6 results
+k6/results/*.json
+k6/results/*.csv
