@@ -329,7 +329,6 @@ func TestReindex_MapsNestedCategoryBrandImage(t *testing.T) {
 	assert.Equal(t, "https://img.example.com/shoe.jpg", p.ImageURL)
 }
 
-
 func TestReindex_ConcurrencyGuard(t *testing.T) {
 	// Server that takes a moment to respond, giving time for a concurrent call.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -206,4 +206,3 @@ func (h *PaymentHandler) ListPaymentsByUser(w http.ResponseWriter, r *http.Reque
 
 	httputil.WriteJSON(w, http.StatusOK, httputil.NewPaginatedResponse[domain.Payment](payments, total, page, perPage))
 }
-

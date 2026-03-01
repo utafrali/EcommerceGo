@@ -98,7 +98,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 		event.TopicProductDeleted,
 	}
 
-	var consumers []*pkgkafka.Consumer
+	consumers := make([]*pkgkafka.Consumer, 0, len(topics))
 	for _, topic := range topics {
 		consumerCfg := pkgkafka.ConsumerConfig{
 			Brokers:   cfg.KafkaBrokers,

@@ -83,7 +83,7 @@ func (h *BannerHandler) ListBanners(w http.ResponseWriter, r *http.Request) {
 		filter.Position = &v
 	}
 	if v := r.URL.Query().Get("is_active"); v != "" {
-		active := strings.ToLower(v) == "true"
+		active := strings.EqualFold(v, "true")
 		filter.IsActive = &active
 	}
 
@@ -267,4 +267,3 @@ func (h *BannerHandler) DeleteBanner(w http.ResponseWriter, r *http.Request) {
 
 	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id, "status": "deleted"}})
 }
-

@@ -182,18 +182,18 @@ func sampleCampaign() *domain.Campaign {
 func validCreateCampaignJSON() []byte {
 	now := time.Now().UTC()
 	req := CreateCampaignRequest{
-		Name:          "Summer Sale",
-		Description:   "10% off everything",
-		Type:          "percentage",
-		DiscountValue: 1000,
-		MinOrderAmount: 5000,
+		Name:              "Summer Sale",
+		Description:       "10% off everything",
+		Type:              "percentage",
+		DiscountValue:     1000,
+		MinOrderAmount:    5000,
 		MaxDiscountAmount: 10000,
-		Code:          "SUMMER10",
-		MaxUsageCount: 100,
-		IsStackable:   false,
-		Priority:      1,
-		StartDate:     now.Add(24 * time.Hour).Format(time.RFC3339),
-		EndDate:       now.Add(30 * 24 * time.Hour).Format(time.RFC3339),
+		Code:              "SUMMER10",
+		MaxUsageCount:     100,
+		IsStackable:       false,
+		Priority:          1,
+		StartDate:         now.Add(24 * time.Hour).Format(time.RFC3339),
+		EndDate:           now.Add(30 * 24 * time.Hour).Format(time.RFC3339),
 	}
 	b, _ := json.Marshal(req)
 	return b
@@ -277,8 +277,8 @@ func TestCreateCampaign_InvalidDateFormat(t *testing.T) {
 		Name:          "Summer Sale",
 		Type:          "percentage",
 		DiscountValue: 1000,
-		StartDate:     "2025-01-01",  // Not RFC3339
-		EndDate:       "2025-12-31",  // Not RFC3339
+		StartDate:     "2025-01-01", // Not RFC3339
+		EndDate:       "2025-12-31", // Not RFC3339
 	}
 	b, _ := json.Marshal(reqBody)
 
@@ -361,7 +361,7 @@ func TestCreateCampaign_InvalidCodePattern(t *testing.T) {
 		Name:          "Summer Sale",
 		Type:          "percentage",
 		DiscountValue: 1000,
-		Code:          "invalid lowercase code",  // lowercase not allowed
+		Code:          "invalid lowercase code", // lowercase not allowed
 		StartDate:     now.Add(24 * time.Hour).Format(time.RFC3339),
 		EndDate:       now.Add(30 * 24 * time.Hour).Format(time.RFC3339),
 	}
@@ -958,7 +958,7 @@ func TestValidateCoupon_ValidationError_InvalidCurrency(t *testing.T) {
 	validateReq := ValidateCouponRequest{
 		Code:        "SUMMER10",
 		OrderAmount: 10000,
-		Currency:    "TOOLONG",  // must be len=3
+		Currency:    "TOOLONG", // must be len=3
 		UserID:      "550e8400-e29b-41d4-a716-446655440010",
 	}
 	b, _ := json.Marshal(validateReq)
@@ -984,7 +984,7 @@ func TestValidateCoupon_ValidationError_InvalidUserID(t *testing.T) {
 		Code:        "SUMMER10",
 		OrderAmount: 10000,
 		Currency:    "USD",
-		UserID:      "not-a-uuid",  // must be uuid
+		UserID:      "not-a-uuid", // must be uuid
 	}
 	b, _ := json.Marshal(validateReq)
 

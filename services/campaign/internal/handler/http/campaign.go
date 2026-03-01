@@ -518,4 +518,3 @@ func (h *CampaignHandler) DeleteStackingRule(w http.ResponseWriter, r *http.Requ
 
 	httputil.WriteJSON(w, http.StatusNoContent, nil)
 }
-

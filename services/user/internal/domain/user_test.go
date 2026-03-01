@@ -61,6 +61,10 @@ func TestUser_ActiveUser(t *testing.T) {
 	assert.True(t, u.IsActive)
 	assert.True(t, u.EmailVerified)
 	assert.Equal(t, RoleCustomer, u.Role)
+	assert.Equal(t, "user-1", u.ID)
+	assert.Equal(t, "test@example.com", u.Email)
+	assert.Equal(t, "John", u.FirstName)
+	assert.Equal(t, "Doe", u.LastName)
 }
 
 func TestUser_OAuthFields(t *testing.T) {
@@ -120,6 +124,8 @@ func TestAddress_RequiredFields(t *testing.T) {
 		PostalCode:   "10001",
 		CountryCode:  "US",
 	}
+	assert.NotEmpty(t, addr.ID)
+	assert.NotEmpty(t, addr.UserID)
 	assert.NotEmpty(t, addr.FirstName)
 	assert.NotEmpty(t, addr.LastName)
 	assert.NotEmpty(t, addr.AddressLine1)

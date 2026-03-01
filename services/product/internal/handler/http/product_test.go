@@ -162,15 +162,6 @@ func sampleProduct() *domain.Product {
 	}
 }
 
-func sampleProductDetail() *domain.ProductDetail {
-	p := sampleProduct()
-	return &domain.ProductDetail{
-		Product:  *p,
-		Images:   []domain.ProductImage{},
-		Variants: []domain.ProductVariant{},
-	}
-}
-
 // =============================================================================
 // POST /api/v1/products - CreateProduct
 // =============================================================================
@@ -699,10 +690,10 @@ func TestDeleteProduct_NotFound(t *testing.T) {
 
 func TestCreateProduct_TableDriven(t *testing.T) {
 	tests := []struct {
-		name           string
-		body           string
-		expectStatus   int
-		expectErrCode  string
+		name          string
+		body          string
+		expectStatus  int
+		expectErrCode string
 	}{
 		{
 			name:          "empty body",

@@ -12,14 +12,14 @@ import (
 
 	"github.com/utafrali/EcommerceGo/pkg/database"
 	"github.com/utafrali/EcommerceGo/pkg/health"
-	"github.com/utafrali/EcommerceGo/pkg/tracing"
-	"github.com/utafrali/EcommerceGo/services/campaign/migrations"
 	pkgkafka "github.com/utafrali/EcommerceGo/pkg/kafka"
+	"github.com/utafrali/EcommerceGo/pkg/tracing"
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/config"
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/event"
 	handler "github.com/utafrali/EcommerceGo/services/campaign/internal/handler/http"
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/repository/postgres"
 	"github.com/utafrali/EcommerceGo/services/campaign/internal/service"
+	"github.com/utafrali/EcommerceGo/services/campaign/migrations"
 )
 
 // App wires together all dependencies and runs the campaign service.
@@ -110,9 +110,9 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	router := handler.NewRouter(campaignService, healthHandler, logger, cfg.PprofAllowedCIDRs)
 
 	httpServer := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.HTTPPort),
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
+		Addr:              fmt.Sprintf(":%d", cfg.HTTPPort),
+		Handler:           router,
+		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,

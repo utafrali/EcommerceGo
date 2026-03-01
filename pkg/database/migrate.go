@@ -61,7 +61,7 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool, migrations embed.FS,
 			)
 			select {
 			case <-ctx.Done():
-				return fmt.Errorf("run migrations: context cancelled during retry: %w", ctx.Err())
+				return fmt.Errorf("run migrations: context canceled during retry: %w", ctx.Err())
 			case <-time.After(wait):
 			}
 			if err = runMigrationsOnce(ctx, pool, migrations, logger); err == nil {

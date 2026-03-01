@@ -342,4 +342,3 @@ func (h *InventoryHandler) ListLowStock(w http.ResponseWriter, r *http.Request) 
 
 	httputil.WriteJSON(w, http.StatusOK, httputil.NewPaginatedResponse[domain.Stock](stocks, total, page, perPage))
 }
-

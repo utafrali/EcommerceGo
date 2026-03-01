@@ -78,11 +78,13 @@ func TestStock_LowStockThreshold(t *testing.T) {
 func TestStockMovement_NegativeQuantityChange(t *testing.T) {
 	m := StockMovement{QuantityChange: -5, Reason: MovementReasonOrder}
 	assert.Equal(t, -5, m.QuantityChange)
+	assert.Equal(t, MovementReasonOrder, m.Reason)
 }
 
 func TestStockMovement_PositiveQuantityChange(t *testing.T) {
 	m := StockMovement{QuantityChange: 10, Reason: MovementReasonReturn}
 	assert.Equal(t, 10, m.QuantityChange)
+	assert.Equal(t, MovementReasonReturn, m.Reason)
 }
 
 // ============================================================================
@@ -92,11 +94,13 @@ func TestStockMovement_PositiveQuantityChange(t *testing.T) {
 func TestStockCheckResult_InStock(t *testing.T) {
 	r := StockCheckResult{Requested: 5, Available: 10, InStock: true}
 	assert.True(t, r.InStock)
+	assert.Equal(t, 5, r.Requested)
 }
 
 func TestStockCheckResult_OutOfStock(t *testing.T) {
 	r := StockCheckResult{Requested: 15, Available: 10, InStock: false}
 	assert.False(t, r.InStock)
+	assert.Equal(t, 15, r.Requested)
 }
 
 // ============================================================================

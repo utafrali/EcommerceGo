@@ -73,7 +73,7 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 			)
 			select {
 			case <-ctx.Done():
-				return nil, fmt.Errorf("connect to redis: context cancelled during retry: %w", ctx.Err())
+				return nil, fmt.Errorf("connect to redis: context canceled during retry: %w", ctx.Err())
 			case <-time.After(wait):
 			}
 		} else {
@@ -115,9 +115,9 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	router := handler.NewRouter(cartService, healthHandler, logger, cfg.PprofAllowedCIDRs)
 
 	httpServer := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.HTTPPort),
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
+		Addr:              fmt.Sprintf(":%d", cfg.HTTPPort),
+		Handler:           router,
+		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,

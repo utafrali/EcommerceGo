@@ -592,10 +592,8 @@ func (s *CampaignService) ValidateMultipleCoupons(ctx context.Context, input *Va
 		var bestNonStackable *candidateCoupon
 		for i := range candidates {
 			if !candidates[i].campaign.IsStackable {
-				if bestNonStackable == nil {
-					bestNonStackable = &candidates[i]
-				}
 				// Already sorted by priority then discount, so the first non-stackable is the best.
+				bestNonStackable = &candidates[i]
 				break
 			}
 		}
@@ -707,7 +705,6 @@ func (s *CampaignService) ValidateMultipleCoupons(ctx context.Context, input *Va
 		validCoupons = append(validCoupons, *c.validation)
 		totalDiscount += c.validation.DiscountAmount
 	}
-
 
 	// Ensure total discount does not exceed order amount.
 	if totalDiscount > input.OrderAmount {

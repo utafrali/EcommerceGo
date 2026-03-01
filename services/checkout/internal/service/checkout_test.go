@@ -787,7 +787,7 @@ func TestCancelCheckout_Success(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, domain.StatusFailed, session.Status)
-	assert.Equal(t, "cancelled by user", session.FailureReason)
+	assert.Equal(t, "canceled by user", session.FailureReason)
 	// Reservation IDs should be cleared.
 	for _, item := range session.Items {
 		assert.Empty(t, item.ReservationID)

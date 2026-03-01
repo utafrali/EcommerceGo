@@ -27,7 +27,7 @@ type DownstreamErrorResponse struct {
 // The caller should only invoke this when resp.StatusCode indicates an error
 // (i.e., not 2xx). The response body is fully consumed and closed.
 func ParseResponseError(resp *http.Response, serviceName string) error {
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1 MB limit
 	if err != nil {

@@ -29,8 +29,8 @@ type Config struct {
 	// Database pool
 	DBMaxConns            int32 `env:"DB_MAX_CONNS" envDefault:"25"`
 	DBMinConns            int32 `env:"DB_MIN_CONNS" envDefault:"5"`
-	DBMaxConnLifetimeMins int `env:"DB_MAX_CONN_LIFETIME_MINUTES" envDefault:"60"`
-	DBMaxConnIdleTimeMins int `env:"DB_MAX_CONN_IDLE_TIME_MINUTES" envDefault:"30"`
+	DBMaxConnLifetimeMins int   `env:"DB_MAX_CONN_LIFETIME_MINUTES" envDefault:"60"`
+	DBMaxConnIdleTimeMins int   `env:"DB_MAX_CONN_IDLE_TIME_MINUTES" envDefault:"30"`
 
 	// Kafka
 	KafkaBrokers []string `env:"KAFKA_BROKERS" envDefault:"localhost:9092" envSeparator:","`

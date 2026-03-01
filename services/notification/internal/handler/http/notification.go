@@ -167,4 +167,3 @@ func (h *NotificationHandler) RetryNotification(w http.ResponseWriter, r *http.R
 
 	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: notification})
 }
-

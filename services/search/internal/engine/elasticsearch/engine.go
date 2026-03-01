@@ -93,7 +93,7 @@ func (e *Engine) Ping(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("elasticsearch ping: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.IsError() {
 		return fmt.Errorf("elasticsearch ping: unexpected status %s", res.Status())
@@ -107,7 +107,7 @@ func (e *Engine) ensureIndex() error {
 	if err != nil {
 		return fmt.Errorf("check index exists: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	// Status 200 means the index exists.
 	if res.StatusCode == 200 {
@@ -124,7 +124,7 @@ func (e *Engine) ensureIndex() error {
 	if err != nil {
 		return fmt.Errorf("create index: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.IsError() {
 		var errResp esErrorResponse
@@ -155,7 +155,7 @@ func (e *Engine) Index(ctx context.Context, product *domain.SearchableProduct) e
 	if err != nil {
 		return fmt.Errorf("elasticsearch index: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.IsError() {
 		var errResp esErrorResponse
@@ -180,7 +180,7 @@ func (e *Engine) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("elasticsearch delete: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	// Ignore 404 — the document might not exist.
 	if res.IsError() && res.StatusCode != 404 {
@@ -225,7 +225,7 @@ func (e *Engine) Search(ctx context.Context, query *domain.SearchQuery) (*domain
 	if err != nil {
 		return nil, fmt.Errorf("elasticsearch search: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.IsError() {
 		var errResp esErrorResponse
@@ -384,7 +384,7 @@ func (e *Engine) DeleteIndex(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("elasticsearch delete index: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.IsError() && res.StatusCode != 404 {
 		var errResp esErrorResponse
@@ -434,7 +434,7 @@ func (e *Engine) BulkIndex(ctx context.Context, products []domain.SearchableProd
 	if err != nil {
 		return fmt.Errorf("elasticsearch bulk index: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.IsError() {
 		var errResp esErrorResponse

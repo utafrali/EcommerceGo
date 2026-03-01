@@ -29,9 +29,9 @@ func newMock(t *testing.T) pgxmock.PgxPoolIface {
 	return mock
 }
 
-func strPtr(s string) *string  { return &s }
-func boolPtr(b bool) *bool     { return &b }
-func int64Ptr(n int64) *int64  { return &n }
+func strPtr(s string) *string { return &s }
+func boolPtr(b bool) *bool    { return &b }
+func int64Ptr(n int64) *int64 { return &n }
 
 var now = time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
 
@@ -172,11 +172,6 @@ func categoryRow(c domain.Category) []any {
 }
 
 // ─── Review column definitions ──────────────────────────────────────────────
-
-var reviewColumns = []string{
-	"id", "product_id", "user_id", "rating", "title", "body",
-	"created_at", "updated_at",
-}
 
 var reviewColumnsWithCount = []string{
 	"id", "product_id", "user_id", "rating", "title", "body",

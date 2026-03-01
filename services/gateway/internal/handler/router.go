@@ -125,7 +125,7 @@ func NewRouter(cfg *config.Config, sp *proxy.ServiceProxy, healthHandler *health
 // metricsIPAllowlist returns middleware that restricts access to requests
 // from IPs within the configured CIDR ranges.
 func metricsIPAllowlist(cidrs []string, logger *slog.Logger) func(http.Handler) http.Handler {
-	var nets []*net.IPNet
+	nets := make([]*net.IPNet, 0, len(cidrs))
 	for _, cidr := range cidrs {
 		_, ipNet, err := net.ParseCIDR(cidr)
 		if err != nil {

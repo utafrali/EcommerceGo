@@ -24,18 +24,18 @@ const SourceOrderService = "order-service"
 
 // OrderCreatedData is the payload for an order.created event (full order snapshot).
 type OrderCreatedData struct {
-	ID              string             `json:"id"`
-	UserID          string             `json:"user_id"`
-	Status          string             `json:"status"`
-	Items           []OrderItemData    `json:"items"`
-	SubtotalAmount  int64              `json:"subtotal_amount"`
-	DiscountAmount  int64              `json:"discount_amount"`
-	ShippingAmount  int64              `json:"shipping_amount"`
-	TotalAmount     int64              `json:"total_amount"`
-	Currency        string             `json:"currency"`
-	ShippingAddress *domain.Address    `json:"shipping_address,omitempty"`
-	BillingAddress  *domain.Address    `json:"billing_address,omitempty"`
-	Notes           string             `json:"notes,omitempty"`
+	ID              string          `json:"id"`
+	UserID          string          `json:"user_id"`
+	Status          string          `json:"status"`
+	Items           []OrderItemData `json:"items"`
+	SubtotalAmount  int64           `json:"subtotal_amount"`
+	DiscountAmount  int64           `json:"discount_amount"`
+	ShippingAmount  int64           `json:"shipping_amount"`
+	TotalAmount     int64           `json:"total_amount"`
+	Currency        string          `json:"currency"`
+	ShippingAddress *domain.Address `json:"shipping_address,omitempty"`
+	BillingAddress  *domain.Address `json:"billing_address,omitempty"`
+	Notes           string          `json:"notes,omitempty"`
 }
 
 // OrderItemData is the event payload for an order item.

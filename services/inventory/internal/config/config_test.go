@@ -7,14 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setEnvs is a helper that sets multiple env vars and returns a cleanup function.
-func setEnvs(t *testing.T, envs map[string]string) {
-	t.Helper()
-	for k, v := range envs {
-		t.Setenv(k, v)
-	}
-}
-
 func TestLoad_Defaults(t *testing.T) {
 	cfg, err := Load()
 

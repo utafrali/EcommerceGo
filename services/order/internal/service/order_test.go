@@ -115,10 +115,10 @@ func TestCreateOrder_Success(t *testing.T) {
 	assert.Equal(t, "user-123", order.UserID)
 	assert.Equal(t, domain.OrderStatusPending, order.Status)
 	assert.Len(t, order.Items, 2)
-	assert.Equal(t, int64(4500), order.SubtotalAmount)  // 1000*2 + 2500*1
+	assert.Equal(t, int64(4500), order.SubtotalAmount) // 1000*2 + 2500*1
 	assert.Equal(t, int64(500), order.DiscountAmount)
 	assert.Equal(t, int64(300), order.ShippingAmount)
-	assert.Equal(t, int64(4300), order.TotalAmount)      // 4500 - 500 + 300
+	assert.Equal(t, int64(4300), order.TotalAmount) // 4500 - 500 + 300
 	assert.Equal(t, "USD", order.Currency)
 	assert.NotNil(t, order.ShippingAddress)
 	assert.Equal(t, "Please deliver before noon", order.Notes)
@@ -565,7 +565,7 @@ func TestCreateOrder_ExactZeroTotal(t *testing.T) {
 	order, err := svc.CreateOrder(ctx, input)
 
 	require.NoError(t, err)
-	assert.Equal(t, int64(2000), order.SubtotalAmount)  // 1000 * 2
+	assert.Equal(t, int64(2000), order.SubtotalAmount) // 1000 * 2
 	assert.Equal(t, int64(2500), order.DiscountAmount)
 	assert.Equal(t, int64(500), order.ShippingAmount)
 	assert.Equal(t, int64(0), order.TotalAmount) // 2000 - 2500 + 500 = 0

@@ -23,7 +23,7 @@ func TestPoolStatsCollector_Describe(t *testing.T) {
 	c.Describe(ch)
 	close(ch)
 
-	var descs []*prometheus.Desc
+	descs := make([]*prometheus.Desc, 0, 20)
 	for d := range ch {
 		descs = append(descs, d)
 	}
@@ -61,9 +61,8 @@ func TestPoolStatsCollector_DescriptorNames(t *testing.T) {
 		"db_pool_max_idle_destroy_total",
 	}
 
-	var descStrings []string
-	for d := range ch {
-		descStrings = append(descStrings, d.String())
+	// Drain the channel (descStrings not needed further; re-collect below).
+	for range ch {
 	}
 
 	// Re-collect since channel was drained

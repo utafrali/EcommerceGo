@@ -58,7 +58,7 @@ func (h *MediaHandler) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	ownerID := r.FormValue("owner_id")
 	ownerType := r.FormValue("owner_type")
@@ -199,4 +199,3 @@ func (h *MediaHandler) DeleteMedia(w http.ResponseWriter, r *http.Request) {
 
 	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id.String(), "status": "deleted"}})
 }
-

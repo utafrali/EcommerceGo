@@ -307,5 +307,3 @@ func (h *CategoryHandler) DeleteCategory(w http.ResponseWriter, r *http.Request)
 
 	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: map[string]string{"id": id, "status": "deleted"}})
 }
-
-

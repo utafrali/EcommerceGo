@@ -276,4 +276,3 @@ func scanCategoryRow(rows pgx.Rows, c *domain.Category) error {
 		&c.UpdatedAt,
 	)
 }
-

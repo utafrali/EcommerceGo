@@ -61,7 +61,7 @@ func retryBackoff(attempt int) time.Duration {
 	if attempt < 0 {
 		attempt = 0
 	}
-	base := defaultRetryBaseWait << attempt // 1s, 2s, 4s
+	base := defaultRetryBaseWait << attempt                                               // 1s, 2s, 4s
 	jitter := time.Duration(float64(base) * retryJitterFraction * (2*rand.Float64() - 1)) // #nosec G404 -- non-cryptographic jitter for retry backoff
 	return base + jitter
 }
@@ -102,7 +102,7 @@ func NewPostgresPoolWithLogger(ctx context.Context, cfg *PostgresConfig, logger 
 				}
 				select {
 				case <-ctx.Done():
-					return nil, fmt.Errorf("create postgres pool: context cancelled during retry: %w", ctx.Err())
+					return nil, fmt.Errorf("create postgres pool: context canceled during retry: %w", ctx.Err())
 				case <-time.After(wait):
 				}
 			}
@@ -124,7 +124,7 @@ func NewPostgresPoolWithLogger(ctx context.Context, cfg *PostgresConfig, logger 
 				}
 				select {
 				case <-ctx.Done():
-					return nil, fmt.Errorf("ping postgres: context cancelled during retry: %w", ctx.Err())
+					return nil, fmt.Errorf("ping postgres: context canceled during retry: %w", ctx.Err())
 				case <-time.After(wait):
 				}
 			}

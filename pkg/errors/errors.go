@@ -109,7 +109,6 @@ func PaymentFailed(message string) *AppError {
 	}
 }
 
-
 // Gone creates a 410 error for expired or no-longer-available resources.
 func Gone(message string) *AppError {
 	return &AppError{

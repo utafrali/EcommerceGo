@@ -39,7 +39,7 @@ func TestTraceQuery_Success(t *testing.T) {
 	exporter := setupTestTracer(t)
 
 	ctx := context.Background()
-	ctx, end := TraceQuery(ctx, "GetProduct", "SELECT * FROM products WHERE id = $1")
+	_, end := TraceQuery(ctx, "GetProduct", "SELECT * FROM products WHERE id = $1")
 	end(nil)
 
 	spans := exporter.GetSpans()
@@ -78,7 +78,7 @@ func TestTraceQuery_Error(t *testing.T) {
 	exporter := setupTestTracer(t)
 
 	ctx := context.Background()
-	ctx, end := TraceQuery(ctx, "UpdateProduct", "UPDATE products SET name = $1 WHERE id = $2")
+	_, end := TraceQuery(ctx, "UpdateProduct", "UPDATE products SET name = $1 WHERE id = $2")
 	end(errors.New("connection refused"))
 
 	spans := exporter.GetSpans()

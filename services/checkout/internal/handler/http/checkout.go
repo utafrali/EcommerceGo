@@ -61,7 +61,6 @@ type SetPaymentMethodRequest struct {
 	PaymentMethod string `json:"payment_method" validate:"required"`
 }
 
-
 // --- Handlers ---
 
 // InitiateCheckout handles POST /api/v1/checkout
@@ -319,4 +318,3 @@ func authorizeSession(w http.ResponseWriter, r *http.Request, session *domain.Ch
 	}
 	return true
 }
-

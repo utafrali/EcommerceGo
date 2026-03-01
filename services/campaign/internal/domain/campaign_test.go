@@ -77,6 +77,7 @@ func TestIsValidStackingRuleType_Invalid(t *testing.T) {
 func TestCampaign_DiscountValueInCents(t *testing.T) {
 	c := Campaign{DiscountValue: 2500, Type: CampaignTypeFixedAmount}
 	assert.Equal(t, int64(2500), c.DiscountValue)
+	assert.Equal(t, CampaignTypeFixedAmount, c.Type)
 }
 
 func TestCampaign_PercentageType(t *testing.T) {

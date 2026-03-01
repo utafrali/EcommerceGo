@@ -141,5 +141,6 @@ func TestNotificationTemplate_Fields(t *testing.T) {
 	}
 	assert.Equal(t, "order_confirmation", tmpl.Name)
 	assert.Equal(t, ChannelEmail, tmpl.Channel)
+	assert.Equal(t, "Order Confirmed", tmpl.Subject)
 	assert.Contains(t, tmpl.BodyTemplate, "{{.OrderID}}")
 }

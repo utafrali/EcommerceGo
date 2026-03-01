@@ -23,11 +23,11 @@ const SourceCartService = "cart-service"
 
 // CartUpdatedData is the payload for a cart.updated event.
 type CartUpdatedData struct {
-	UserID      string            `json:"user_id"`
-	Items       []CartItemData    `json:"items"`
-	ItemCount   int               `json:"item_count"`
-	TotalAmount int64             `json:"total_amount"`
-	Currency    string            `json:"currency"`
+	UserID      string         `json:"user_id"`
+	Items       []CartItemData `json:"items"`
+	ItemCount   int            `json:"item_count"`
+	TotalAmount int64          `json:"total_amount"`
+	Currency    string         `json:"currency"`
 }
 
 // CartItemData is the item payload within cart events.

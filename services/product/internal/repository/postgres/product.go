@@ -370,8 +370,8 @@ func (r *ProductRepository) GetVariants(ctx context.Context, productID string) (
 	var variants []domain.ProductVariant
 	for rows.Next() {
 		var (
-			v          domain.ProductVariant
-			attrsJSON  []byte
+			v         domain.ProductVariant
+			attrsJSON []byte
 		)
 		if err := rows.Scan(
 			&v.ID,

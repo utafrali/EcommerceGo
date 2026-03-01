@@ -62,10 +62,7 @@ func (s *SearchService) getEngine() engine.SearchEngine {
 
 // engineTypeName returns a human-readable type name for a search engine.
 func engineTypeName(eng engine.SearchEngine) string {
-	switch eng.(type) {
-	default:
-		return fmt.Sprintf("%T", eng)
-	}
+	return fmt.Sprintf("%T", eng)
 }
 
 // IndexProductInput holds the parameters for indexing a product.
@@ -247,7 +244,7 @@ func (s *SearchService) Reindex(ctx context.Context) error {
 		// Fetch products from Product Service via API Gateway
 		url := fmt.Sprintf("%s/api/v1/products?page=%d&per_page=%d&status=published", s.productServiceURL, page, perPage)
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 		if err != nil {
 			return fmt.Errorf("reindex: create request: %w", err)
 		}

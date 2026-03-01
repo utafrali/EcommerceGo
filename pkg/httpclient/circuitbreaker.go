@@ -182,7 +182,7 @@ func (c *CircuitBreakerClient) Do(ctx context.Context, req *http.Request) (*http
 
 // Get performs an HTTP GET request through the circuit breaker.
 func (c *CircuitBreakerClient) Get(ctx context.Context, url string) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("create GET request: %w", err)
 	}

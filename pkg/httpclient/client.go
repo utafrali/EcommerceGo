@@ -108,7 +108,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, err
 
 // Get performs HTTP GET request with retry
 func (c *Client) Get(ctx context.Context, url string) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("create GET request: %w", err)
 	}

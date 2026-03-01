@@ -211,10 +211,10 @@ func (r *CheckoutRepository) ListExpired(ctx context.Context, before time.Time) 
 // scanSession executes a query expected to return a single checkout session row.
 func (r *CheckoutRepository) scanSession(ctx context.Context, query string, args ...any) (*domain.CheckoutSession, error) {
 	var (
-		session      domain.CheckoutSession
-		itemsJSON    []byte
-		shippingJSON []byte
-		billingJSON  []byte
+		session       domain.CheckoutSession
+		itemsJSON     []byte
+		shippingJSON  []byte
+		billingJSON   []byte
 		paymentMethod *string
 		paymentID     *string
 		orderID       *string

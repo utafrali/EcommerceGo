@@ -85,19 +85,19 @@ func TestTracing_RecordsStatusCode(t *testing.T) {
 		t.Fatal("expected at least one span")
 	}
 
-	// Verify the span has an http.status_code attribute.
+	// Verify the span has an http.response.status_code attribute.
 	found := false
 	for _, attr := range spans[0].Attributes {
-		if string(attr.Key) == "http.status_code" {
+		if string(attr.Key) == "http.response.status_code" {
 			if attr.Value.AsInt64() != 404 {
-				t.Errorf("http.status_code = %d, want 404", attr.Value.AsInt64())
+				t.Errorf("http.response.status_code = %d, want 404", attr.Value.AsInt64())
 			}
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("http.status_code attribute not found on span")
+		t.Error("http.response.status_code attribute not found on span")
 	}
 }
 

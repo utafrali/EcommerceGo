@@ -85,21 +85,6 @@ func campaignListColumns() []string {
 	return append(campaignColumns(), "total_count")
 }
 
-func campaignListRow(c *domain.Campaign, totalCount int) *pgxmock.Rows {
-	categoriesJSON, _ := json.Marshal(c.ApplicableCategories)
-	productsJSON, _ := json.Marshal(c.ApplicableProducts)
-
-	return pgxmock.NewRows(campaignListColumns()).
-		AddRow(
-			c.ID, c.Name, c.Description, c.Type, c.Status, c.DiscountValue,
-			c.MinOrderAmount, c.MaxDiscountAmount, c.Code, c.MaxUsageCount,
-			c.CurrentUsageCount, c.IsStackable, c.Priority, c.ExclusionGroup,
-			c.StartDate, c.EndDate, categoriesJSON,
-			productsJSON, c.CreatedAt, c.UpdatedAt,
-			totalCount,
-		)
-}
-
 func stackingRuleColumns() []string {
 	return []string{"id", "campaign_a_id", "campaign_b_id", "rule_type", "created_at"}
 }

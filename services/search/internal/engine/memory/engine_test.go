@@ -38,7 +38,7 @@ func TestEngine_SearchByText_Match(t *testing.T) {
 	ctx := context.Background()
 	eng := New()
 
-	p := newTestProduct("Wireless Bluetooth Headphones", "High quality noise cancelling headphones", 9999)
+	p := newTestProduct("Wireless Bluetooth Headphones", "High quality noise canceling headphones", 9999)
 	require.NoError(t, eng.Index(ctx, &p))
 
 	result, err := eng.Search(ctx, &domain.SearchQuery{
@@ -72,7 +72,7 @@ func TestEngine_SearchByText_MatchesDescription(t *testing.T) {
 	ctx := context.Background()
 	eng := New()
 
-	p := newTestProduct("Premium Audio Device", "Noise cancelling bluetooth headphones with deep bass", 14999)
+	p := newTestProduct("Premium Audio Device", "Noise canceling bluetooth headphones with deep bass", 14999)
 	require.NoError(t, eng.Index(ctx, &p))
 
 	result, err := eng.Search(ctx, &domain.SearchQuery{

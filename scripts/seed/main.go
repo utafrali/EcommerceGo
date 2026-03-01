@@ -239,7 +239,7 @@ func main() {
 	// ---------------------------------------------------------------
 	products := []productDef{
 		// Electronics
-		{"Wireless Bluetooth Headphones", "Premium noise-cancelling over-ear headphones with 30-hour battery life and active noise cancellation technology.", "electronics", "techbrand", 7999},
+		{"Wireless Bluetooth Headphones", "Premium noise-canceling over-ear headphones with 30-hour battery life and active noise cancellation technology.", "electronics", "techbrand", 7999},
 		{"USB-C Hub Adapter", "7-in-1 USB-C hub with HDMI 4K output, 3x USB 3.0 ports, SD card reader, and 100W power delivery.", "electronics", "techbrand", 3499},
 		{"Mechanical Keyboard", "RGB backlit mechanical keyboard with Cherry MX Blue switches, full-size layout, and detachable wrist rest.", "electronics", "techbrand", 8999},
 		{"4K Webcam", "Ultra HD webcam for streaming and video conferencing with auto-focus, built-in ring light, and privacy shutter.", "electronics", "techbrand", 12999},

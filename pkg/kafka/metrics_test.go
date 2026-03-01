@@ -22,8 +22,6 @@ func gatherMetricNames(t *testing.T) map[string]bool {
 }
 
 func TestConsumerMetrics_Registered(t *testing.T) {
-	names := gatherMetricNames(t)
-
 	expectedMetrics := []string{
 		"kafka_consumer_messages_processed_total",
 		"kafka_consumer_messages_failed_total",
@@ -41,7 +39,7 @@ func TestConsumerMetrics_Registered(t *testing.T) {
 	ConsumerMessagesReceived.WithLabelValues("test-topic", "test-group")
 	ConsumerDLQPublished.WithLabelValues("test-topic", "test-group")
 
-	names = gatherMetricNames(t)
+	names := gatherMetricNames(t)
 
 	for _, name := range expectedMetrics {
 		assert.True(t, names[name], "expected metric %q to be registered", name)

@@ -2,8 +2,8 @@ package http
 
 import (
 	"log/slog"
-	"time"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"

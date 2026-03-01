@@ -24,12 +24,12 @@ type CreateReviewInput struct {
 
 // ReviewListResult contains reviews and their aggregate summary.
 type ReviewListResult struct {
-	Reviews    []domain.Review  `json:"reviews"`
+	Reviews    []domain.Review       `json:"reviews"`
 	Summary    *domain.ReviewSummary `json:"summary"`
-	TotalCount int              `json:"total_count"`
-	Page       int              `json:"page"`
-	PerPage    int              `json:"per_page"`
-	TotalPages int              `json:"total_pages"`
+	TotalCount int                   `json:"total_count"`
+	Page       int                   `json:"page"`
+	PerPage    int                   `json:"per_page"`
+	TotalPages int                   `json:"total_pages"`
 }
 
 // ReviewService implements the business logic for review operations.

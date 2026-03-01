@@ -30,10 +30,10 @@ type Config struct {
 	MediaServiceURL        string `env:"MEDIA_SERVICE_URL" envDefault:"http://localhost:8011"`
 
 	// Proxy transport
-	ProxyDialTimeout    time.Duration `env:"PROXY_DIAL_TIMEOUT" envDefault:"5s"`
+	ProxyDialTimeout     time.Duration `env:"PROXY_DIAL_TIMEOUT" envDefault:"5s"`
 	ProxyResponseTimeout time.Duration `env:"PROXY_RESPONSE_TIMEOUT" envDefault:"30s"`
-	ProxyIdleTimeout    time.Duration `env:"PROXY_IDLE_TIMEOUT" envDefault:"90s"`
-	ProxyMaxIdleConns   int           `env:"PROXY_MAX_IDLE_CONNS" envDefault:"100"`
+	ProxyIdleTimeout     time.Duration `env:"PROXY_IDLE_TIMEOUT" envDefault:"90s"`
+	ProxyMaxIdleConns    int           `env:"PROXY_MAX_IDLE_CONNS" envDefault:"100"`
 
 	// Rate limiting
 	RateLimitRPS   int `env:"RATE_LIMIT_RPS" envDefault:"100"`

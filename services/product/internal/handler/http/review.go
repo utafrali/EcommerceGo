@@ -128,4 +128,3 @@ func (h *ReviewHandler) CreateReview(w http.ResponseWriter, r *http.Request) {
 
 	httputil.WriteJSON(w, http.StatusCreated, httputil.Response{Data: review})
 }
-

@@ -27,7 +27,7 @@ func RegisterPprof(r chi.Router, allowedCIDRs []string, logger *slog.Logger) {
 // IPAllowlist returns middleware that restricts access to requests from IPs
 // within the configured CIDR ranges. Invalid CIDRs are logged and skipped.
 func IPAllowlist(cidrs []string, logger *slog.Logger) func(http.Handler) http.Handler {
-	var nets []*net.IPNet
+	nets := make([]*net.IPNet, 0, len(cidrs))
 	for _, cidr := range cidrs {
 		_, ipNet, err := net.ParseCIDR(cidr)
 		if err != nil {

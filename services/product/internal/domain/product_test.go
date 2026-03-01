@@ -66,6 +66,7 @@ func TestProduct_BasePriceInCents(t *testing.T) {
 func TestProduct_SlugField(t *testing.T) {
 	p := Product{Name: "Test Product", Slug: "test-product"}
 	assert.Equal(t, "test-product", p.Slug)
+	assert.Equal(t, "Test Product", p.Name)
 }
 
 func TestProduct_CategoryAssignment(t *testing.T) {

@@ -67,9 +67,9 @@ func NewApp(cfg *config.Config, logger *slog.Logger) (*App, error) {
 	router := handler.NewRouter(cfg, sp, healthHandler, logger)
 
 	httpServer := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.HTTPPort),
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
+		Addr:              fmt.Sprintf(":%d", cfg.HTTPPort),
+		Handler:           router,
+		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,

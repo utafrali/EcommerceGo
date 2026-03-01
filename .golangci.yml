@@ -29,6 +29,12 @@ linters:
         - diagnostic
         - style
         - performance
+      disabled-checks:
+        - hugeParam
+        - rangeValCopy
+        - exitAfterDefer
+        - unnamedResult
+        - paramTypeCombine
     misspell:
       locale: US
   exclusions:

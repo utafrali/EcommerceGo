@@ -9,7 +9,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
-	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -56,10 +55,11 @@ func Tracing(serviceName string) func(http.Handler) http.Handler {
 			ctx, span := tracer.Start(ctx, spanName,
 				trace.WithSpanKind(trace.SpanKindServer),
 				trace.WithAttributes(
-					semconv.HTTPMethod(r.Method),
-					semconv.HTTPTarget(r.URL.RequestURI()),
-					semconv.HTTPScheme(scheme(r)),
-					semconv.UserAgentOriginal(r.UserAgent()),
+					attribute.String("http.request.method", r.Method),
+					attribute.String("url.path", r.URL.Path),
+					attribute.String("url.query", r.URL.RawQuery),
+					attribute.String("url.scheme", scheme(r)),
+					attribute.String("user_agent.original", r.UserAgent()),
 					attribute.String("http.client_ip", r.RemoteAddr),
 				),
 			)
@@ -84,7 +84,7 @@ func Tracing(serviceName string) func(http.Handler) http.Handler {
 			}
 
 			// Record status code.
-			span.SetAttributes(semconv.HTTPStatusCode(trw.statusCode))
+			span.SetAttributes(attribute.Int("http.response.status_code", trw.statusCode))
 
 			if trw.statusCode >= 500 {
 				span.SetStatus(codes.Error, http.StatusText(trw.statusCode))

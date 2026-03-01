@@ -145,4 +145,5 @@ func TestCart_VersionForOptimisticLocking(t *testing.T) {
 func TestCartItem_PriceInCents(t *testing.T) {
 	item := CartItem{Price: 9999, Quantity: 1}
 	assert.Equal(t, int64(9999), item.Price)
+	assert.Equal(t, 1, item.Quantity)
 }

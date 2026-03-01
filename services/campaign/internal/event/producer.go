@@ -11,8 +11,8 @@ import (
 
 // Kafka topic constants for campaign domain events.
 const (
-	TopicCampaignCreated     = "ecommerce.campaign.created"
-	TopicCampaignUpdated     = "ecommerce.campaign.updated"
+	TopicCampaignCreated       = "ecommerce.campaign.created"
+	TopicCampaignUpdated       = "ecommerce.campaign.updated"
 	TopicCampaignCouponApplied = "ecommerce.campaign.coupon_applied"
 )
 

@@ -69,7 +69,7 @@ func IsValidStatus(status string) bool {
 
 // Product sort_by constants.
 const (
-	SortByNewest   = "newest"
+	SortByNewest    = "newest"
 	SortByPriceAsc  = "price_asc"
 	SortByPriceDesc = "price_desc"
 	SortByNameAsc   = "name_asc"

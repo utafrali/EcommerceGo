@@ -64,17 +64,23 @@ func TestCircuitBreaker_TripsOnFailures(t *testing.T) {
 
 	// Produce enough failures to trip the breaker.
 	for i := 0; i < 3; i++ {
-		_, err := cb.Get(context.Background(), server.URL)
+		resp, err := cb.Get(context.Background(), server.URL)
 		require.Error(t, err) // 500s are treated as errors by the CB.
+		if resp != nil {
+			resp.Body.Close()
+		}
 	}
 
 	// The breaker should now be open.
 	assert.Equal(t, gobreaker.StateOpen, cb.State())
 
 	// Subsequent requests should fail immediately with ErrCircuitOpen.
-	_, err := cb.Get(context.Background(), server.URL)
+	resp2, err := cb.Get(context.Background(), server.URL)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrCircuitOpen)
+	if resp2 != nil {
+		resp2.Body.Close()
+	}
 }
 
 func TestCircuitBreaker_HalfOpenToClosedRecovery(t *testing.T) {
@@ -102,7 +108,10 @@ func TestCircuitBreaker_HalfOpenToClosedRecovery(t *testing.T) {
 
 	// Trip the breaker.
 	for i := 0; i < 3; i++ {
-		_, _ = cb.Get(context.Background(), server.URL)
+		tripResp, _ := cb.Get(context.Background(), server.URL)
+		if tripResp != nil {
+			tripResp.Body.Close()
+		}
 	}
 	assert.Equal(t, gobreaker.StateOpen, cb.State())
 
@@ -190,7 +199,10 @@ func TestCircuitBreaker_OpenStateRejectsRequests(t *testing.T) {
 
 	// Trip the breaker.
 	for i := 0; i < 3; i++ {
-		_, _ = cb.Get(context.Background(), server.URL)
+		tripResp, _ := cb.Get(context.Background(), server.URL)
+		if tripResp != nil {
+			tripResp.Body.Close()
+		}
 	}
 	assert.Equal(t, gobreaker.StateOpen, cb.State())
 
@@ -198,9 +210,12 @@ func TestCircuitBreaker_OpenStateRejectsRequests(t *testing.T) {
 
 	// These should be rejected without reaching the server.
 	for i := 0; i < 5; i++ {
-		_, err := cb.Get(context.Background(), server.URL)
+		rejResp, err := cb.Get(context.Background(), server.URL)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrCircuitOpen)
+		if rejResp != nil {
+			rejResp.Body.Close()
+		}
 	}
 
 	// No new requests should have reached the server.
@@ -231,13 +246,17 @@ func TestCircuitBreaker_WithFallback_InvokedWhenOpen(t *testing.T) {
 
 	// Trip the breaker.
 	for i := 0; i < 3; i++ {
-		_, _ = cbWithFallback.Get(context.Background(), server.URL)
+		tripResp, _ := cbWithFallback.Get(context.Background(), server.URL)
+		if tripResp != nil {
+			tripResp.Body.Close()
+		}
 	}
 	assert.Equal(t, gobreaker.StateOpen, cbWithFallback.State())
 
 	// Now the fallback should be invoked instead of returning ErrCircuitOpen.
 	resp, err := cbWithFallback.Get(context.Background(), server.URL)
 	require.NoError(t, err)
+	defer resp.Body.Close()
 	assert.True(t, fallbackCalled.Load())
 	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 }
@@ -283,11 +302,17 @@ func TestCircuitBreaker_WithFallback_FallbackErrorPropagated(t *testing.T) {
 	})
 
 	for i := 0; i < 3; i++ {
-		_, _ = cbWithFallback.Get(context.Background(), server.URL)
+		tripResp, _ := cbWithFallback.Get(context.Background(), server.URL)
+		if tripResp != nil {
+			tripResp.Body.Close()
+		}
 	}
 
-	_, err := cbWithFallback.Get(context.Background(), server.URL)
+	fbResp, err := cbWithFallback.Get(context.Background(), server.URL)
 	require.Error(t, err)
+	if fbResp != nil {
+		fbResp.Body.Close()
+	}
 	assert.Contains(t, err.Error(), "fallback failed")
 }
 
@@ -305,11 +330,17 @@ func TestCircuitBreaker_WithoutFallback_StillReturnsErrCircuitOpen(t *testing.T)
 	cb := NewCircuitBreakerClient(client, cfg, testLogger())
 
 	for i := 0; i < 3; i++ {
-		_, _ = cb.Get(context.Background(), server.URL)
+		tripResp, _ := cb.Get(context.Background(), server.URL)
+		if tripResp != nil {
+			tripResp.Body.Close()
+		}
 	}
 
-	_, err := cb.Get(context.Background(), server.URL)
+	noFbResp, err := cb.Get(context.Background(), server.URL)
 	require.Error(t, err)
+	if noFbResp != nil {
+		noFbResp.Body.Close()
+	}
 	assert.ErrorIs(t, err, ErrCircuitOpen)
 }
 
@@ -326,6 +357,9 @@ func TestCircuitBreaker_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	_, err := cb.Get(ctx, server.URL)
+	ctxResp, err := cb.Get(ctx, server.URL)
 	require.Error(t, err)
+	if ctxResp != nil {
+		ctxResp.Body.Close()
+	}
 }

@@ -24,12 +24,12 @@ const SourceCheckoutService = "checkout-service"
 
 // CheckoutInitiatedData is the payload for a checkout.initiated event.
 type CheckoutInitiatedData struct {
-	ID             string               `json:"id"`
-	UserID         string               `json:"user_id"`
+	ID             string                `json:"id"`
+	UserID         string                `json:"user_id"`
 	Items          []domain.CheckoutItem `json:"items"`
-	SubtotalAmount int64                `json:"subtotal_amount"`
-	TotalAmount    int64                `json:"total_amount"`
-	Currency       string               `json:"currency"`
+	SubtotalAmount int64                 `json:"subtotal_amount"`
+	TotalAmount    int64                 `json:"total_amount"`
+	Currency       string                `json:"currency"`
 }
 
 // CheckoutCompletedData is the payload for a checkout.completed event.

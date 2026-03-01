@@ -41,10 +41,6 @@ var mediaColumnsWithCount = []string{
 	"sort_order", "metadata", "created_at", "updated_at", "total_count",
 }
 
-func strPtr(s string) *string {
-	return &s
-}
-
 func sampleMediaFile() domain.MediaFile {
 	thumb := "https://cdn.example.com/thumb/photo.jpg"
 	return domain.MediaFile{

@@ -197,8 +197,8 @@ func (r *OrderRepository) List(ctx context.Context, filter repository.OrderFilte
 	var (
 		conditions []string
 		args       []any
-		argIndex   int = 1
 	)
+	argIndex := 1
 
 	if filter.UserID != nil {
 		conditions = append(conditions, fmt.Sprintf("user_id = $%d", argIndex))
@@ -372,45 +372,3 @@ func (r *OrderRepository) UpdateStatus(ctx context.Context, id string, status st
 	return nil
 }
 
-// loadOrderItems retrieves all items belonging to a given order.
-func (r *OrderRepository) loadOrderItems(ctx context.Context, orderID string) ([]domain.OrderItem, error) {
-	query := `
-		SELECT id, order_id, product_id, variant_id, name, sku, price, quantity
-		FROM order_items
-		WHERE order_id = $1
-		ORDER BY id`
-
-	rows, err := r.pool.Query(ctx, query, orderID)
-	if err != nil {
-		return nil, fmt.Errorf("query order items: %w", err)
-	}
-	defer rows.Close()
-
-	var items []domain.OrderItem
-	for rows.Next() {
-		var item domain.OrderItem
-		if err := rows.Scan(
-			&item.ID,
-			&item.OrderID,
-			&item.ProductID,
-			&item.VariantID,
-			&item.Name,
-			&item.SKU,
-			&item.Price,
-			&item.Quantity,
-		); err != nil {
-			return nil, fmt.Errorf("scan order item: %w", err)
-		}
-		items = append(items, item)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate order item rows: %w", err)
-	}
-
-	if items == nil {
-		items = []domain.OrderItem{}
-	}
-
-	return items, nil
-}

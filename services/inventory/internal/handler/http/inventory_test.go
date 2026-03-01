@@ -158,9 +158,9 @@ func decodeResponse(t *testing.T, rec *httptest.ResponseRecorder) httputil.Respo
 
 // validUUID returns a fixed valid UUID for use in tests.
 const (
-	validProductID = "550e8400-e29b-41d4-a716-446655440001"
-	validVariantID = "550e8400-e29b-41d4-a716-446655440002"
-	validCheckoutID = "550e8400-e29b-41d4-a716-446655440003"
+	validProductID     = "550e8400-e29b-41d4-a716-446655440001"
+	validVariantID     = "550e8400-e29b-41d4-a716-446655440002"
+	validCheckoutID    = "550e8400-e29b-41d4-a716-446655440003"
 	validReservationID = "550e8400-e29b-41d4-a716-446655440004"
 )
 
@@ -1124,10 +1124,10 @@ func TestContentTypeJSON_AcceptsJSON(t *testing.T) {
 
 func TestInitializeStock_TableDriven(t *testing.T) {
 	tests := []struct {
-		name           string
-		body           interface{}
-		expectStatus   int
-		expectErrCode  string
+		name          string
+		body          interface{}
+		expectStatus  int
+		expectErrCode string
 	}{
 		{
 			name: "valid with all fields",

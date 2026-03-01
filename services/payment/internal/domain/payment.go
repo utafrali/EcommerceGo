@@ -6,13 +6,13 @@ import (
 
 // Payment status constants.
 const (
-	PaymentStatusPending            = "pending"
-	PaymentStatusProcessing         = "processing"
-	PaymentStatusSucceeded          = "succeeded"
-	PaymentStatusFailed             = "failed"
-	PaymentStatusCanceled           = "canceled"
-	PaymentStatusRefunded           = "refunded"
-	PaymentStatusPartiallyRefunded  = "partially_refunded"
+	PaymentStatusPending           = "pending"
+	PaymentStatusProcessing        = "processing"
+	PaymentStatusSucceeded         = "succeeded"
+	PaymentStatusFailed            = "failed"
+	PaymentStatusCanceled          = "canceled"
+	PaymentStatusRefunded          = "refunded"
+	PaymentStatusPartiallyRefunded = "partially_refunded"
 )
 
 // Payment method constants.

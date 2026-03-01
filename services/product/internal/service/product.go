@@ -117,8 +117,8 @@ func (s *ProductService) GetProduct(ctx context.Context, id string) (*domain.Pro
 }
 
 // GetProductBySlug retrieves a product by its slug.
-func (s *ProductService) GetProductBySlug(ctx context.Context, slug string) (*domain.Product, error) {
-	product, err := s.repo.GetBySlug(ctx, slug)
+func (s *ProductService) GetProductBySlug(ctx context.Context, slugValue string) (*domain.Product, error) {
+	product, err := s.repo.GetBySlug(ctx, slugValue)
 	if err != nil {
 		return nil, fmt.Errorf("get product by slug: %w", err)
 	}
@@ -137,8 +137,8 @@ func (s *ProductService) GetProductDetail(ctx context.Context, id string) (*doma
 
 // GetProductDetailBySlug retrieves a product by slug and enriches it with
 // images, variants, category, and brand information.
-func (s *ProductService) GetProductDetailBySlug(ctx context.Context, slug string) (*domain.ProductDetail, error) {
-	product, err := s.repo.GetBySlug(ctx, slug)
+func (s *ProductService) GetProductDetailBySlug(ctx context.Context, slugValue string) (*domain.ProductDetail, error) {
+	product, err := s.repo.GetBySlug(ctx, slugValue)
 	if err != nil {
 		return nil, fmt.Errorf("get product by slug: %w", err)
 	}
@@ -337,4 +337,3 @@ func (s *ProductService) DeleteProduct(ctx context.Context, id string) error {
 
 	return nil
 }
-

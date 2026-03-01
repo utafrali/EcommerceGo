@@ -420,7 +420,7 @@ func (s *CheckoutService) CancelCheckout(ctx context.Context, sessionID string) 
 	}
 
 	if session.Status == domain.StatusFailed || session.Status == domain.StatusExpired {
-		return nil, apperrors.InvalidInput("checkout is already cancelled or expired")
+		return nil, apperrors.InvalidInput("checkout is already canceled or expired")
 	}
 
 	// Compensating actions:
@@ -431,7 +431,7 @@ func (s *CheckoutService) CancelCheckout(ctx context.Context, sessionID string) 
 	}
 
 	session.Status = domain.StatusFailed
-	session.FailureReason = "cancelled by user"
+	session.FailureReason = "canceled by user"
 
 	if err := s.repo.Update(ctx, session); err != nil {
 		return nil, fmt.Errorf("update checkout for cancellation: %w", err)
@@ -445,7 +445,7 @@ func (s *CheckoutService) CancelCheckout(ctx context.Context, sessionID string) 
 		)
 	}
 
-	s.logger.InfoContext(ctx, "checkout cancelled",
+	s.logger.InfoContext(ctx, "checkout canceled",
 		slog.String("checkout_id", session.ID),
 		slog.String("user_id", session.UserID),
 	)
@@ -474,7 +474,7 @@ func (s *CheckoutService) reserveInventory(ctx context.Context, session *domain.
 	}
 
 	req := reserveRequest{
-		Items:      make([]struct {
+		Items: make([]struct {
 			VariantID string `json:"variant_id"`
 			Quantity  int    `json:"quantity"`
 		}, len(session.Items)),
@@ -501,7 +501,7 @@ func (s *CheckoutService) reserveInventory(ctx context.Context, session *domain.
 	if err != nil {
 		return nil, fmt.Errorf("call inventory service: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return nil, httpclient.ParseResponseError(resp, "inventory")
@@ -600,7 +600,7 @@ func (s *CheckoutService) createOrder(ctx context.Context, session *domain.Check
 	if err != nil {
 		return "", fmt.Errorf("call order service: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return "", httpclient.ParseResponseError(resp, "order")
@@ -662,7 +662,7 @@ func (s *CheckoutService) initiatePayment(ctx context.Context, session *domain.C
 	if err != nil {
 		return "", fmt.Errorf("call payment service: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return "", httpclient.ParseResponseError(resp, "payment")
@@ -709,7 +709,7 @@ func (s *CheckoutService) releaseInventoryReservations(ctx context.Context, rese
 		s.logger.ErrorContext(ctx, "failed to call inventory service for release", slog.String("error", err.Error()))
 		return fmt.Errorf("call inventory service: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		return httpclient.ParseResponseError(resp, "inventory")
@@ -735,13 +735,13 @@ func (s *CheckoutService) cancelOrder(ctx context.Context, orderID string) error
 		s.logger.ErrorContext(ctx, "failed to call order service for cancellation", slog.String("error", err.Error()))
 		return fmt.Errorf("call order service: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		return httpclient.ParseResponseError(resp, "order")
 	}
 
-	s.logger.InfoContext(ctx, "order cancelled",
+	s.logger.InfoContext(ctx, "order canceled",
 		slog.String("order_id", orderID),
 	)
 

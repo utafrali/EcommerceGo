@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	esengine "github.com/utafrali/EcommerceGo/services/search/internal/engine/elasticsearch"
 	"github.com/utafrali/EcommerceGo/services/search/internal/domain"
+	esengine "github.com/utafrali/EcommerceGo/services/search/internal/engine/elasticsearch"
 )
 
 // testLogger returns a discard logger suitable for tests.
@@ -81,7 +81,7 @@ func TestES_IndexAndSearch(t *testing.T) {
 	eng := newTestEngine(t)
 	ctx := context.Background()
 
-	p := newTestProduct("Wireless Bluetooth Headphones", "High quality noise cancelling headphones", 9999)
+	p := newTestProduct("Wireless Bluetooth Headphones", "High quality noise canceling headphones", 9999)
 	require.NoError(t, eng.Index(ctx, &p))
 
 	result, err := eng.Search(ctx, &domain.SearchQuery{

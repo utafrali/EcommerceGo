@@ -231,4 +231,3 @@ func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 
 	httputil.WriteJSON(w, http.StatusOK, httputil.Response{Data: order})
 }
-
